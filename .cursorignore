@@ -1,0 +1,38 @@
+﻿# Unity 鐢熸垚鐨勬枃浠?*.meta
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.unityproj
+
+# Unity 鐩綍
+Library/
+Temp/
+Obj/
+Build/
+Builds/
+Logs/
+UserSettings/
+MemoryCaptures/
+
+# Visual Studio
+.vs/
+.consulo/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# 鍏朵粬
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini

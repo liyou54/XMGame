@@ -105,3 +105,4 @@ public readonly struct ConfigKey<T> : IEquatable<ConfigKey<T>>
     public override string ToString() 
         => $"{ModKey}.{TableName}::{ConfigName}";
 }
+

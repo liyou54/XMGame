@@ -1,0 +1,19 @@
+{
+    "name": "XMFrame.Implementation",
+    "rootNamespace": "XMFrame.Implementation",
+    "references": [
+        "GUID:b2f1fc1aca9012145bfe9a26035d1fea",
+        "GUID:1c65caa36780d5c4796b606a965a7a4e",
+        "GUID:f51ebe6a0ceec4240a699833d6309b23",
+        "GUID:e34a5702dd353724aa315fb8011f08c3"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

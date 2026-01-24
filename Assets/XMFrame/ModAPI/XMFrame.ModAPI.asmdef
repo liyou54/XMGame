@@ -1,0 +1,16 @@
+{
+    "name": "XMFrame.ModAPI",
+    "rootNamespace": "XMFrame.ModAPI",
+    "references": [
+        "GUID:b2f1fc1aca9012145bfe9a26035d1fea"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
