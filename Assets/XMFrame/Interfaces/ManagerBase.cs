@@ -8,8 +8,8 @@ namespace XMFrame.Implementation
     /// 管理器基类
     /// </summary>
     /// <typeparam name="T">管理器类型</typeparam>
-    public abstract class ManagerBase<T> :
-        MonoBehaviour, IManager<T> where T : IManager<T>,IManager
+    public abstract class ManagerBase<T> : MonoBehaviour, IManager<T> 
+        where T : IManager<T>,IManager
     {
         public bool IsAvailable => IManager<T>.I != null;
 

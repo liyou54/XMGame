@@ -57,6 +57,7 @@ public readonly struct TableDefine : IEquatable<TableDefine>
     public override string ToString() => $"{DefinedInMod}.{TableName}";
 }
 
+
 public readonly struct ConfigKey<T> : IEquatable<ConfigKey<T>>
 {
     /// <summary>

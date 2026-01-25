@@ -18,7 +18,7 @@ internal ref struct XBlobHashSetView<T>
     internal Span<XBlobHashSetEntry<T>> Entries;
 }
 
-internal readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
+public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
 {
     internal readonly int Offset;
     internal XBlobSet(int offset) => Offset = offset;

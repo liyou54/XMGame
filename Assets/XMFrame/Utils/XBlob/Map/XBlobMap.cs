@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-internal struct XBlobHashMapEntry<TKey, TValue>
+public struct XBlobHashMapEntry<TKey, TValue>
     where TKey : unmanaged
     where TValue : unmanaged
 {
@@ -11,7 +11,7 @@ internal struct XBlobHashMapEntry<TKey, TValue>
     public TValue Value;
 }
 
-internal struct XBlobKeyValuePair<TKey, TValue>
+public struct XBlobKeyValuePair<TKey, TValue>
     where TKey : unmanaged
     where TValue : unmanaged
 {
@@ -19,7 +19,7 @@ internal struct XBlobKeyValuePair<TKey, TValue>
     public TValue Value;
 }
 
-internal ref struct XBlobHashMapView<TKey, TValue>
+public ref struct XBlobHashMapView<TKey, TValue>
     where TKey : unmanaged
     where TValue : unmanaged
 {
@@ -29,7 +29,7 @@ internal ref struct XBlobHashMapView<TKey, TValue>
     internal Span<XBlobHashMapEntry<TKey, TValue>> Entries;
 }
 
-internal struct XBlobMap<TKey, TValue>
+public struct XBlobMap<TKey, TValue>
     where TKey : unmanaged, IEquatable<TKey>
     where TValue : unmanaged
 {

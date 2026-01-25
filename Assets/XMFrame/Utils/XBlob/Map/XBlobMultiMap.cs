@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-internal struct XBlobMultiMapEntry<TKey, TValue>
+public struct XBlobMultiMapEntry<TKey, TValue>
     where TKey : unmanaged
     where TValue : unmanaged
 {
@@ -22,7 +22,7 @@ internal ref struct XBlobMultiMapView<TKey, TValue>
     internal Span<XBlobMultiMapEntry<TKey, TValue>> Entries;
 }
 
-internal readonly struct XBlobMultiMap<TKey, TValue>
+public readonly struct XBlobMultiMap<TKey, TValue>
     where TKey : unmanaged, IEquatable<TKey>
     where TValue : unmanaged
 {

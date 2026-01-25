@@ -1,0 +1,23 @@
+{
+    "name": "XMFrame.Editor",
+    "rootNamespace": "XMFrame.Editor",
+    "references": [
+        "GUID:b2f1fc1aca9012145bfe9a26035d1fea",
+        "GUID:2ea90825a47fdb949a437c7c17b6b27c",
+        "GUID:e3ffc3f8b4244cd4a90e2d8dbd117214",
+        "GUID:1c65caa36780d5c4796b606a965a7a4e",
+        "GUID:d8b63aba1907145bea998dd612889d6b",
+        "GUID:e0cd26848372d4e5c891c569017e11f1"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

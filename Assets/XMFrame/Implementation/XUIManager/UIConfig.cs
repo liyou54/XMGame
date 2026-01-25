@@ -9,26 +9,26 @@ namespace XMFrame.Implementation
     public class UIConfigClass:XConfig<UIConfigClass,UIConfigUnManaged>
     {
         public ConfigKey<UIConfigClass> Id;
-        public AssetPath AssetPath;
-       [XmlIndex("WindowType",0)] public Type ConfigType;
+        public XAssetPath AssetPath;
+       [XmlIndex("WindowType",false,0)] public Type ConfigType;
     }
     
     public struct UIConfigUnManaged:IConfigUnManaged<UIConfigUnManaged>
     {
         
-        public struct WindowTypeIndex:IConfigIndexGroup<UIConfigUnManaged>
+        public struct PrefabAssetIndex : IConfigIndexGroup<UIConfigUnManaged>
         {
-            public TypeId TypeId;
+            public XAssetId PrefabAsset;
 
-            public WindowTypeIndex(TypeId id)
+            public PrefabAssetIndex(XAssetId prefabAsset)
             {
-                TypeId = id;
+                PrefabAsset = prefabAsset;
             }
         }
         
-        public ConfigHandle<UIConfigUnManaged> Id;
-        public ConfigHandle UIHandle;
-        public AssetId Prefab;
+        public CfgId<UIConfigUnManaged> Id;
+        public CfgId UIHandle;
+        public XAssetId Prefab;
         public TypeId TypeId;
     }
 }

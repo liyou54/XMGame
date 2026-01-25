@@ -13,5 +13,7 @@ namespace XMFrame.Interfaces
         bool TryGetConfigBySingleIndex<TData ,TIndex>(in TIndex index, out TData data)
             where TIndex : IConfigIndexGroup<TData>
             where TData : unmanaged, IConfigUnManaged<TData>;
+
+        bool TryGetConfig<T>(out T data) where T : unmanaged, IConfigUnManaged<T>;
     }
 }

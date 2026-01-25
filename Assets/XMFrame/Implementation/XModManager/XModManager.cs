@@ -573,6 +573,32 @@ namespace XMFrame.Implementation
             return new List<string>(_modNameToKeyDict.Keys);
         }
 
+        /// <summary>
+        /// 通过Mod名称获取ModId
+        /// </summary>
+        public ModId GetModId(string modName)
+        {
+            if (string.IsNullOrEmpty(modName))
+            {
+                return default;
+            }
+
+            // 通过ModName获取ModKey
+            if (!_modNameToKeyDict.TryGetValue(modName, out var modKey))
+            {
+                return default;
+            }
+
+            // 通过ModKey从双向字典获取静态ID
+            if (!ModStaticToRuntimeDict.TryGetKeyByValue(modKey, out int staticId))
+            {
+                return default;
+            }
+
+            // 将int转换为ModId（short）
+            return new ModId((short)staticId);
+        }
+
         public override UniTask OnCreate()
         {
             return UniTask.CompletedTask;

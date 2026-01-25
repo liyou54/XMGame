@@ -1,6 +1,6 @@
 using System;
 
-internal readonly struct XBlobArray<T> where T : unmanaged
+public readonly struct XBlobArray<T> where T : unmanaged
 {
     internal readonly int Offset;
     internal XBlobArray(int offset) => Offset = offset;

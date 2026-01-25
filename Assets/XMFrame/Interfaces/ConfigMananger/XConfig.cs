@@ -20,4 +20,22 @@
         where TData : unmanaged, IConfigUnManaged<TData>
     {
     }
+
+    public struct StrHandle
+    {
+        public int Id;
+    }
+
+    public struct StrLabelHandle
+    {
+        public ModId DefinedModId;
+        public int labelId;
+    }
+
+    public struct StrLabel
+    {
+        public string ModName;
+
+        public string LabelName;
+    }
 }

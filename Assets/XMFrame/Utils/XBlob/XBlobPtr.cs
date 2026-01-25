@@ -1,6 +1,6 @@
 using System;
 
-internal readonly struct XBlobPtr
+public readonly struct XBlobPtr
 {
     internal readonly int Offset;
     internal XBlobPtr(int offset) => Offset = offset;
@@ -16,7 +16,7 @@ internal readonly struct XBlobPtr
     }
 }
 
-internal readonly struct XBlobPtr<T> where T : unmanaged
+public readonly struct XBlobPtr<T> where T : unmanaged
 {
     internal readonly int Offset;
     internal XBlobPtr(int offset) => Offset = offset;

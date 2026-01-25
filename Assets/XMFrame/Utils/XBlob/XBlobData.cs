@@ -2,7 +2,7 @@ using System;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
-internal unsafe struct XBlobData : IDisposable
+public unsafe struct XBlobData : IDisposable
 {
     private const int MinInitialCapacity = 64;
     private const int GrowthFactor = 2;

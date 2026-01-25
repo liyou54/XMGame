@@ -9,21 +9,23 @@ namespace XMFrame.Interfaces
         public ModHandle ModHandle { get; set; }
         public int Id { get; set; }
 
-        public AssetId GetAssetId()
+        public XAssetId GetAssetId()
         {
-            return new AssetId(ModHandle, Id);
+            return new XAssetId(ModHandle, Id);
         }
     }
 
         /// <summary>
         /// 资源ID，用于标识资源（只是一个key，不能直接获取对象）
         /// </summary>
-        public readonly struct AssetId : IEquatable<AssetId>, IAssetId
+        public readonly struct XAssetId : IEquatable<XAssetId>, IAssetId
         {
             public ModHandle ModHandle { get; }
             public int Id { get; }
+            
+            public bool Valid => ModHandle.Valid && Id > 0;
 
-            public AssetId(ModHandle modHandle, int id)
+            public XAssetId(ModHandle modHandle, int id)
             {
                 ModHandle = modHandle;
                 Id = id;
@@ -41,14 +43,14 @@ namespace XMFrame.Interfaces
                 set => throw new NotSupportedException("AssetId is immutable"); 
             }
 
-            public bool Equals(AssetId other)
+            public bool Equals(XAssetId other)
             {
                 return ModHandle.Equals(other.ModHandle) && Id == other.Id;
             }
 
             public override bool Equals(object obj)
             {
-                return obj is AssetId other && Equals(other);
+                return obj is XAssetId other && Equals(other);
             }
 
             public override int GetHashCode()
@@ -59,12 +61,12 @@ namespace XMFrame.Interfaces
                 }
             }
 
-            public static bool operator ==(AssetId left, AssetId right)
+            public static bool operator ==(XAssetId left, XAssetId right)
             {
                 return left.Equals(right);
             }
 
-            public static bool operator !=(AssetId left, AssetId right)
+            public static bool operator !=(XAssetId left, XAssetId right)
             {
                 return !left.Equals(right);
             }
@@ -108,13 +110,13 @@ namespace XMFrame.Interfaces
         /// <summary>
         /// 获取资源ID
         /// </summary>
-        public AssetId? GetAssetId()
+        public XAssetId? GetAssetId()
         {
             if (IAssetManager.I == null )
             {
                 return null;
             }
-            return IAssetManager.I.GetAssetByAddress<AssetId, AssetAddress>(this);
+            return IAssetManager.I.GetAssetByAddress<XAssetId, AssetAddress>(this);
         }
 
         /// <summary>
@@ -144,7 +146,7 @@ namespace XMFrame.Interfaces
         private static IPool<XAssetHandle> _pool;
         private const string PoolName = "XAssetHandlePool";
         
-        public AssetId Id { get; set; }
+        public XAssetId Id { get; set; }
         public EAssetStatus Status;
 
         private XAssetHandle()
@@ -175,6 +177,7 @@ namespace XMFrame.Interfaces
                 {
                     // 从池中获取时重置状态
                     handle.Status = EAssetStatus.None;
+                    handle.Id = default;
                 },
                 OnRelease = handle =>
                 {
@@ -187,7 +190,7 @@ namespace XMFrame.Interfaces
                     // 销毁时无需额外操作
                 },
                 InitialCapacity = 100,  // 初始容量
-                MaxCapacity = 1000      // 最大容量
+                MaxCapacity = -1      // 最大容量
             };
             
             _pool = IPoolManager.I.GetOrCreatePool(PoolName, poolConfig);
@@ -212,14 +215,11 @@ namespace XMFrame.Interfaces
         /// </summary>
         public static void ReleaseToPool(XAssetHandle handle)
         {
-            if (handle == null) return;
-            
             if (_pool == null)
             {
                 XLog.Warning("XAssetHandle 对象池未初始化，无法归还");
                 return;
             }
-            
             _pool.Release(handle);
         }
         
@@ -252,7 +252,6 @@ namespace XMFrame.Interfaces
                 XLog.Warning($"尝试从已释放的句柄获取资源，HandleId: {Id}");
                 return null;
             }
-
             if (IAssetManager.I == null)
             {
                 return null;
@@ -303,15 +302,16 @@ namespace XMFrame.Interfaces
     public interface IAssetManager : IManager<IAssetManager>
     {
         public UniTask<bool> CreateResPackage(ModId modId, string modName, string path);
-        public AssetAddress CreateAssetAddress(string resAddress, AssetId? defaultResId = null);
-        public UniTask<Address> LoadResAsync<Address>(ModId modId, string path) where Address : IAssetId;
-        public Address LoadAsset<Address>(ModId modId, string path) where Address : IAssetId;
+        public AssetAddress CreateAssetAddress(string resAddress, XAssetId? defaultResId = null);
+        public UniTask<Address> LoadAssetAsync<Address>(ModId modId, string path) where Address : IAssetId;
+        public TAssetId LoadAsset<TAssetId>(ModId modId, string path) where TAssetId : IAssetId;
+        public TAssetId CreateAssetId<TAssetId>(ModId modId, string path) where TAssetId : IAssetId;
 
         /// <summary>
         /// 通过AssetId创建XAssetHandle（异步，如果资源未加载会自动加载）
         /// 使用引用计数机制，每次创建引用计数+1
         /// </summary>
-        public UniTask<XAssetHandle> CreateAssetHandleAsync(AssetId assetId);
+        public UniTask<XAssetHandle> CreateAssetHandleAsync(XAssetId xAssetId);
 
         public TAsset GetAssetByAddress<TAsset, TAddress>( TAddress address)
             where TAddress : IAssetAddress where TAsset : IAssetId;
@@ -327,7 +327,9 @@ namespace XMFrame.Interfaces
         /// <summary>
         /// 通过AssetId获取资源对象（内部使用，外部应通过XAssetHandle获取）
         /// </summary>
-        public T GetAssetObject<T>(AssetId asset) where T : UnityEngine.Object;
+        public T GetAssetObject<T>(XAssetId xAsset) where T : UnityEngine.Object;
+
+        XAssetId GetAsstIdByModIdAndPath(ModId modId, string path);
     }
 
 }
