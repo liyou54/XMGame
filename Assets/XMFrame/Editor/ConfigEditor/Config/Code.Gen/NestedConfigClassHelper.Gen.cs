@@ -9,15 +9,15 @@ using XMFrame.Interfaces;
 using XMFrame.Utils;
 using XMFrame.Utils.Attribute;
 using XMFrame.Interfaces.ConfigMananger;
+using Unity.Mathematics;
+using XMFrame;
 using Unity.Collections;
 using System;
-using XMFrame;
 using System.Collections.Generic;
 using System.Xml;
 using XMFrame.Interfaces;
 using XMFrame.Utils;
 using XMFrame.Utils.Attribute;
-using Unity.Mathematics;
 
 /// <summary>
 /// NestedConfig 的 XML 加载辅助类
@@ -39,9 +39,13 @@ public static class NestedConfigClassHelper
         }
 
         // 遍历所有配置项
-        foreach (XmlElement itemElement in root.SelectNodes("ConfigItem"))
+        var configItems = root.SelectNodes("ConfigItem");
+        if (configItems != null)
         {
-            LoadFromXmlElement(itemElement);
+            foreach (XmlElement itemElement in configItems)
+            {
+                LoadFromXmlElement(itemElement);
+            }
         }
     }
 
@@ -207,10 +211,14 @@ public static class NestedConfigClassHelper
             {
                 config.TestKeyList = new List<ConfigKey<TestConfigUnManaged>>();
             }
-            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
             {
-                var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
-                config.TestKeyList.Remove(itemValue);
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
+                    config.TestKeyList.Remove(itemValue);
+                }
             }
             return;
         }
@@ -228,10 +236,14 @@ public static class NestedConfigClassHelper
             config.TestKeyList = new List<ConfigKey<TestConfigUnManaged>>();
         }
 
-        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
         {
-            var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
-            config.TestKeyList.Add(itemValue);
+            foreach (XmlElement itemElement in addItems)
+            {
+                var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
+                config.TestKeyList.Add(itemValue);
+            }
         }
     }
 
@@ -460,6 +472,40 @@ public static class NestedConfigClassHelper
     }
 
     /// <summary>
+    /// 解析 ConfigKey&lt;TestConfigUnManaged&gt; 类型值
+    /// </summary>
+    private static ConfigKey<TestConfigUnManaged> ParseConfigKey_TestConfigUnManaged(XmlElement element)
+    {
+        if (element == null)
+        {
+            return default(ConfigKey<TestConfigUnManaged>);
+        }
+
+        var valueStr = element.InnerText?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(valueStr))
+        {
+            return default(ConfigKey<TestConfigUnManaged>);
+        }
+
+        var parts = valueStr.Split(new[] { "::" }, StringSplitOptions.None);
+        if (parts.Length == 2)
+        {
+            var modKey = new ModKey(parts[0]);
+            var configName = parts[1];
+            return new ConfigKey<TestConfigUnManaged>(modKey, configName);
+        }
+        else if (parts.Length == 1)
+        {
+            var modKey = new ModKey("DefaultMod");
+            return new ConfigKey<TestConfigUnManaged>(modKey, parts[0]);
+        }
+
+        return default(ConfigKey<TestConfigUnManaged>);
+    }
+
+
+
+    /// <summary>
     /// 通用值解析方法
     /// </summary>
     private static T ParseValue<T>(XmlElement element)
@@ -480,36 +526,10 @@ public static class NestedConfigClassHelper
             return ParsePrimitiveValue<T>(element);
         }
 
-        // ConfigKey 类型解析
-        if (type.IsGenericType)
+        // ConfigKey 类型解析（使用预生成的解析方法）
+        if (typeof(T) == typeof(ConfigKey<TestConfigUnManaged>))
         {
-            var genericTypeDef = type.GetGenericTypeDefinition();
-            // 检查是否是 ConfigKey<T> 类型（通过名称匹配，因为它是全局类型）
-            if (genericTypeDef.Name == "ConfigKey`1" || genericTypeDef.FullName == "ConfigKey`1")
-            {
-                var configKeyType = type.GetGenericArguments()[0];
-                var parts = valueStr.Split(new[] { "::" }, StringSplitOptions.None);
-                if (parts.Length == 2)
-                {
-                    var modKey = new ModKey(parts[0]);
-                    var configName = parts[1];
-                    var configKeyCtor = type.GetConstructor(new[] { typeof(ModKey), typeof(string) });
-                    if (configKeyCtor != null)
-                    {
-                        return (T)configKeyCtor.Invoke(new object[] { modKey, configName });
-                    }
-                }
-                else if (parts.Length == 1)
-                {
-                    var modKey = new ModKey("DefaultMod");
-                    var configKeyCtor = type.GetConstructor(new[] { typeof(ModKey), typeof(string) });
-                    if (configKeyCtor != null)
-                    {
-                        return (T)configKeyCtor.Invoke(new object[] { modKey, parts[0] });
-                    }
-                }
-                return default(T);
-            }
+            return (T)(object)ParseConfigKey_TestConfigUnManaged(element);
         }
 
         // Unity.Mathematics 类型解析（使用预生成的解析方法）
@@ -521,22 +541,9 @@ public static class NestedConfigClassHelper
             }
         }
 
-        // 嵌套 XConfig 类型解析
-        if (type.IsSubclassOf(typeof(XConfig)))
-        {
-            // 查找对应的 Helper 类（在同一程序集中查找）
-            var helperClassName = type.Name + "ClassHelper";
-            var helperType = type.Assembly.GetTypes()
-                .FirstOrDefault(t => t.Name == helperClassName && t.IsClass && t.IsSealed && t.IsAbstract);
-            if (helperType != null)
-            {
-                var loadMethod = helperType.GetMethod("LoadFromXmlElement", BindingFlags.Public | BindingFlags.Static);
-                if (loadMethod != null)
-                {
-                    return (T)loadMethod.Invoke(null, new object[] { element });
-                }
-            }
-        }
+        // 嵌套 XConfig 类型解析（使用预生成的解析方法）
+
+        // 嵌套容器类型解析（使用预生成的解析方法）
 
         // 默认：尝试使用 TypeConverter
         return ParsePrimitiveValue<T>(element);

@@ -37,9 +37,13 @@ public static class TestConfigClassHelper
         }
 
         // 遍历所有配置项
-        foreach (XmlElement itemElement in root.SelectNodes("ConfigItem"))
+        var configItems = root.SelectNodes("ConfigItem");
+        if (configItems != null)
         {
-            LoadFromXmlElement(itemElement);
+            foreach (XmlElement itemElement in configItems)
+            {
+                LoadFromXmlElement(itemElement);
+            }
         }
     }
 
@@ -84,6 +88,7 @@ public static class TestConfigClassHelper
         ParseTestSample(element, config, overwriteMode);
         ParseTestDictSample(element, config, overwriteMode);
         ParseTestKeyList(element, config, overwriteMode);
+        ParseTestKeyList1(element, config, overwriteMode);
         ParseTestKeyHashSet(element, config, overwriteMode);
         ParseTestKeyDict(element, config, overwriteMode);
         ParseTestSetKey(element, config, overwriteMode);
@@ -202,10 +207,14 @@ public static class TestConfigClassHelper
             {
                 config.TestSample = new List<Int32>();
             }
-            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
             {
-                var itemValue = ParseValue<Int32>(itemElement);
-                config.TestSample.Remove(itemValue);
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var itemValue = ParseValue<Int32>(itemElement);
+                    config.TestSample.Remove(itemValue);
+                }
             }
             return;
         }
@@ -223,10 +232,14 @@ public static class TestConfigClassHelper
             config.TestSample = new List<Int32>();
         }
 
-        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
         {
-            var itemValue = ParseValue<Int32>(itemElement);
-            config.TestSample.Add(itemValue);
+            foreach (XmlElement itemElement in addItems)
+            {
+                var itemValue = ParseValue<Int32>(itemElement);
+                config.TestSample.Add(itemValue);
+            }
         }
     }
 
@@ -264,10 +277,14 @@ public static class TestConfigClassHelper
             {
                 config.TestDictSample = new Dictionary<Int32, Int32>();
             }
-            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
             {
-                var keyValue = ParseValue<Int32>(itemElement.SelectSingleNode("Key") as XmlElement);
-                config.TestDictSample.Remove(keyValue);
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var keyValue = ParseValue<Int32>(itemElement.SelectSingleNode("Key") as XmlElement);
+                    config.TestDictSample.Remove(keyValue);
+                }
             }
             return;
         }
@@ -285,15 +302,19 @@ public static class TestConfigClassHelper
             config.TestDictSample = new Dictionary<Int32, Int32>();
         }
 
-        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
         {
-            var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
-            var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
-            if (keyElement != null && valueElement != null)
+            foreach (XmlElement itemElement in addItems)
             {
-                var keyValue = ParseValue<Int32>(keyElement);
-                var valueValue = ParseValue<Int32>(valueElement);
-                config.TestDictSample[keyValue] = valueValue;
+                var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
+                var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
+                if (keyElement != null && valueElement != null)
+                {
+                    var keyValue = ParseValue<Int32>(keyElement);
+                    var valueValue = ParseValue<Int32>(valueElement);
+                    config.TestDictSample[keyValue] = valueValue;
+                }
             }
         }
     }
@@ -332,10 +353,14 @@ public static class TestConfigClassHelper
             {
                 config.TestKeyList = new List<ConfigKey<TestConfigUnManaged>>();
             }
-            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
             {
-                var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
-                config.TestKeyList.Remove(itemValue);
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
+                    config.TestKeyList.Remove(itemValue);
+                }
             }
             return;
         }
@@ -353,10 +378,90 @@ public static class TestConfigClassHelper
             config.TestKeyList = new List<ConfigKey<TestConfigUnManaged>>();
         }
 
-        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
         {
-            var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
-            config.TestKeyList.Add(itemValue);
+            foreach (XmlElement itemElement in addItems)
+            {
+                var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
+                config.TestKeyList.Add(itemValue);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 解析字段 TestKeyList1
+    /// </summary>
+    private static void ParseTestKeyList1(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
+    {
+        var fieldElement = parent.SelectSingleNode("TestKeyList1") as XmlElement;
+        if (fieldElement == null)
+        {
+            return; // 字段不存在，跳过
+        }
+
+        // 读取字段级别的 overwrite 属性
+        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
+        var fieldOverwriteMode = rootOverwriteMode;
+        if (!string.IsNullOrEmpty(fieldOverwriteStr))
+        {
+            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
+            {
+                fieldOverwriteMode = parsedMode;
+            }
+        }
+
+        // Dictionary 类型处理
+        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
+        {
+            config.TestKeyList1 = new Dictionary<Int32, List<List<ConfigKey<TestConfigUnManaged>>>>();
+        }
+        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
+        {
+            // 删除模式：从现有字典中删除指定键
+            if (config.TestKeyList1 == null)
+            {
+                config.TestKeyList1 = new Dictionary<Int32, List<List<ConfigKey<TestConfigUnManaged>>>>();
+            }
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
+            {
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var keyValue = ParseValue<Int32>(itemElement.SelectSingleNode("Key") as XmlElement);
+                    config.TestKeyList1.Remove(keyValue);
+                }
+            }
+            return;
+        }
+        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
+        {
+            // 添加模式：添加到现有字典
+            if (config.TestKeyList1 == null)
+            {
+                config.TestKeyList1 = new Dictionary<Int32, List<List<ConfigKey<TestConfigUnManaged>>>>();
+            }
+        }
+        else
+        {
+            // Override 模式：覆盖整个字典
+            config.TestKeyList1 = new Dictionary<Int32, List<List<ConfigKey<TestConfigUnManaged>>>>();
+        }
+
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
+        {
+            foreach (XmlElement itemElement in addItems)
+            {
+                var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
+                var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
+                if (keyElement != null && valueElement != null)
+                {
+                    var keyValue = ParseValue<Int32>(keyElement);
+                    var valueValue = ParseValue<List<List<ConfigKey<TestConfigUnManaged>>>>(valueElement);
+                    config.TestKeyList1[keyValue] = valueValue;
+                }
+            }
         }
     }
 
@@ -394,10 +499,14 @@ public static class TestConfigClassHelper
             {
                 config.TestKeyHashSet = new HashSet<Int32>();
             }
-            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
             {
-                var itemValue = ParseValue<Int32>(itemElement);
-                config.TestKeyHashSet.Remove(itemValue);
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var itemValue = ParseValue<Int32>(itemElement);
+                    config.TestKeyHashSet.Remove(itemValue);
+                }
             }
             return;
         }
@@ -415,10 +524,14 @@ public static class TestConfigClassHelper
             config.TestKeyHashSet = new HashSet<Int32>();
         }
 
-        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
         {
-            var itemValue = ParseValue<Int32>(itemElement);
-            config.TestKeyHashSet.Add(itemValue);
+            foreach (XmlElement itemElement in addItems)
+            {
+                var itemValue = ParseValue<Int32>(itemElement);
+                config.TestKeyHashSet.Add(itemValue);
+            }
         }
     }
 
@@ -456,10 +569,14 @@ public static class TestConfigClassHelper
             {
                 config.TestKeyDict = new Dictionary<ConfigKey<TestConfigUnManaged>, ConfigKey<TestConfigUnManaged>>();
             }
-            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
             {
-                var keyValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement.SelectSingleNode("Key") as XmlElement);
-                config.TestKeyDict.Remove(keyValue);
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var keyValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement.SelectSingleNode("Key") as XmlElement);
+                    config.TestKeyDict.Remove(keyValue);
+                }
             }
             return;
         }
@@ -477,15 +594,19 @@ public static class TestConfigClassHelper
             config.TestKeyDict = new Dictionary<ConfigKey<TestConfigUnManaged>, ConfigKey<TestConfigUnManaged>>();
         }
 
-        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
         {
-            var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
-            var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
-            if (keyElement != null && valueElement != null)
+            foreach (XmlElement itemElement in addItems)
             {
-                var keyValue = ParseValue<ConfigKey<TestConfigUnManaged>>(keyElement);
-                var valueValue = ParseValue<ConfigKey<TestConfigUnManaged>>(valueElement);
-                config.TestKeyDict[keyValue] = valueValue;
+                var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
+                var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
+                if (keyElement != null && valueElement != null)
+                {
+                    var keyValue = ParseValue<ConfigKey<TestConfigUnManaged>>(keyElement);
+                    var valueValue = ParseValue<ConfigKey<TestConfigUnManaged>>(valueElement);
+                    config.TestKeyDict[keyValue] = valueValue;
+                }
             }
         }
     }
@@ -524,10 +645,14 @@ public static class TestConfigClassHelper
             {
                 config.TestSetKey = new HashSet<ConfigKey<TestConfigUnManaged>>();
             }
-            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
             {
-                var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
-                config.TestSetKey.Remove(itemValue);
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
+                    config.TestSetKey.Remove(itemValue);
+                }
             }
             return;
         }
@@ -545,10 +670,14 @@ public static class TestConfigClassHelper
             config.TestSetKey = new HashSet<ConfigKey<TestConfigUnManaged>>();
         }
 
-        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
         {
-            var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
-            config.TestSetKey.Add(itemValue);
+            foreach (XmlElement itemElement in addItems)
+            {
+                var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
+                config.TestSetKey.Add(itemValue);
+            }
         }
     }
 
@@ -586,10 +715,14 @@ public static class TestConfigClassHelper
             {
                 config.TestSetSample = new HashSet<Int32>();
             }
-            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
             {
-                var itemValue = ParseValue<Int32>(itemElement);
-                config.TestSetSample.Remove(itemValue);
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var itemValue = ParseValue<Int32>(itemElement);
+                    config.TestSetSample.Remove(itemValue);
+                }
             }
             return;
         }
@@ -607,10 +740,14 @@ public static class TestConfigClassHelper
             config.TestSetSample = new HashSet<Int32>();
         }
 
-        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
         {
-            var itemValue = ParseValue<Int32>(itemElement);
-            config.TestSetSample.Add(itemValue);
+            foreach (XmlElement itemElement in addItems)
+            {
+                var itemValue = ParseValue<Int32>(itemElement);
+                config.TestSetSample.Add(itemValue);
+            }
         }
     }
 
@@ -677,10 +814,14 @@ public static class TestConfigClassHelper
             {
                 config.TestNestedConfig = new List<NestedConfig>();
             }
-            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
             {
-                var itemValue = ParseValue<NestedConfig>(itemElement);
-                config.TestNestedConfig.Remove(itemValue);
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var itemValue = ParseValue<NestedConfig>(itemElement);
+                    config.TestNestedConfig.Remove(itemValue);
+                }
             }
             return;
         }
@@ -698,10 +839,14 @@ public static class TestConfigClassHelper
             config.TestNestedConfig = new List<NestedConfig>();
         }
 
-        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
         {
-            var itemValue = ParseValue<NestedConfig>(itemElement);
-            config.TestNestedConfig.Add(itemValue);
+            foreach (XmlElement itemElement in addItems)
+            {
+                var itemValue = ParseValue<NestedConfig>(itemElement);
+                config.TestNestedConfig.Add(itemValue);
+            }
         }
     }
 
@@ -949,6 +1094,52 @@ public static class TestConfigClassHelper
 
 
     /// <summary>
+    /// 解析 ConfigKey&lt;TestConfigUnManaged&gt; 类型值
+    /// </summary>
+    private static ConfigKey<TestConfigUnManaged> ParseConfigKey_TestConfigUnManaged(XmlElement element)
+    {
+        if (element == null)
+        {
+            return default(ConfigKey<TestConfigUnManaged>);
+        }
+
+        var valueStr = element.InnerText?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(valueStr))
+        {
+            return default(ConfigKey<TestConfigUnManaged>);
+        }
+
+        var parts = valueStr.Split(new[] { "::" }, StringSplitOptions.None);
+        if (parts.Length == 2)
+        {
+            var modKey = new ModKey(parts[0]);
+            var configName = parts[1];
+            return new ConfigKey<TestConfigUnManaged>(modKey, configName);
+        }
+        else if (parts.Length == 1)
+        {
+            var modKey = new ModKey("DefaultMod");
+            return new ConfigKey<TestConfigUnManaged>(modKey, parts[0]);
+        }
+
+        return default(ConfigKey<TestConfigUnManaged>);
+    }
+
+    /// <summary>
+    /// 解析 NestedConfig 类型值
+    /// </summary>
+    private static NestedConfig ParseNestedConfig(XmlElement element)
+    {
+        if (element == null)
+        {
+            return null;
+        }
+
+        return NestedConfigClassHelper.LoadFromXmlElement(element);
+    }
+
+
+    /// <summary>
     /// 通用值解析方法
     /// </summary>
     private static T ParseValue<T>(XmlElement element)
@@ -969,36 +1160,10 @@ public static class TestConfigClassHelper
             return ParsePrimitiveValue<T>(element);
         }
 
-        // ConfigKey 类型解析
-        if (type.IsGenericType)
+        // ConfigKey 类型解析（使用预生成的解析方法）
+        if (typeof(T) == typeof(ConfigKey<TestConfigUnManaged>))
         {
-            var genericTypeDef = type.GetGenericTypeDefinition();
-            // 检查是否是 ConfigKey<T> 类型（通过名称匹配，因为它是全局类型）
-            if (genericTypeDef.Name == "ConfigKey`1" || genericTypeDef.FullName == "ConfigKey`1")
-            {
-                var configKeyType = type.GetGenericArguments()[0];
-                var parts = valueStr.Split(new[] { "::" }, StringSplitOptions.None);
-                if (parts.Length == 2)
-                {
-                    var modKey = new ModKey(parts[0]);
-                    var configName = parts[1];
-                    var configKeyCtor = type.GetConstructor(new[] { typeof(ModKey), typeof(string) });
-                    if (configKeyCtor != null)
-                    {
-                        return (T)configKeyCtor.Invoke(new object[] { modKey, configName });
-                    }
-                }
-                else if (parts.Length == 1)
-                {
-                    var modKey = new ModKey("DefaultMod");
-                    var configKeyCtor = type.GetConstructor(new[] { typeof(ModKey), typeof(string) });
-                    if (configKeyCtor != null)
-                    {
-                        return (T)configKeyCtor.Invoke(new object[] { modKey, parts[0] });
-                    }
-                }
-                return default(T);
-            }
+            return (T)(object)ParseConfigKey_TestConfigUnManaged(element);
         }
 
         // Unity.Mathematics 类型解析（使用预生成的解析方法）
@@ -1006,22 +1171,13 @@ public static class TestConfigClassHelper
         {
         }
 
-        // 嵌套 XConfig 类型解析
-        if (type.IsSubclassOf(typeof(XConfig)))
+        // 嵌套 XConfig 类型解析（使用预生成的解析方法）
+        if (typeof(T) == typeof(NestedConfig))
         {
-            // 查找对应的 Helper 类（在同一程序集中查找）
-            var helperClassName = type.Name + "ClassHelper";
-            var helperType = type.Assembly.GetTypes()
-                .FirstOrDefault(t => t.Name == helperClassName && t.IsClass && t.IsSealed && t.IsAbstract);
-            if (helperType != null)
-            {
-                var loadMethod = helperType.GetMethod("LoadFromXmlElement", BindingFlags.Public | BindingFlags.Static);
-                if (loadMethod != null)
-                {
-                    return (T)loadMethod.Invoke(null, new object[] { element });
-                }
-            }
+            return (T)(object)ParseNestedConfig(element);
         }
+
+        // 嵌套容器类型解析（使用预生成的解析方法）
 
         // 默认：尝试使用 TypeConverter
         return ParsePrimitiveValue<T>(element);

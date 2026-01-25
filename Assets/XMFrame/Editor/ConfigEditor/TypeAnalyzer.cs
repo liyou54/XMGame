@@ -84,6 +84,18 @@ namespace XMFrame.Editor.ConfigEditor
                 {
                     info.UnmanagedType = genericArgs[1];
                     info.UnmanagedTypeName = info.UnmanagedType.Name;
+                    
+                    // 验证命名约定
+                    var expectedUnmanagedName = info.ManagedTypeName + "UnManaged";
+                    var expectedUnmanagedName2 = info.ManagedTypeName + "Unmanaged";
+                    if (info.UnmanagedTypeName != expectedUnmanagedName && 
+                        info.UnmanagedTypeName != expectedUnmanagedName2)
+                    {
+                        throw new ArgumentException(
+                            $"类型 {configType.Name} 的 Unmanaged 类型名称不符合约定。" +
+                            $"期望: {expectedUnmanagedName} 或 {expectedUnmanagedName2}，" +
+                            $"实际: {info.UnmanagedTypeName}");
+                    }
                 }
             }
 
@@ -198,15 +210,12 @@ namespace XMFrame.Editor.ConfigEditor
                 return GetTypeName(managedType);
             }
 
-            // Unity.Mathematics 类型
-            if (managedType.Namespace == "Unity.Mathematics")
-            {
-                return GetTypeName(managedType);
-            }
-
             // string 类型 - 根据 XmlStringMode 属性映射
             if (managedType == typeof(string))
             {
+                Type targetType = null;
+                string targetTypeName = null;
+                
                 if (fieldInfo != null)
                 {
                     var strModeAttr = fieldInfo.GetCustomAttribute<XmlStringModeAttribute>();
@@ -217,24 +226,39 @@ namespace XMFrame.Editor.ConfigEditor
                         if (strModeField != null)
                         {
                             var strMode = (EXmlStrMode)strModeField.GetValue(strModeAttr);
-                            configInfo.RequiredUsings.Add("Unity.Collections");
                             switch (strMode)
                             {
                                 case EXmlStrMode.EFix32:
-                                    return "FixedString32Bytes";
+                                    targetTypeName = "FixedString32Bytes";
+                                    break;
                                 case EXmlStrMode.EFix64:
-                                    return "FixedString64Bytes";
+                                    targetTypeName = "FixedString64Bytes";
+                                    break;
                                 case EXmlStrMode.EStrHandle:
-                                    return "StrHandle";
+                                    targetTypeName = "StrHandle";
+                                    break;
                                 case EXmlStrMode.EStrLabel:
-                                    return "StrLabelHandle";
+                                    targetTypeName = "StrLabelHandle";
+                                    break;
                             }
                         }
                     }
                 }
+                
                 // 默认使用 StrHandle
-                configInfo.RequiredUsings.Add("Unity.Collections");
-                return "StrHandle";
+                if (string.IsNullOrEmpty(targetTypeName))
+                {
+                    targetTypeName = "StrHandle";
+                }
+                
+                // 通过反射查找目标类型并添加命名空间
+                targetType = FindTypeByName(targetTypeName);
+                if (targetType != null && !string.IsNullOrEmpty(targetType.Namespace))
+                {
+                    configInfo.RequiredUsings.Add(targetType.Namespace);
+                }
+                
+                return targetTypeName;
             }
 
             // List<T> -> XBlobArray<T>
@@ -277,13 +301,22 @@ namespace XMFrame.Editor.ConfigEditor
             // StrLabel -> StrLabelHandle
             if (managedType.Name == "StrLabel")
             {
+                var targetType = FindTypeByName("StrLabelHandle");
+                if (targetType != null && !string.IsNullOrEmpty(targetType.Namespace))
+                {
+                    configInfo.RequiredUsings.Add(targetType.Namespace);
+                }
                 return "StrLabelHandle";
             }
 
             // Type -> TypeId (全局映射)
             if (managedType == typeof(Type))
             {
-                configInfo.RequiredUsings.Add("XMFrame.Utils");
+                var targetType = FindTypeByName("TypeId");
+                if (targetType != null && !string.IsNullOrEmpty(targetType.Namespace))
+                {
+                    configInfo.RequiredUsings.Add(targetType.Namespace);
+                }
                 return "TypeId";
             }
 
@@ -324,6 +357,14 @@ namespace XMFrame.Editor.ConfigEditor
                         return GetTypeName(unmanagedTypeFromGeneric);
                     }
                 }
+            }
+
+            // 对于有命名空间且是值类型的类型（作为兜底处理，如 Unity.Mathematics 类型）
+            if (!string.IsNullOrEmpty(managedType.Namespace) && managedType.IsValueType && !managedType.IsEnum)
+            {
+                // 自动添加该类型的命名空间到 RequiredUsings
+                configInfo.RequiredUsings.Add(managedType.Namespace);
+                return GetTypeName(managedType);
             }
 
             // 其他类型直接使用名称
@@ -528,6 +569,41 @@ namespace XMFrame.Editor.ConfigEditor
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// 通过类型名称查找类型（在所有已加载的程序集中搜索）
+        /// </summary>
+        private static Type FindTypeByName(string typeName)
+        {
+            if (string.IsNullOrEmpty(typeName))
+                return null;
+
+            // 在所有已加载的程序集中查找
+            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    // 尝试完全匹配类型名称
+                    var type = assembly.GetType(typeName, false, false);
+                    if (type != null)
+                        return type;
+
+                    // 如果没找到，尝试在程序集的所有类型中按简单名称查找
+                    var types = assembly.GetTypes();
+                    foreach (var t in types)
+                    {
+                        if (t.Name == typeName || t.FullName == typeName)
+                            return t;
+                    }
+                }
+                catch
+                {
+                    // 忽略无法加载的程序集
+                }
+            }
+
+            return null;
         }
     }
 }

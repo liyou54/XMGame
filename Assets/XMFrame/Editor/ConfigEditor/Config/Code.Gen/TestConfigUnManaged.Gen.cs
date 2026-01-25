@@ -11,6 +11,7 @@ public partial struct TestConfigUnManaged : IConfigUnManaged<TestConfigUnManaged
     public XBlobArray<Int32> TestSample;
     public XBlobMap<Int32, Int32> TestDictSample;
     public XBlobArray<CfgId<TestConfigUnManaged>> TestKeyList;
+    public XBlobMap<Int32, XBlobArray<XBlobArray<CfgId<TestConfigUnManaged>>>> TestKeyList1;
     public XBlobSet<Int32> TestKeyHashSet;
     public XBlobMap<CfgId<TestConfigUnManaged>, CfgId<TestConfigUnManaged>> TestKeyDict;
     public XBlobSet<CfgId<TestConfigUnManaged>> TestSetKey;

@@ -1,4 +1,4 @@
-﻿namespace XMFrame
+namespace XMFrame
 {
     public abstract class XConfig
     {
@@ -7,7 +7,7 @@
     public abstract class XConfig<T, TUnmanaged>
         : XConfig
         where T : XConfig<T, TUnmanaged>
-        where TUnmanaged : unmanaged
+        where TUnmanaged : unmanaged, IConfigUnManaged<TUnmanaged>
     {
     }
 

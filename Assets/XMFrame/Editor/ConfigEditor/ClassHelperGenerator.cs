@@ -187,6 +187,9 @@ namespace XMFrame.Editor.ConfigEditor
             // 准备字段数据
             var fields = new List<ScriptObject>();
             var unityMathConverters = new Dictionary<Type, ScriptObject>(); // 收集所有 Unity.Mathematics 类型的转换器信息
+            var configKeyTypes = new Dictionary<Type, ScriptObject>(); // 收集所有 ConfigKey<T> 类型信息
+            var nestedConfigTypes = new Dictionary<Type, ScriptObject>(); // 收集所有嵌套 XConfig 类型信息
+            var containerParsers = new Dictionary<string, ScriptObject>(); // 收集所有需要生成解析方法的容器类型
             
             foreach (var field in typeInfo.Fields)
             {
@@ -262,9 +265,109 @@ namespace XMFrame.Editor.ConfigEditor
                         }
                     }
                 }
+                
+                // 收集 ConfigKey<T> 类型信息
+                if (fieldType != null && IsConfigKeyType(fieldType))
+                {
+                    var genericArgs = fieldType.GetGenericArguments();
+                    if (genericArgs.Length > 0)
+                    {
+                        var keyElementType = genericArgs[0];
+                        if (!configKeyTypes.ContainsKey(keyElementType))
+                        {
+                            var keyInfo = new ScriptObject();
+                            keyInfo["element_type"] = GetTypeName(keyElementType);
+                            keyInfo["element_type_full"] = keyElementType.FullName ?? keyElementType.Name;
+                            configKeyTypes[keyElementType] = keyInfo;
+                        }
+                    }
+                }
+                
+                // 检查容器中的 ConfigKey<T> 类型
+                if (fieldType != null && fieldType.IsGenericType)
+                {
+                    var genericArgs = fieldType.GetGenericArguments();
+                    foreach (var argType in genericArgs)
+                    {
+                        if (IsConfigKeyType(argType) && argType.IsGenericType)
+                        {
+                            var keyGenericArgs = argType.GetGenericArguments();
+                            if (keyGenericArgs.Length > 0)
+                            {
+                                var keyElementType = keyGenericArgs[0];
+                                if (!configKeyTypes.ContainsKey(keyElementType))
+                                {
+                                    var keyInfo = new ScriptObject();
+                                    keyInfo["element_type"] = GetTypeName(keyElementType);
+                                    keyInfo["element_type_full"] = keyElementType.FullName ?? keyElementType.Name;
+                                    configKeyTypes[keyElementType] = keyInfo;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 收集嵌套 XConfig 类型信息
+                if (fieldType != null && IsNestedConfigType(fieldType))
+                {
+                    if (!nestedConfigTypes.ContainsKey(fieldType))
+                    {
+                        var nestedInfo = new ScriptObject();
+                        nestedInfo["type_name"] = GetTypeName(fieldType);
+                        nestedInfo["type_name_full"] = fieldType.FullName ?? fieldType.Name;
+                        nestedInfo["helper_class"] = fieldType.Name + "ClassHelper";
+                        nestedConfigTypes[fieldType] = nestedInfo;
+                    }
+                }
+                
+                // 检查容器中的嵌套 XConfig 类型
+                if (fieldType != null && fieldType.IsGenericType)
+                {
+                    var genericArgs = fieldType.GetGenericArguments();
+                    foreach (var argType in genericArgs)
+                    {
+                        if (IsNestedConfigType(argType))
+                        {
+                            if (!nestedConfigTypes.ContainsKey(argType))
+                            {
+                                var nestedInfo = new ScriptObject();
+                                nestedInfo["type_name"] = GetTypeName(argType);
+                                nestedInfo["type_name_full"] = argType.FullName ?? argType.Name;
+                                nestedInfo["helper_class"] = argType.Name + "ClassHelper";
+                                nestedConfigTypes[argType] = nestedInfo;
+                            }
+                        }
+                    }
+                }
+                
+                // 收集嵌套容器类型（List<List<T>>, List<Dictionary<K,V>> 等）
+                if (fieldType != null && (IsListType(fieldType) || IsHashSetType(fieldType)))
+                {
+                    var elementType = fieldType.GetGenericArguments()[0];
+                    if (IsListType(elementType) || IsDictionaryType(elementType) || IsHashSetType(elementType))
+                    {
+                        // 生成唯一的解析器名称
+                        var parserKey = GetTypeName(elementType);
+                        if (!containerParsers.ContainsKey(parserKey))
+                        {
+                            var parserInfo = new ScriptObject();
+                            parserInfo["type_name"] = GetTypeName(elementType);
+                            parserInfo["type_name_full"] = elementType.FullName ?? elementType.Name;
+                            parserInfo["parser_method_name"] = "Parse" + parserKey.Replace("<", "_").Replace(">", "_").Replace(",", "_").Replace(" ", "");
+                            
+                            // 分析容器的内部结构
+                            AnalyzeContainerStructure(elementType, parserInfo);
+                            
+                            containerParsers[parserKey] = parserInfo;
+                        }
+                    }
+                }
             }
             scriptObject["fields"] = fields;
             scriptObject["unity_math_converters"] = unityMathConverters.Values.ToList();
+            scriptObject["config_key_types"] = configKeyTypes.Values.ToList();
+            scriptObject["nested_config_types"] = nestedConfigTypes.Values.ToList();
+            scriptObject["container_parsers"] = containerParsers.Values.ToList();
             
             // 更新 required_usings（可能已添加 Unity.Mathematics）
             scriptObject["required_usings"] = requiredUsings.ToList();
@@ -361,6 +464,8 @@ namespace XMFrame.Editor.ConfigEditor
                     {
                         var elementType = genericArgs[0];
                         fieldObj["element_type"] = GetTypeName(elementType);
+                        fieldObj["element_type_full"] = elementType.FullName ?? elementType.Name;
+                        
                         // 检查元素类型是否是嵌套配置
                         if (IsNestedConfigType(elementType))
                         {
@@ -370,6 +475,17 @@ namespace XMFrame.Editor.ConfigEditor
                         else
                         {
                             fieldObj["element_is_nested_config"] = false;
+                        }
+                        
+                        // 检查元素类型是否是容器（嵌套容器）
+                        if (IsListType(elementType) || IsDictionaryType(elementType) || IsHashSetType(elementType))
+                        {
+                            fieldObj["element_is_container"] = true;
+                            fieldObj["element_container_type"] = GetContainerTypeName(elementType);
+                        }
+                        else
+                        {
+                            fieldObj["element_is_container"] = false;
                         }
                     }
                     else if (IsDictionaryType(fieldType))
@@ -466,6 +582,59 @@ namespace XMFrame.Editor.ConfigEditor
                 return $"{name}<{string.Join(", ", args)}>";
             }
             return type.Name;
+        }
+
+        /// <summary>
+        /// 获取容器类型名称
+        /// </summary>
+        private static string GetContainerTypeName(Type type)
+        {
+            if (IsListType(type))
+                return "List";
+            if (IsDictionaryType(type))
+                return "Dictionary";
+            if (IsHashSetType(type))
+                return "HashSet";
+            return "Unknown";
+        }
+
+        /// <summary>
+        /// 分析容器结构
+        /// </summary>
+        private static void AnalyzeContainerStructure(Type containerType, ScriptObject parserInfo)
+        {
+            if (IsListType(containerType))
+            {
+                parserInfo["container_type"] = "List";
+                var elementType = containerType.GetGenericArguments()[0];
+                parserInfo["element_type"] = GetTypeName(elementType);
+                parserInfo["element_type_full"] = elementType.FullName ?? elementType.Name;
+                parserInfo["is_list"] = true;
+                parserInfo["is_dictionary"] = false;
+                parserInfo["is_hashset"] = false;
+            }
+            else if (IsDictionaryType(containerType))
+            {
+                parserInfo["container_type"] = "Dictionary";
+                var genericArgs = containerType.GetGenericArguments();
+                parserInfo["key_type"] = GetTypeName(genericArgs[0]);
+                parserInfo["key_type_full"] = genericArgs[0].FullName ?? genericArgs[0].Name;
+                parserInfo["value_type"] = GetTypeName(genericArgs[1]);
+                parserInfo["value_type_full"] = genericArgs[1].FullName ?? genericArgs[1].Name;
+                parserInfo["is_list"] = false;
+                parserInfo["is_dictionary"] = true;
+                parserInfo["is_hashset"] = false;
+            }
+            else if (IsHashSetType(containerType))
+            {
+                parserInfo["container_type"] = "HashSet";
+                var elementType = containerType.GetGenericArguments()[0];
+                parserInfo["element_type"] = GetTypeName(elementType);
+                parserInfo["element_type_full"] = elementType.FullName ?? elementType.Name;
+                parserInfo["is_list"] = false;
+                parserInfo["is_dictionary"] = false;
+                parserInfo["is_hashset"] = true;
+            }
         }
 
         /// <summary>

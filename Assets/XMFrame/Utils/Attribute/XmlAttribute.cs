@@ -20,7 +20,7 @@ namespace XMFrame.Utils.Attribute
     {
         public string XmlName;
 
-        public XmlDefinedAttribute(string xmlName)
+        public XmlDefinedAttribute(string xmlName = null)
         {
             XmlName = xmlName;
         }

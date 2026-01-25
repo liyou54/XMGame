@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using Unity.Collections;
 using Unity.Mathematics;
 using XMFrame;
@@ -43,8 +44,8 @@ public class TestInt2Convert : XmlConvertBase<int2,TestInt2Convert>
     }
 }
 
-
-public class NestedConfig : XConfig<NestedConfig, TestConfigUnManaged>
+[XmlDefined()]
+public class NestedConfig : XConfig<NestedConfig, NestedConfigUnManaged>
 {
     public int Test;
 
@@ -68,18 +69,11 @@ public class NestedConfig : XConfig<NestedConfig, TestConfigUnManaged>
 
 public partial struct NestedConfigUnManaged : IConfigUnManaged<NestedConfigUnManaged>
 {
-    public int Test;
-    public int2 Test1;
-    public int2 TestGlobalConvert;
-    public XBlobArray<CfgId<TestConfigUnManaged>> TestKeyList;
-    public FixedString32Bytes Str32;
-    public FixedString64Bytes Str64;
-    public StrHandle Str;
-    public StrLabelHandle StrLabel;
+
 }
 
 
-
+[XmlDefined()]
 public class TestConfig : XConfig<TestConfig, TestConfigUnManaged>
 {
     public ConfigKey<TestConfigUnManaged> Id;
@@ -87,6 +81,7 @@ public class TestConfig : XConfig<TestConfig, TestConfigUnManaged>
     public List<int> TestSample;
     public Dictionary<int, int> TestDictSample;
     public List<ConfigKey<TestConfigUnManaged>> TestKeyList;
+    public Dictionary<int, List<List<ConfigKey<TestConfigUnManaged>>>> TestKeyList1;
     public HashSet<int> TestKeyHashSet;
     public Dictionary<ConfigKey<TestConfigUnManaged>, ConfigKey<TestConfigUnManaged>> TestKeyDict;
     public HashSet<ConfigKey<TestConfigUnManaged>> TestSetKey;

@@ -41,9 +41,13 @@ public static class {{ managed_type_name }}ClassHelper
         }
 
         // 遍历所有配置项
-        foreach (XmlElement itemElement in root.SelectNodes("ConfigItem"))
+        var configItems = root.SelectNodes("ConfigItem");
+        if (configItems != null)
         {
-            LoadFromXmlElement(itemElement);
+            foreach (XmlElement itemElement in configItems)
+            {
+                LoadFromXmlElement(itemElement);
+            }
         }
     }
 
@@ -126,10 +130,14 @@ public static class {{ managed_type_name }}ClassHelper
             {
                 config.{{ field.name }} = new List<{{ field.element_type }}>();
             }
-            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
             {
-                var itemValue = ParseValue<{{ field.element_type }}>(itemElement);
-                config.{{ field.name }}.Remove(itemValue);
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var itemValue = ParseValue<{{ field.element_type }}>(itemElement);
+                    config.{{ field.name }}.Remove(itemValue);
+                }
             }
             return;
         }
@@ -147,10 +155,14 @@ public static class {{ managed_type_name }}ClassHelper
             config.{{ field.name }} = new List<{{ field.element_type }}>();
         }
 
-        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
         {
-            var itemValue = ParseValue<{{ field.element_type }}>(itemElement);
-            config.{{ field.name }}.Add(itemValue);
+            foreach (XmlElement itemElement in addItems)
+            {
+                var itemValue = ParseValue<{{ field.element_type }}>(itemElement);
+                config.{{ field.name }}.Add(itemValue);
+            }
         }
 {{~ else if field.is_dictionary ~}}
         // Dictionary 类型处理
@@ -165,10 +177,14 @@ public static class {{ managed_type_name }}ClassHelper
             {
                 config.{{ field.name }} = new Dictionary<{{ field.key_type }}, {{ field.value_type }}>();
             }
-            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
             {
-                var keyValue = ParseValue<{{ field.key_type }}>(itemElement.SelectSingleNode("Key") as XmlElement);
-                config.{{ field.name }}.Remove(keyValue);
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var keyValue = ParseValue<{{ field.key_type }}>(itemElement.SelectSingleNode("Key") as XmlElement);
+                    config.{{ field.name }}.Remove(keyValue);
+                }
             }
             return;
         }
@@ -186,15 +202,19 @@ public static class {{ managed_type_name }}ClassHelper
             config.{{ field.name }} = new Dictionary<{{ field.key_type }}, {{ field.value_type }}>();
         }
 
-        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
         {
-            var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
-            var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
-            if (keyElement != null && valueElement != null)
+            foreach (XmlElement itemElement in addItems)
             {
-                var keyValue = ParseValue<{{ field.key_type }}>(keyElement);
-                var valueValue = ParseValue<{{ field.value_type }}>(valueElement);
-                config.{{ field.name }}[keyValue] = valueValue;
+                var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
+                var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
+                if (keyElement != null && valueElement != null)
+                {
+                    var keyValue = ParseValue<{{ field.key_type }}>(keyElement);
+                    var valueValue = ParseValue<{{ field.value_type }}>(valueElement);
+                    config.{{ field.name }}[keyValue] = valueValue;
+                }
             }
         }
 {{~ else if field.is_hashset ~}}
@@ -210,10 +230,14 @@ public static class {{ managed_type_name }}ClassHelper
             {
                 config.{{ field.name }} = new HashSet<{{ field.element_type }}>();
             }
-            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            var removeItems = fieldElement.SelectNodes("Item");
+            if (removeItems != null)
             {
-                var itemValue = ParseValue<{{ field.element_type }}>(itemElement);
-                config.{{ field.name }}.Remove(itemValue);
+                foreach (XmlElement itemElement in removeItems)
+                {
+                    var itemValue = ParseValue<{{ field.element_type }}>(itemElement);
+                    config.{{ field.name }}.Remove(itemValue);
+                }
             }
             return;
         }
@@ -231,10 +255,14 @@ public static class {{ managed_type_name }}ClassHelper
             config.{{ field.name }} = new HashSet<{{ field.element_type }}>();
         }
 
-        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        var addItems = fieldElement.SelectNodes("Item");
+        if (addItems != null)
         {
-            var itemValue = ParseValue<{{ field.element_type }}>(itemElement);
-            config.{{ field.name }}.Add(itemValue);
+            foreach (XmlElement itemElement in addItems)
+            {
+                var itemValue = ParseValue<{{ field.element_type }}>(itemElement);
+                config.{{ field.name }}.Add(itemValue);
+            }
         }
 {{~ else if field.is_nested_config ~}}
         // 嵌套配置类型处理
@@ -453,6 +481,115 @@ public static class {{ managed_type_name }}ClassHelper
 {{~ end ~}}
 {{~ end ~}}
 
+{{~ # 为每个 ConfigKey<T> 类型生成解析方法 -}}
+{{~ for config_key in config_key_types ~}}
+    /// <summary>
+    /// 解析 ConfigKey&lt;{{ config_key.element_type }}&gt; 类型值
+    /// </summary>
+    private static ConfigKey<{{ config_key.element_type }}> ParseConfigKey_{{ config_key.element_type }}(XmlElement element)
+    {
+        if (element == null)
+        {
+            return default(ConfigKey<{{ config_key.element_type }}>);
+        }
+
+        var valueStr = element.InnerText?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(valueStr))
+        {
+            return default(ConfigKey<{{ config_key.element_type }}>);
+        }
+
+        var parts = valueStr.Split(new[] { "::" }, StringSplitOptions.None);
+        if (parts.Length == 2)
+        {
+            var modKey = new ModKey(parts[0]);
+            var configName = parts[1];
+            return new ConfigKey<{{ config_key.element_type }}>(modKey, configName);
+        }
+        else if (parts.Length == 1)
+        {
+            var modKey = new ModKey("DefaultMod");
+            return new ConfigKey<{{ config_key.element_type }}>(modKey, parts[0]);
+        }
+
+        return default(ConfigKey<{{ config_key.element_type }}>);
+    }
+{{~ end ~}}
+
+{{~ # 为每个嵌套 XConfig 类型生成解析方法 -}}
+{{~ for nested_config in nested_config_types ~}}
+    /// <summary>
+    /// 解析 {{ nested_config.type_name }} 类型值
+    /// </summary>
+    private static {{ nested_config.type_name }} Parse{{ nested_config.type_name }}(XmlElement element)
+    {
+        if (element == null)
+        {
+            return null;
+        }
+
+        return {{ nested_config.helper_class }}.LoadFromXmlElement(element);
+    }
+{{~ end ~}}
+
+{{~ # 为每个嵌套容器类型生成解析方法 -}}
+{{~ for container_parser in container_parsers ~}}
+    /// <summary>
+    /// 解析 {{ container_parser.type_name }} 类型值
+    /// </summary>
+    private static {{ container_parser.type_name }} {{ container_parser.parser_method_name }}(XmlElement element)
+    {
+        if (element == null)
+        {
+            return default({{ container_parser.type_name }});
+        }
+
+{{~ if container_parser.is_list ~}}
+        var result = new List<{{ container_parser.element_type }}>();
+        var itemNodes = element.SelectNodes("Item");
+        if (itemNodes != null)
+        {
+            foreach (XmlElement itemElement in itemNodes)
+            {
+                var itemValue = ParseValue<{{ container_parser.element_type }}>(itemElement);
+                result.Add(itemValue);
+            }
+        }
+        return result;
+{{~ else if container_parser.is_dictionary ~}}
+        var result = new Dictionary<{{ container_parser.key_type }}, {{ container_parser.value_type }}>();
+        var itemNodes = element.SelectNodes("Item");
+        if (itemNodes != null)
+        {
+            foreach (XmlElement itemElement in itemNodes)
+            {
+                var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
+                var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
+                if (keyElement != null && valueElement != null)
+                {
+                    var keyValue = ParseValue<{{ container_parser.key_type }}>(keyElement);
+                    var valueValue = ParseValue<{{ container_parser.value_type }}>(valueElement);
+                    result[keyValue] = valueValue;
+                }
+            }
+        }
+        return result;
+{{~ else if container_parser.is_hashset ~}}
+        var result = new HashSet<{{ container_parser.element_type }}>();
+        var itemNodes = element.SelectNodes("Item");
+        if (itemNodes != null)
+        {
+            foreach (XmlElement itemElement in itemNodes)
+            {
+                var itemValue = ParseValue<{{ container_parser.element_type }}>(itemElement);
+                result.Add(itemValue);
+            }
+        }
+        return result;
+{{~ end ~}}
+    }
+{{~ end ~}}
+
     /// <summary>
     /// 通用值解析方法
     /// </summary>
@@ -474,37 +611,13 @@ public static class {{ managed_type_name }}ClassHelper
             return ParsePrimitiveValue<T>(element);
         }
 
-        // ConfigKey 类型解析
-        if (type.IsGenericType)
+        // ConfigKey 类型解析（使用预生成的解析方法）
+{{~ for config_key in config_key_types ~}}
+        if (typeof(T) == typeof(ConfigKey<{{ config_key.element_type }}>))
         {
-            var genericTypeDef = type.GetGenericTypeDefinition();
-            // 检查是否是 ConfigKey<T> 类型（通过名称匹配，因为它是全局类型）
-            if (genericTypeDef.Name == "ConfigKey`1" || genericTypeDef.FullName == "ConfigKey`1")
-            {
-                var configKeyType = type.GetGenericArguments()[0];
-                var parts = valueStr.Split(new[] { "::" }, StringSplitOptions.None);
-                if (parts.Length == 2)
-                {
-                    var modKey = new ModKey(parts[0]);
-                    var configName = parts[1];
-                    var configKeyCtor = type.GetConstructor(new[] { typeof(ModKey), typeof(string) });
-                    if (configKeyCtor != null)
-                    {
-                        return (T)configKeyCtor.Invoke(new object[] { modKey, configName });
-                    }
-                }
-                else if (parts.Length == 1)
-                {
-                    var modKey = new ModKey("DefaultMod");
-                    var configKeyCtor = type.GetConstructor(new[] { typeof(ModKey), typeof(string) });
-                    if (configKeyCtor != null)
-                    {
-                        return (T)configKeyCtor.Invoke(new object[] { modKey, parts[0] });
-                    }
-                }
-                return default(T);
-            }
+            return (T)(object)ParseConfigKey_{{ config_key.element_type }}(element);
         }
+{{~ end ~}}
 
         // Unity.Mathematics 类型解析（使用预生成的解析方法）
         if (type.Namespace == "Unity.Mathematics")
@@ -519,22 +632,21 @@ public static class {{ managed_type_name }}ClassHelper
 {{~ end ~}}
         }
 
-        // 嵌套 XConfig 类型解析
-        if (type.IsSubclassOf(typeof(XConfig)))
+        // 嵌套 XConfig 类型解析（使用预生成的解析方法）
+{{~ for nested_config in nested_config_types ~}}
+        if (typeof(T) == typeof({{ nested_config.type_name }}))
         {
-            // 查找对应的 Helper 类（在同一程序集中查找）
-            var helperClassName = type.Name + "ClassHelper";
-            var helperType = type.Assembly.GetTypes()
-                .FirstOrDefault(t => t.Name == helperClassName && t.IsClass && t.IsSealed && t.IsAbstract);
-            if (helperType != null)
-            {
-                var loadMethod = helperType.GetMethod("LoadFromXmlElement", BindingFlags.Public | BindingFlags.Static);
-                if (loadMethod != null)
-                {
-                    return (T)loadMethod.Invoke(null, new object[] { element });
-                }
-            }
+            return (T)(object)Parse{{ nested_config.type_name }}(element);
         }
+{{~ end ~}}
+
+        // 嵌套容器类型解析（使用预生成的解析方法）
+{{~ for container_parser in container_parsers ~}}
+        if (typeof(T) == typeof({{ container_parser.type_name }}))
+        {
+            return (T)(object){{ container_parser.parser_method_name }}(element);
+        }
+{{~ end ~}}
 
         // 默认：尝试使用 TypeConverter
         return ParsePrimitiveValue<T>(element);
