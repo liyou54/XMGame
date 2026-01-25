@@ -6,17 +6,6 @@ using XMFrame.Implementation;
 namespace XMFrame.Utils
 {
     /// <summary>
-    /// 类型转换器接口
-    /// </summary>
-    public interface ITypeConverter<TSource, TTarget>
-    {
-        /// <summary>
-        /// 将源类型转换为目标类型
-        /// </summary>
-        TTarget Convert(TSource source);
-    }
-
-    /// <summary>
     /// 类型转换器注册表，支持全局和局部转换器
     /// </summary>
     public static class TypeConverterRegistry

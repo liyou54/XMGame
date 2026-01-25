@@ -26,7 +26,7 @@ public class TypeToTypeIdConverter : XmlUnManagedConvert<Type, TypeId>
     }
 }
 
-public class TestGlobalInt2Convert : XmlConvertBase<int2>
+public class TestGlobalInt2Convert : XmlConvertBase<int2,TestInt2Convert>
 {
     public override bool TryGetData(string str, out int2 data)
     {
@@ -34,8 +34,9 @@ public class TestGlobalInt2Convert : XmlConvertBase<int2>
     }
 }
 
-public class TestInt2Convert : XmlConvertBase<int2>
+public class TestInt2Convert : XmlConvertBase<int2,TestInt2Convert>
 {
+    
     public override bool TryGetData(string str, out int2 data)
     {
         throw new System.NotImplementedException();

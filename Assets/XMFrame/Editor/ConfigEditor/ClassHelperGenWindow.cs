@@ -8,9 +8,9 @@ using UnityEngine;
 namespace XMFrame.Editor.ConfigEditor
 {
     /// <summary>
-    /// 非托管代码生成编辑器窗口
+    /// ClassHelper 代码生成编辑器窗口
     /// </summary>
-    public class UnmanagedCodeGenWindow : EditorWindow
+    public class ClassHelperGenWindow : EditorWindow
     {
         private List<AssemblyInfo> allAssemblies = new List<AssemblyInfo>();
         private Vector2 scrollPosition;
@@ -34,10 +34,9 @@ namespace XMFrame.Editor.ConfigEditor
             }
         }
 
-        [MenuItem("XMFrame/Config/Generate Code (Select Assemblies)")]
         public static void ShowWindow()
         {
-            var window = GetWindow<UnmanagedCodeGenWindow>("代码生成器");
+            var window = GetWindow<ClassHelperGenWindow>("ClassHelper 代码生成器");
             window.minSize = new Vector2(500, 400);
             window.RefreshAssemblies();
         }
@@ -80,7 +79,7 @@ namespace XMFrame.Editor.ConfigEditor
             EditorGUILayout.Space(10);
 
             // 标题
-            EditorGUILayout.LabelField("选择要生成代码的程序集", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("选择要生成 ClassHelper 代码的程序集", EditorStyles.boldLabel);
             EditorGUILayout.Space(5);
 
             // 全选/取消全选按钮
@@ -153,7 +152,7 @@ namespace XMFrame.Editor.ConfigEditor
             // 生成按钮
             var selectedCount = allAssemblies.Count(a => a.Selected);
             GUI.enabled = selectedCount > 0;
-            if (GUILayout.Button($"生成代码 ({selectedCount} 个程序集)", GUILayout.Height(30)))
+            if (GUILayout.Button($"生成 ClassHelper 代码 ({selectedCount} 个程序集)", GUILayout.Height(30)))
             {
                 GenerateCode();
             }
@@ -178,8 +177,8 @@ namespace XMFrame.Editor.ConfigEditor
             
             try
             {
-                UnmanagedCodeGenerator.GenerateUnmanagedCodeForAssemblies(selectedAssemblies, outputPath);
-                EditorUtility.DisplayDialog("成功", $"已成功为 {selectedAssemblies.Count} 个程序集生成代码", "确定");
+                ClassHelperGenerator.GenerateClassHelperCodeForAssemblies(selectedAssemblies, outputPath);
+                EditorUtility.DisplayDialog("成功", $"已成功为 {selectedAssemblies.Count} 个程序集生成 ClassHelper 代码", "确定");
             }
             catch (Exception ex)
             {

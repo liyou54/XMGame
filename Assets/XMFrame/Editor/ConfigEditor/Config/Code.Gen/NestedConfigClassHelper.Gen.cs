@@ -1,0 +1,545 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Xml;
+using XMFrame;
+using XMFrame.Interfaces;
+using XMFrame.Utils;
+using XMFrame.Utils.Attribute;
+using XMFrame.Interfaces.ConfigMananger;
+using Unity.Collections;
+using System;
+using XMFrame;
+using System.Collections.Generic;
+using System.Xml;
+using XMFrame.Interfaces;
+using XMFrame.Utils;
+using XMFrame.Utils.Attribute;
+using Unity.Mathematics;
+
+/// <summary>
+/// NestedConfig 的 XML 加载辅助类
+/// </summary>
+public static class NestedConfigClassHelper
+{
+    /// <summary>
+    /// 从 XML 文件加载配置
+    /// </summary>
+    public static void LoadFromXml(string xmlFilePath)
+    {
+        var xmlDoc = new XmlDocument();
+        xmlDoc.Load(xmlFilePath);
+        
+        var root = xmlDoc.DocumentElement;
+        if (root == null)
+        {
+            throw new InvalidOperationException($"XML文件根节点为空: {xmlFilePath}");
+        }
+
+        // 遍历所有配置项
+        foreach (XmlElement itemElement in root.SelectNodes("ConfigItem"))
+        {
+            LoadFromXmlElement(itemElement);
+        }
+    }
+
+    /// <summary>
+    /// 从 XML 元素加载单个配置项，返回配置对象
+    /// </summary>
+    public static NestedConfig LoadFromXmlElement(XmlElement element)
+    {
+        if (element == null)
+        {
+            throw new ArgumentNullException(nameof(element));
+        }
+
+        // 创建配置对象
+        var config = new NestedConfig();
+
+        // 读取 overwrite 属性
+        var overwriteStr = element.GetAttribute("overwrite");
+        var overwriteMode = EXmlOverwriteMode.Override;
+        if (!string.IsNullOrEmpty(overwriteStr))
+        {
+            if (Enum.TryParse<EXmlOverwriteMode>(overwriteStr, true, out var parsedMode))
+            {
+                overwriteMode = parsedMode;
+            }
+            else
+            {
+                throw new InvalidOperationException($"无效的 overwrite 模式: {overwriteStr}");
+            }
+        }
+
+        // 应用 Overwrite 模式
+        if (overwriteMode == EXmlOverwriteMode.ClearAll)
+        {
+            // 清空所有字段（使用默认值）
+            config = new NestedConfig();
+        }
+
+        // 解析各个字段
+        ParseTest(element, config, overwriteMode);
+        ParseTestCustom(element, config, overwriteMode);
+        ParseTestGlobalConvert(element, config, overwriteMode);
+        ParseTestKeyList(element, config, overwriteMode);
+        ParseStrIndex(element, config, overwriteMode);
+        ParseStr32(element, config, overwriteMode);
+        ParseStr64(element, config, overwriteMode);
+        ParseStr(element, config, overwriteMode);
+        ParseStrLabel(element, config, overwriteMode);
+
+        return config;
+    }
+
+    /// <summary>
+    /// 解析字段 Test
+    /// </summary>
+    private static void ParseTest(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    {
+        var fieldElement = parent.SelectSingleNode("Test") as XmlElement;
+        if (fieldElement == null)
+        {
+            return; // 字段不存在，跳过
+        }
+
+        // 读取字段级别的 overwrite 属性
+        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
+        var fieldOverwriteMode = rootOverwriteMode;
+        if (!string.IsNullOrEmpty(fieldOverwriteStr))
+        {
+            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
+            {
+                fieldOverwriteMode = parsedMode;
+            }
+        }
+
+        // 基本类型处理
+        config.Test = ParseValue<Int32>(fieldElement);
+    }
+
+    /// <summary>
+    /// 解析字段 TestCustom
+    /// </summary>
+    private static void ParseTestCustom(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    {
+        var fieldElement = parent.SelectSingleNode("TestCustom") as XmlElement;
+        if (fieldElement == null)
+        {
+            return; // 字段不存在，跳过
+        }
+
+        // 读取字段级别的 overwrite 属性
+        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
+        var fieldOverwriteMode = rootOverwriteMode;
+        if (!string.IsNullOrEmpty(fieldOverwriteStr))
+        {
+            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
+            {
+                fieldOverwriteMode = parsedMode;
+            }
+        }
+
+        // Unity.Mathematics 类型处理（使用全局转换器）
+        config.TestCustom = Parseint2Value(fieldElement);
+    }
+
+    /// <summary>
+    /// 解析字段 TestGlobalConvert
+    /// </summary>
+    private static void ParseTestGlobalConvert(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    {
+        var fieldElement = parent.SelectSingleNode("TestGlobalConvert") as XmlElement;
+        if (fieldElement == null)
+        {
+            return; // 字段不存在，跳过
+        }
+
+        // 读取字段级别的 overwrite 属性
+        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
+        var fieldOverwriteMode = rootOverwriteMode;
+        if (!string.IsNullOrEmpty(fieldOverwriteStr))
+        {
+            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
+            {
+                fieldOverwriteMode = parsedMode;
+            }
+        }
+
+        // Unity.Mathematics 类型处理（使用全局转换器）
+        // 没有全局转换器，尝试使用默认解析
+        config.TestGlobalConvert = ParseValue<int2>(fieldElement);
+    }
+
+    /// <summary>
+    /// 解析字段 TestKeyList
+    /// </summary>
+    private static void ParseTestKeyList(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    {
+        var fieldElement = parent.SelectSingleNode("TestKeyList") as XmlElement;
+        if (fieldElement == null)
+        {
+            return; // 字段不存在，跳过
+        }
+
+        // 读取字段级别的 overwrite 属性
+        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
+        var fieldOverwriteMode = rootOverwriteMode;
+        if (!string.IsNullOrEmpty(fieldOverwriteStr))
+        {
+            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
+            {
+                fieldOverwriteMode = parsedMode;
+            }
+        }
+
+        // List 类型处理
+        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
+        {
+            config.TestKeyList = new List<ConfigKey<TestConfigUnManaged>>();
+        }
+        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
+        {
+            // 删除模式：从现有列表中删除指定元素
+            if (config.TestKeyList == null)
+            {
+                config.TestKeyList = new List<ConfigKey<TestConfigUnManaged>>();
+            }
+            foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+            {
+                var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
+                config.TestKeyList.Remove(itemValue);
+            }
+            return;
+        }
+        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
+        {
+            // 添加模式：添加到现有列表
+            if (config.TestKeyList == null)
+            {
+                config.TestKeyList = new List<ConfigKey<TestConfigUnManaged>>();
+            }
+        }
+        else
+        {
+            // Override 模式：覆盖整个列表
+            config.TestKeyList = new List<ConfigKey<TestConfigUnManaged>>();
+        }
+
+        foreach (XmlElement itemElement in fieldElement.SelectNodes("Item"))
+        {
+            var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
+            config.TestKeyList.Add(itemValue);
+        }
+    }
+
+    /// <summary>
+    /// 解析字段 StrIndex
+    /// </summary>
+    private static void ParseStrIndex(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    {
+        var fieldElement = parent.SelectSingleNode("StrIndex") as XmlElement;
+        if (fieldElement == null)
+        {
+            return; // 字段不存在，跳过
+        }
+
+        // 读取字段级别的 overwrite 属性
+        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
+        var fieldOverwriteMode = rootOverwriteMode;
+        if (!string.IsNullOrEmpty(fieldOverwriteStr))
+        {
+            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
+            {
+                fieldOverwriteMode = parsedMode;
+            }
+        }
+
+        // String 类型处理（根据字符串模式）
+        // 托管类型中仍然是 string，直接赋值
+        config.StrIndex = ParseStringValue(fieldElement);
+    }
+
+    /// <summary>
+    /// 解析字段 Str32
+    /// </summary>
+    private static void ParseStr32(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    {
+        var fieldElement = parent.SelectSingleNode("Str32") as XmlElement;
+        if (fieldElement == null)
+        {
+            return; // 字段不存在，跳过
+        }
+
+        // 读取字段级别的 overwrite 属性
+        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
+        var fieldOverwriteMode = rootOverwriteMode;
+        if (!string.IsNullOrEmpty(fieldOverwriteStr))
+        {
+            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
+            {
+                fieldOverwriteMode = parsedMode;
+            }
+        }
+
+        // String 类型处理（根据字符串模式）
+        // 托管类型中仍然是 string，直接赋值
+        config.Str32 = ParseStringValue(fieldElement);
+    }
+
+    /// <summary>
+    /// 解析字段 Str64
+    /// </summary>
+    private static void ParseStr64(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    {
+        var fieldElement = parent.SelectSingleNode("Str64") as XmlElement;
+        if (fieldElement == null)
+        {
+            return; // 字段不存在，跳过
+        }
+
+        // 读取字段级别的 overwrite 属性
+        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
+        var fieldOverwriteMode = rootOverwriteMode;
+        if (!string.IsNullOrEmpty(fieldOverwriteStr))
+        {
+            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
+            {
+                fieldOverwriteMode = parsedMode;
+            }
+        }
+
+        // String 类型处理（根据字符串模式）
+        // 托管类型中仍然是 string，直接赋值
+        config.Str64 = ParseStringValue(fieldElement);
+    }
+
+    /// <summary>
+    /// 解析字段 Str
+    /// </summary>
+    private static void ParseStr(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    {
+        var fieldElement = parent.SelectSingleNode("Str") as XmlElement;
+        if (fieldElement == null)
+        {
+            return; // 字段不存在，跳过
+        }
+
+        // 读取字段级别的 overwrite 属性
+        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
+        var fieldOverwriteMode = rootOverwriteMode;
+        if (!string.IsNullOrEmpty(fieldOverwriteStr))
+        {
+            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
+            {
+                fieldOverwriteMode = parsedMode;
+            }
+        }
+
+        // String 类型处理（根据字符串模式）
+        // 托管类型中仍然是 string，直接赋值
+        config.Str = ParseStringValue(fieldElement);
+    }
+
+    /// <summary>
+    /// 解析字段 StrLabel
+    /// </summary>
+    private static void ParseStrLabel(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    {
+        var fieldElement = parent.SelectSingleNode("StrLabel") as XmlElement;
+        if (fieldElement == null)
+        {
+            return; // 字段不存在，跳过
+        }
+
+        // 读取字段级别的 overwrite 属性
+        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
+        var fieldOverwriteMode = rootOverwriteMode;
+        if (!string.IsNullOrEmpty(fieldOverwriteStr))
+        {
+            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
+            {
+                fieldOverwriteMode = parsedMode;
+            }
+        }
+
+        // StrLabel 类型处理
+        var strLabelStr = fieldElement.InnerText.Trim();
+        if (!string.IsNullOrEmpty(strLabelStr))
+        {
+            var parts = strLabelStr.Split(new[] { "::" }, StringSplitOptions.None);
+            if (parts.Length == 2)
+            {
+                config.StrLabel = new StrLabel
+                {
+                    ModName = parts[0],
+                    LabelName = parts[1]
+                };
+            }
+            else if (parts.Length == 1)
+            {
+                // ModName 省略
+                config.StrLabel = new StrLabel
+                {
+                    ModName = "DefaultMod", // 临时实现
+                    LabelName = parts[0]
+                };
+            }
+        }
+    }
+
+
+    /// <summary>
+    /// 解析基本类型值
+    /// </summary>
+    private static T ParsePrimitiveValue<T>(XmlElement element)
+    {
+        if (element == null)
+        {
+            return default(T);
+        }
+
+        var valueStr = element.InnerText?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(valueStr))
+        {
+            return default(T);
+        }
+
+        var type = typeof(T);
+        
+        // 使用 TypeConverter 进行转换
+        var converter = System.ComponentModel.TypeDescriptor.GetConverter(type);
+        if (converter != null && converter.CanConvertFrom(typeof(string)))
+        {
+            try
+            {
+                return (T)converter.ConvertFromString(valueStr);
+            }
+            catch
+            {
+                return default(T);
+            }
+        }
+
+        return default(T);
+    }
+
+    /// <summary>
+    /// 解析字符串值
+    /// </summary>
+    private static string ParseStringValue(XmlElement element)
+    {
+        return element?.InnerText?.Trim() ?? string.Empty;
+    }
+
+    /// <summary>
+    /// 解析 int2 类型值（使用全局转换器）
+    /// </summary>
+    private static int2 Parseint2Value(XmlElement element)
+    {
+        if (element == null)
+        {
+            return default(int2);
+        }
+
+        var valueStr = element.InnerText?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(valueStr))
+        {
+            return default(int2);
+        }
+
+        var converter = TestInt2Convert.Instance;
+        if (converter.TryGetData(valueStr, out var result))
+        {
+            return result;
+        }
+
+        return default(int2);
+    }
+
+    /// <summary>
+    /// 通用值解析方法
+    /// </summary>
+    private static T ParseValue<T>(XmlElement element)
+    {
+        if (element == null)
+        {
+            return default(T);
+        }
+
+        var valueStr = element.InnerText?.Trim() ?? string.Empty;
+
+        // 基本类型解析（使用 ParsePrimitiveValue）
+        var type = typeof(T);
+        if (type == typeof(int) || type == typeof(long) || type == typeof(short) || 
+            type == typeof(byte) || type == typeof(float) || type == typeof(double) || 
+            type == typeof(bool) || type == typeof(string))
+        {
+            return ParsePrimitiveValue<T>(element);
+        }
+
+        // ConfigKey 类型解析
+        if (type.IsGenericType)
+        {
+            var genericTypeDef = type.GetGenericTypeDefinition();
+            // 检查是否是 ConfigKey<T> 类型（通过名称匹配，因为它是全局类型）
+            if (genericTypeDef.Name == "ConfigKey`1" || genericTypeDef.FullName == "ConfigKey`1")
+            {
+                var configKeyType = type.GetGenericArguments()[0];
+                var parts = valueStr.Split(new[] { "::" }, StringSplitOptions.None);
+                if (parts.Length == 2)
+                {
+                    var modKey = new ModKey(parts[0]);
+                    var configName = parts[1];
+                    var configKeyCtor = type.GetConstructor(new[] { typeof(ModKey), typeof(string) });
+                    if (configKeyCtor != null)
+                    {
+                        return (T)configKeyCtor.Invoke(new object[] { modKey, configName });
+                    }
+                }
+                else if (parts.Length == 1)
+                {
+                    var modKey = new ModKey("DefaultMod");
+                    var configKeyCtor = type.GetConstructor(new[] { typeof(ModKey), typeof(string) });
+                    if (configKeyCtor != null)
+                    {
+                        return (T)configKeyCtor.Invoke(new object[] { modKey, parts[0] });
+                    }
+                }
+                return default(T);
+            }
+        }
+
+        // Unity.Mathematics 类型解析（使用预生成的解析方法）
+        if (type.Namespace == "Unity.Mathematics")
+        {
+            if (type.FullName == "Unity.Mathematics.int2" || type.Name == "int2")
+            {
+                return (T)(object)Parseint2Value(element);
+            }
+        }
+
+        // 嵌套 XConfig 类型解析
+        if (type.IsSubclassOf(typeof(XConfig)))
+        {
+            // 查找对应的 Helper 类（在同一程序集中查找）
+            var helperClassName = type.Name + "ClassHelper";
+            var helperType = type.Assembly.GetTypes()
+                .FirstOrDefault(t => t.Name == helperClassName && t.IsClass && t.IsSealed && t.IsAbstract);
+            if (helperType != null)
+            {
+                var loadMethod = helperType.GetMethod("LoadFromXmlElement", BindingFlags.Public | BindingFlags.Static);
+                if (loadMethod != null)
+                {
+                    return (T)loadMethod.Invoke(null, new object[] { element });
+                }
+            }
+        }
+
+        // 默认：尝试使用 TypeConverter
+        return ParsePrimitiveValue<T>(element);
+    }
+}
+

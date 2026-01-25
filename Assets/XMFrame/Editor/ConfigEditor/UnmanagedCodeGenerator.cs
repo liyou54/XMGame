@@ -174,6 +174,16 @@ namespace XMFrame.Editor.ConfigEditor
             File.WriteAllText(filePath, result);
 
             Debug.Log($"已生成: {filePath}");
+
+            // 同时生成 ClassHelper 代码
+            try
+            {
+                ClassHelperGenerator.GenerateClassHelperForType(configType, outputDir);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"生成 {configType.Name} 的 ClassHelper 代码时出错: {ex.Message}");
+            }
         }
 
         /// <summary>
