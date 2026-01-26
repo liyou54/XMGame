@@ -22,12 +22,22 @@ using XMFrame.Utils.Attribute;
 /// <summary>
 /// NestedConfig 的 XML 加载辅助类
 /// </summary>
-public static class NestedConfigClassHelper
+public class NestedConfigClassHelper : IConfigClassHelper<NestedConfig>
 {
+    private readonly IConfigDataCenter _dataCenter;
+
     /// <summary>
-    /// 从 XML 文件加载配置
+    /// 构造函数
     /// </summary>
-    public static void LoadFromXml(string xmlFilePath)
+    public NestedConfigClassHelper(IConfigDataCenter dataCenter)
+    {
+        _dataCenter = dataCenter ?? throw new ArgumentNullException(nameof(dataCenter));
+    }
+
+    /// <summary>
+    /// 从 XML 文件加载配置并注册到管理器
+    /// </summary>
+    public void LoadFromXml(string xmlFilePath)
     {
         var xmlDoc = new XmlDocument();
         xmlDoc.Load(xmlFilePath);
@@ -44,15 +54,27 @@ public static class NestedConfigClassHelper
         {
             foreach (XmlElement itemElement in configItems)
             {
-                LoadFromXmlElement(itemElement);
+                RegisterToManager(itemElement);
             }
+        }
+    }
+
+    /// <summary>
+    /// 从 XML 元素加载配置并注册到管理器
+    /// </summary>
+    public void RegisterToManager(XmlElement element)
+    {
+        var config = LoadFromXmlElement(element);
+        if (config != null)
+        {
+            _dataCenter.RegisterData(config);
         }
     }
 
     /// <summary>
     /// 从 XML 元素加载单个配置项，返回配置对象
     /// </summary>
-    public static NestedConfig LoadFromXmlElement(XmlElement element)
+    public NestedConfig LoadFromXmlElement(XmlElement element)
     {
         if (element == null)
         {
@@ -101,7 +123,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析字段 Test
     /// </summary>
-    private static void ParseTest(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    private void ParseTest(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
     {
         var fieldElement = parent.SelectSingleNode("Test") as XmlElement;
         if (fieldElement == null)
@@ -127,7 +149,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析字段 TestCustom
     /// </summary>
-    private static void ParseTestCustom(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    private void ParseTestCustom(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
     {
         var fieldElement = parent.SelectSingleNode("TestCustom") as XmlElement;
         if (fieldElement == null)
@@ -153,7 +175,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析字段 TestGlobalConvert
     /// </summary>
-    private static void ParseTestGlobalConvert(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    private void ParseTestGlobalConvert(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
     {
         var fieldElement = parent.SelectSingleNode("TestGlobalConvert") as XmlElement;
         if (fieldElement == null)
@@ -180,7 +202,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析字段 TestKeyList
     /// </summary>
-    private static void ParseTestKeyList(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    private void ParseTestKeyList(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
     {
         var fieldElement = parent.SelectSingleNode("TestKeyList") as XmlElement;
         if (fieldElement == null)
@@ -250,7 +272,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析字段 StrIndex
     /// </summary>
-    private static void ParseStrIndex(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    private void ParseStrIndex(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
     {
         var fieldElement = parent.SelectSingleNode("StrIndex") as XmlElement;
         if (fieldElement == null)
@@ -277,7 +299,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析字段 Str32
     /// </summary>
-    private static void ParseStr32(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    private void ParseStr32(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
     {
         var fieldElement = parent.SelectSingleNode("Str32") as XmlElement;
         if (fieldElement == null)
@@ -304,7 +326,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析字段 Str64
     /// </summary>
-    private static void ParseStr64(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    private void ParseStr64(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
     {
         var fieldElement = parent.SelectSingleNode("Str64") as XmlElement;
         if (fieldElement == null)
@@ -331,7 +353,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析字段 Str
     /// </summary>
-    private static void ParseStr(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    private void ParseStr(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
     {
         var fieldElement = parent.SelectSingleNode("Str") as XmlElement;
         if (fieldElement == null)
@@ -358,7 +380,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析字段 StrLabel
     /// </summary>
-    private static void ParseStrLabel(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
+    private void ParseStrLabel(XmlElement parent, NestedConfig config, EXmlOverwriteMode rootOverwriteMode)
     {
         var fieldElement = parent.SelectSingleNode("StrLabel") as XmlElement;
         if (fieldElement == null)
@@ -406,7 +428,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析基本类型值
     /// </summary>
-    private static T ParsePrimitiveValue<T>(XmlElement element)
+    private T ParsePrimitiveValue<T>(XmlElement element)
     {
         if (element == null)
         {
@@ -441,7 +463,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析字符串值
     /// </summary>
-    private static string ParseStringValue(XmlElement element)
+    private string ParseStringValue(XmlElement element)
     {
         return element?.InnerText?.Trim() ?? string.Empty;
     }
@@ -449,7 +471,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析 int2 类型值（使用全局转换器）
     /// </summary>
-    private static int2 Parseint2Value(XmlElement element)
+    private int2 Parseint2Value(XmlElement element)
     {
         if (element == null)
         {
@@ -474,7 +496,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 解析 ConfigKey&lt;TestConfigUnManaged&gt; 类型值
     /// </summary>
-    private static ConfigKey<TestConfigUnManaged> ParseConfigKey_TestConfigUnManaged(XmlElement element)
+    private ConfigKey<TestConfigUnManaged> ParseConfigKey_TestConfigUnManaged(XmlElement element)
     {
         if (element == null)
         {
@@ -508,7 +530,7 @@ public static class NestedConfigClassHelper
     /// <summary>
     /// 通用值解析方法
     /// </summary>
-    private static T ParseValue<T>(XmlElement element)
+    private T ParseValue<T>(XmlElement element)
     {
         if (element == null)
         {

@@ -520,10 +520,11 @@ namespace XMFrame.Editor.ConfigEditor
                     }
                 }
 
-                // 嵌套配置的 Helper 类名
+                // 嵌套配置的 Helper 类名和类型名
                 if (IsNestedConfigType(fieldType))
                 {
                     fieldObj["nested_helper_class"] = fieldType.Name + "ClassHelper";
+                    fieldObj["nested_type_name"] = fieldType.Name;
                 }
             }
 

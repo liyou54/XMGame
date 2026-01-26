@@ -301,11 +301,11 @@ namespace XMFrame.Interfaces
 
     public interface IAssetManager : IManager<IAssetManager>
     {
-        public UniTask<bool> CreateResPackage(ModId modId, string modName, string path);
+        public UniTask<bool> CreateResPackage(ModHandle modId, string modName, string path);
         public AssetAddress CreateAssetAddress(string resAddress, XAssetId? defaultResId = null);
-        public UniTask<Address> LoadAssetAsync<Address>(ModId modId, string path) where Address : IAssetId;
-        public TAssetId LoadAsset<TAssetId>(ModId modId, string path) where TAssetId : IAssetId;
-        public TAssetId CreateAssetId<TAssetId>(ModId modId, string path) where TAssetId : IAssetId;
+        public UniTask<Address> LoadAssetAsync<Address>(ModHandle modId, string path) where Address : IAssetId;
+        public TAssetId LoadAsset<TAssetId>(ModHandle modId, string path) where TAssetId : IAssetId;
+        public TAssetId CreateAssetId<TAssetId>(ModHandle modId, string path) where TAssetId : IAssetId;
 
         /// <summary>
         /// 通过AssetId创建XAssetHandle（异步，如果资源未加载会自动加载）
@@ -329,7 +329,7 @@ namespace XMFrame.Interfaces
         /// </summary>
         public T GetAssetObject<T>(XAssetId xAsset) where T : UnityEngine.Object;
 
-        XAssetId GetAsstIdByModIdAndPath(ModId modId, string path);
+        XAssetId GetAsstIdByModIdAndPath(ModHandle modId, string path);
     }
 
 }

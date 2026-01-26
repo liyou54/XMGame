@@ -1,18 +1,21 @@
 using System;
+using Unity.Burst;
 
+[BurstCompile]
 public readonly struct XBlobArray<T> where T : unmanaged
 {
     internal readonly int Offset;
     internal XBlobArray(int offset) => Offset = offset;
 
 
-    public int GetLength(XBlobContainer container)
+    [BurstCompile]
+    public int GetLength(in XBlobContainer container)
     {
         var data = container.GetArrayView<T>(Offset);
         return data.Length;
     }
 
-    public T this[XBlobContainer container, int index]
+    public T this[in XBlobContainer container, int index]
     {
         get
         {
@@ -30,23 +33,26 @@ public readonly struct XBlobArray<T> where T : unmanaged
         }
     }
 
-    public Enumerable GetEnumerator(XBlobContainer container)
+    [BurstCompile]
+    public Enumerable GetEnumerator(in XBlobContainer container)
     {
         return new Enumerable(this, container);
     }
 
-    public EnumerableRef GetEnumeratorRef(XBlobContainer container)
+    [BurstCompile]
+    public EnumerableRef GetEnumeratorRef(in XBlobContainer container)
     {
         return new EnumerableRef(this, container);
     }
 
+    [BurstCompile]
     public ref struct Enumerator
     {
         private Span<T> _data;
         private int _length;
         private int _index;
 
-        internal Enumerator(XBlobArray<T> array, XBlobContainer container)
+        internal Enumerator(in XBlobArray<T> array, in XBlobContainer container)
         {
             var view = container.GetArrayView<T>(array.Offset);
             _data = view.Data;
@@ -56,6 +62,7 @@ public readonly struct XBlobArray<T> where T : unmanaged
 
         public T Current => _data[_index];
 
+        [BurstCompile]
         public bool MoveNext()
         {
             _index++;
@@ -63,30 +70,33 @@ public readonly struct XBlobArray<T> where T : unmanaged
         }
     }
 
+    [BurstCompile]
     public ref struct Enumerable
     {
         private readonly XBlobArray<T> _array;
         private readonly XBlobContainer _container;
 
-        internal Enumerable(XBlobArray<T> array, XBlobContainer container)
+        internal Enumerable(in XBlobArray<T> array, in XBlobContainer container)
         {
             _array = array;
             _container = container;
         }
 
+        [BurstCompile]
         public Enumerator GetEnumerator()
         {
             return new Enumerator(_array, _container);
         }
     }
 
+    [BurstCompile]
     public ref struct EnumeratorRef
     {
         private Span<T> _data;
         private int _length;
         private int _index;
 
-        internal EnumeratorRef(XBlobArray<T> array, XBlobContainer container)
+        internal EnumeratorRef(in XBlobArray<T> array, in XBlobContainer container)
         {
             var view = container.GetArrayView<T>(array.Offset);
             _data = view.Data;
@@ -96,6 +106,7 @@ public readonly struct XBlobArray<T> where T : unmanaged
 
         public ref T Current => ref _data[_index];
 
+        [BurstCompile]
         public bool MoveNext()
         {
             _index++;
@@ -103,17 +114,19 @@ public readonly struct XBlobArray<T> where T : unmanaged
         }
     }
 
+    [BurstCompile]
     public ref struct EnumerableRef
     {
         private readonly XBlobArray<T> _array;
         private readonly XBlobContainer _container;
 
-        internal EnumerableRef(XBlobArray<T> array, XBlobContainer container)
+        internal EnumerableRef(in XBlobArray<T> array, in XBlobContainer container)
         {
             _array = array;
             _container = container;
         }
 
+        [BurstCompile]
         public EnumeratorRef GetEnumerator()
         {
             return new EnumeratorRef(_array, _container);

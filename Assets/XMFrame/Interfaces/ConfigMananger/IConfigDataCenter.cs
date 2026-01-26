@@ -1,3 +1,5 @@
+using XMFrame.Interfaces.ConfigMananger;
+
 namespace XMFrame.Interfaces
 {
     /// <summary>
@@ -26,16 +28,6 @@ namespace XMFrame.Interfaces
         bool TryGetConfig<T>(out T data) where T : unmanaged, IConfigUnManaged<T>;
 
         /// <summary>
-        /// 从 XML 文件加载配置
-        /// </summary>
-        void LoadConfigFromXml<T>(string xmlFilePath) where T : XMFrame.XConfig;
-
-        /// <summary>
-        /// 从 XML 元素加载单个配置项
-        /// </summary>
-        void LoadConfigFromXmlElement<T>(System.Xml.XmlElement element) where T : XMFrame.XConfig;
-
-        /// <summary>
         /// 注册配置表（泛型版本）
         /// </summary>
         void RegisterConfigTable<T>() where T : XMFrame.XConfig;
@@ -49,5 +41,26 @@ namespace XMFrame.Interfaces
         /// 检查是否存在转换器
         /// </summary>
         bool HasConverter<TSource, TTarget>(string domain = "");
+
+        /// <summary>
+        /// 获取指定类型的 ClassHelper 实例（泛型版本）
+        /// </summary>
+        IConfigClassHelper<T> GetClassHelper<T>() where T : XMFrame.XConfig;
+
+        /// <summary>
+        /// 通过 Type 获取 ClassHelper 实例（非泛型版本）
+        /// </summary>
+        IConfigClassHelper GetClassHelper(System.Type configType);
+
+        /// <summary>
+        /// 通过 TableDefine 获取 ClassHelper 实例
+        /// </summary>
+        IConfigClassHelper GetClassHelperByTable(TableDefine tableDefine);
+
+        public void RegisterData<T>(T data)where T : XConfig;
+        
+        public void UpdateData<T>(T data)where T : XConfig;
+        
+        
     }
 }

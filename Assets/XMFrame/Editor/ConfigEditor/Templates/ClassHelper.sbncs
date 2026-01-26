@@ -24,12 +24,22 @@ namespace {{ namespace }}
 /// <summary>
 /// {{ managed_type_name }} 的 XML 加载辅助类
 /// </summary>
-public static class {{ managed_type_name }}ClassHelper
+public class {{ managed_type_name }}ClassHelper : IConfigClassHelper<{{ managed_type_name }}>
 {
+    private readonly IConfigDataCenter _dataCenter;
+
     /// <summary>
-    /// 从 XML 文件加载配置
+    /// 构造函数
     /// </summary>
-    public static void LoadFromXml(string xmlFilePath)
+    public {{ managed_type_name }}ClassHelper(IConfigDataCenter dataCenter)
+    {
+        _dataCenter = dataCenter ?? throw new ArgumentNullException(nameof(dataCenter));
+    }
+
+    /// <summary>
+    /// 从 XML 文件加载配置并注册到管理器
+    /// </summary>
+    public void LoadFromXml(string xmlFilePath)
     {
         var xmlDoc = new XmlDocument();
         xmlDoc.Load(xmlFilePath);
@@ -46,15 +56,27 @@ public static class {{ managed_type_name }}ClassHelper
         {
             foreach (XmlElement itemElement in configItems)
             {
-                LoadFromXmlElement(itemElement);
+                RegisterToManager(itemElement);
             }
+        }
+    }
+
+    /// <summary>
+    /// 从 XML 元素加载配置并注册到管理器
+    /// </summary>
+    public void RegisterToManager(XmlElement element)
+    {
+        var config = LoadFromXmlElement(element);
+        if (config != null)
+        {
+            _dataCenter.RegisterData(config);
         }
     }
 
     /// <summary>
     /// 从 XML 元素加载单个配置项，返回配置对象
     /// </summary>
-    public static {{ managed_type_name }} LoadFromXmlElement(XmlElement element)
+    public {{ managed_type_name }} LoadFromXmlElement(XmlElement element)
     {
         if (element == null)
         {
@@ -98,7 +120,7 @@ public static class {{ managed_type_name }}ClassHelper
     /// <summary>
     /// 解析字段 {{ field.name }}
     /// </summary>
-    private static void Parse{{ field.name }}(XmlElement parent, {{ managed_type_name }} config, EXmlOverwriteMode rootOverwriteMode)
+    private void Parse{{ field.name }}(XmlElement parent, {{ managed_type_name }} config, EXmlOverwriteMode rootOverwriteMode)
     {
         var fieldElement = parent.SelectSingleNode("{{ field.name }}") as XmlElement;
         if (fieldElement == null)
@@ -268,7 +290,7 @@ public static class {{ managed_type_name }}ClassHelper
         // 嵌套配置类型处理
         if (fieldOverwriteMode == EXmlOverwriteMode.ClearAll || fieldOverwriteMode == EXmlOverwriteMode.Override)
         {
-            config.{{ field.name }} = {{ field.nested_helper_class }}.LoadFromXmlElement(fieldElement);
+            config.{{ field.name }} = Parse{{ field.nested_type_name }}(fieldElement);
         }
 {{~ else if field.is_config_key ~}}
         // ConfigKey 类型处理
@@ -411,7 +433,7 @@ public static class {{ managed_type_name }}ClassHelper
     /// <summary>
     /// 解析基本类型值
     /// </summary>
-    private static T ParsePrimitiveValue<T>(XmlElement element)
+    private T ParsePrimitiveValue<T>(XmlElement element)
     {
         if (element == null)
         {
@@ -446,7 +468,7 @@ public static class {{ managed_type_name }}ClassHelper
     /// <summary>
     /// 解析字符串值
     /// </summary>
-    private static string ParseStringValue(XmlElement element)
+    private string ParseStringValue(XmlElement element)
     {
         return element?.InnerText?.Trim() ?? string.Empty;
     }
@@ -457,7 +479,7 @@ public static class {{ managed_type_name }}ClassHelper
     /// <summary>
     /// 解析 {{ math_converter.math_type }} 类型值（使用全局转换器）
     /// </summary>
-    private static {{ math_converter.math_type }} Parse{{ math_converter.math_type }}Value(XmlElement element)
+    private {{ math_converter.math_type }} Parse{{ math_converter.math_type }}Value(XmlElement element)
     {
         if (element == null)
         {
@@ -486,7 +508,7 @@ public static class {{ managed_type_name }}ClassHelper
     /// <summary>
     /// 解析 ConfigKey&lt;{{ config_key.element_type }}&gt; 类型值
     /// </summary>
-    private static ConfigKey<{{ config_key.element_type }}> ParseConfigKey_{{ config_key.element_type }}(XmlElement element)
+    private ConfigKey<{{ config_key.element_type }}> ParseConfigKey_{{ config_key.element_type }}(XmlElement element)
     {
         if (element == null)
         {
@@ -521,14 +543,16 @@ public static class {{ managed_type_name }}ClassHelper
     /// <summary>
     /// 解析 {{ nested_config.type_name }} 类型值
     /// </summary>
-    private static {{ nested_config.type_name }} Parse{{ nested_config.type_name }}(XmlElement element)
+    private {{ nested_config.type_name }} Parse{{ nested_config.type_name }}(XmlElement element)
     {
         if (element == null)
         {
             return null;
         }
 
-        return {{ nested_config.helper_class }}.LoadFromXmlElement(element);
+        var configType = typeof({{ nested_config.type_name }});
+        var helper = (IConfigClassHelper<{{ nested_config.type_name }}>)_dataCenter.GetClassHelper(configType);
+        return helper.LoadFromXmlElement(element);
     }
 {{~ end ~}}
 
@@ -537,7 +561,7 @@ public static class {{ managed_type_name }}ClassHelper
     /// <summary>
     /// 解析 {{ container_parser.type_name }} 类型值
     /// </summary>
-    private static {{ container_parser.type_name }} {{ container_parser.parser_method_name }}(XmlElement element)
+    private {{ container_parser.type_name }} {{ container_parser.parser_method_name }}(XmlElement element)
     {
         if (element == null)
         {
@@ -593,7 +617,7 @@ public static class {{ managed_type_name }}ClassHelper
     /// <summary>
     /// 通用值解析方法
     /// </summary>
-    private static T ParseValue<T>(XmlElement element)
+    private T ParseValue<T>(XmlElement element)
     {
         if (element == null)
         {

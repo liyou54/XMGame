@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Collections;
 using UnityEngine;
@@ -144,7 +145,7 @@ namespace XMFrame.XBlob.Tests
             multiMap.Add(_container, 1, 10);
 
             // Act
-            foreach (ref var entry in multiMap.GetEnumeratorRef(_container))
+            foreach ( var entry in multiMap.GetEnumeratorRef(_container))
             {
                 entry.Value = 100;
             }
@@ -181,6 +182,272 @@ namespace XMFrame.XBlob.Tests
             Assert.AreEqual(2, multiMap.GetValueCount(_container, 1));
             Assert.AreEqual(2, multiMap.GetValueCount(_container, 2));
             Assert.AreEqual(4, multiMap.GetLength(_container));
+        }
+
+        [Test]
+        public void MultiMap_Add1000Elements_ShouldWorkCorrectly()
+        {
+            // Arrange - 创建足够大的容器来容纳1000个元素
+            // MultiMap<int, int> 需要: Count(4) + BucketCount(4) + Buckets(1000*4) + Entries(1000*12) + Keys(1000*4) + Values(1000*4) ≈ 24008 字节
+            var largeContainer = new XBlobContainer();
+            largeContainer.Create(Allocator.Temp, 50000);
+            
+            const int elementCount = 1000;
+            var multiMap = largeContainer.AllocMultiMap<int, int>(elementCount);
+
+            // Act - 添加1000个元素
+            for (int i = 0; i < elementCount; i++)
+            {
+                multiMap.Add(largeContainer, i, i * 10);
+            }
+
+            // Assert - 验证元素数量
+            Assert.AreEqual(elementCount, multiMap.GetLength(largeContainer));
+
+            // Assert - 验证所有键都能正确访问
+            for (int i = 0; i < elementCount; i++)
+            {
+                Assert.IsTrue(multiMap.ContainsKey(largeContainer, i), $"键 {i} 应该存在");
+                Assert.AreEqual(1, multiMap.GetValueCount(largeContainer, i), $"键 {i} 应该有一个值");
+                Assert.IsTrue(multiMap.ContainsValue(largeContainer, i, i * 10), $"键 {i} 应该包含值 {i * 10}");
+            }
+
+            // Assert - 验证迭代器能遍历所有元素
+            var visitedPairs = new HashSet<(int key, int value)>();
+            int iteratedCount = 0;
+            foreach (var kvp in multiMap.GetEnumerator(largeContainer))
+            {
+                visitedPairs.Add((kvp.Key, kvp.Value));
+                Assert.AreEqual(kvp.Key * 10, kvp.Value, $"迭代器返回的键值对应该匹配");
+                iteratedCount++;
+            }
+            Assert.AreEqual(elementCount, iteratedCount, "迭代器应该遍历所有元素");
+            Assert.AreEqual(elementCount, visitedPairs.Count, "所有键值对都应该被访问到");
+            
+            // Cleanup
+            largeContainer.Dispose();
+        }
+
+        [Test]
+        public void MultiMap_HashCollision_ShouldHandleCorrectly()
+        {
+            // Arrange - 创建足够大的容器
+            var largeContainer = new XBlobContainer();
+            largeContainer.Create(Allocator.Temp, 10000);
+            
+            // 使用小的 bucketCount 来强制产生哈希冲突
+            const int bucketCount = 10;
+            const int keysCount = 50; // 50个不同的键
+            const int valuesPerKey = 3; // 每个键3个值
+            int expectedTotalCount = keysCount * valuesPerKey; // 总共150个元素
+            // MultiMap 的容量需要至少等于要添加的元素总数
+            var multiMap = largeContainer.AllocMultiMap<int, int>(expectedTotalCount);
+
+            // Act - 添加会产生哈希冲突的元素
+            // 使用会产生冲突的键（它们模 bucketCount 会相同）
+            for (int i = 0; i < keysCount; i++)
+            {
+                int key = i * bucketCount; // 这些键会产生哈希冲突
+                for (int j = 0; j < valuesPerKey; j++)
+                {
+                    int value = key * 10 + j;
+                    multiMap.Add(largeContainer, key, value);
+                }
+            }
+
+            // Assert - 验证所有元素都能正确访问（即使存在哈希冲突）
+            Assert.AreEqual(expectedTotalCount, multiMap.GetLength(largeContainer));
+
+            for (int i = 0; i < keysCount; i++)
+            {
+                int key = i * bucketCount;
+                Assert.IsTrue(multiMap.ContainsKey(largeContainer, key), $"键 {key} 应该存在（即使存在哈希冲突）");
+                Assert.AreEqual(valuesPerKey, multiMap.GetValueCount(largeContainer, key), $"键 {key} 应该有 {valuesPerKey} 个值");
+
+                // 验证每个值都存在
+                for (int j = 0; j < valuesPerKey; j++)
+                {
+                    int expectedValue = key * 10 + j;
+                    Assert.IsTrue(multiMap.ContainsValue(largeContainer, key, expectedValue), 
+                        $"键 {key} 应该包含值 {expectedValue}（即使存在哈希冲突）");
+                }
+            }
+
+            // Assert - 验证迭代器能正确遍历所有元素（包括哈希冲突的情况）
+            var visitedPairs = new HashSet<(int key, int value)>();
+            int iteratedCount = 0;
+            foreach (var kvp in multiMap.GetEnumerator(largeContainer))
+            {
+                visitedPairs.Add((kvp.Key, kvp.Value));
+                // 验证值的格式：key * 10 + j，其中 j 在 [0, valuesPerKey) 范围内
+                int key = kvp.Key;
+                int value = kvp.Value;
+                int j = value - key * 10;
+                Assert.IsTrue(j >= 0 && j < valuesPerKey, 
+                    $"值 {value} 对于键 {key} 应该是有效的（j={j}）");
+                iteratedCount++;
+            }
+            Assert.AreEqual(expectedTotalCount, iteratedCount, 
+                "迭代器应该遍历所有元素（包括哈希冲突的情况）");
+            Assert.AreEqual(expectedTotalCount, visitedPairs.Count, 
+                "所有键值对都应该被访问到（包括哈希冲突的情况）");
+            
+            // Cleanup
+            largeContainer.Dispose();
+        }
+
+        [Test]
+        public void MultiMap_GetKeysEnumerator_ShouldIterateUniqueKeys()
+        {
+            // Arrange
+            var multiMap = _container.AllocMultiMap<int, int>(10);
+            multiMap.Add(_container, 1, 100);
+            multiMap.Add(_container, 1, 200);
+            multiMap.Add(_container, 2, 300);
+            multiMap.Add(_container, 2, 400);
+            multiMap.Add(_container, 3, 500);
+
+            // Act & Assert
+            var visitedKeys = new HashSet<int>();
+            int count = 0;
+            foreach (var key in multiMap.GetKeysEnumerator(_container))
+            {
+                visitedKeys.Add(key);
+                Assert.IsTrue(key >= 1 && key <= 3, $"键 {key} 应该在有效范围内");
+                count++;
+            }
+            Assert.AreEqual(3, count, "应该遍历所有唯一的键");
+            Assert.AreEqual(3, visitedKeys.Count, "所有唯一的键都应该被访问到");
+            Assert.IsTrue(visitedKeys.Contains(1), "应该包含键 1");
+            Assert.IsTrue(visitedKeys.Contains(2), "应该包含键 2");
+            Assert.IsTrue(visitedKeys.Contains(3), "应该包含键 3");
+        }
+
+        [Test]
+        public void MultiMap_GetValuesEnumerator_ShouldIterateAllValues()
+        {
+            // Arrange
+            var multiMap = _container.AllocMultiMap<int, int>(10);
+            multiMap.Add(_container, 1, 100);
+            multiMap.Add(_container, 1, 200);
+            multiMap.Add(_container, 2, 300);
+            multiMap.Add(_container, 2, 400);
+            multiMap.Add(_container, 3, 500);
+
+            // Act & Assert
+            var visitedValues = new HashSet<int>();
+            int count = 0;
+            foreach (var value in multiMap.GetValuesEnumerator(_container))
+            {
+                visitedValues.Add(value);
+                Assert.IsTrue(value >= 100 && value <= 500, $"值 {value} 应该在有效范围内");
+                count++;
+            }
+            Assert.AreEqual(5, count, "应该遍历所有值");
+            Assert.AreEqual(5, visitedValues.Count, "所有值都应该被访问到");
+            Assert.IsTrue(visitedValues.Contains(100), "应该包含值 100");
+            Assert.IsTrue(visitedValues.Contains(200), "应该包含值 200");
+            Assert.IsTrue(visitedValues.Contains(300), "应该包含值 300");
+            Assert.IsTrue(visitedValues.Contains(400), "应该包含值 400");
+            Assert.IsTrue(visitedValues.Contains(500), "应该包含值 500");
+        }
+
+        [Test]
+        public void MultiMap_GetValuesPerKeyEnumerator_ShouldIterateAllValuesForKey()
+        {
+            // Arrange
+            var multiMap = _container.AllocMultiMap<int, int>(10);
+            multiMap.Add(_container, 1, 100);
+            multiMap.Add(_container, 1, 200);
+            multiMap.Add(_container, 1, 300);
+            multiMap.Add(_container, 2, 400);
+            multiMap.Add(_container, 2, 500);
+
+            // Act & Assert - 测试键 1 的所有值
+            var valuesForKey1 = new HashSet<int>();
+            int count1 = 0;
+            foreach (var value in multiMap.GetValuesPerKeyEnumerator(_container, 1))
+            {
+                valuesForKey1.Add(value);
+                Assert.IsTrue(value >= 100 && value <= 300, $"键 1 的值 {value} 应该在有效范围内");
+                count1++;
+            }
+            Assert.AreEqual(3, count1, "键 1 应该有 3 个值");
+            Assert.AreEqual(3, valuesForKey1.Count, "键 1 的所有值都应该被访问到");
+            Assert.IsTrue(valuesForKey1.Contains(100), "应该包含值 100");
+            Assert.IsTrue(valuesForKey1.Contains(200), "应该包含值 200");
+            Assert.IsTrue(valuesForKey1.Contains(300), "应该包含值 300");
+
+            // Act & Assert - 测试键 2 的所有值
+            var valuesForKey2 = new HashSet<int>();
+            int count2 = 0;
+            foreach (var value in multiMap.GetValuesPerKeyEnumerator(_container, 2))
+            {
+                valuesForKey2.Add(value);
+                Assert.IsTrue(value >= 400 && value <= 500, $"键 2 的值 {value} 应该在有效范围内");
+                count2++;
+            }
+            Assert.AreEqual(2, count2, "键 2 应该有 2 个值");
+            Assert.AreEqual(2, valuesForKey2.Count, "键 2 的所有值都应该被访问到");
+            Assert.IsTrue(valuesForKey2.Contains(400), "应该包含值 400");
+            Assert.IsTrue(valuesForKey2.Contains(500), "应该包含值 500");
+
+            // Act & Assert - 测试不存在的键
+            int count3 = 0;
+            foreach (var value in multiMap.GetValuesPerKeyEnumerator(_container, 999))
+            {
+                count3++;
+            }
+            Assert.AreEqual(0, count3, "不存在的键不应该返回任何值");
+        }
+
+        [Test]
+        public void MultiMap_GetKeysEnumerator_WithEmptyMap_ShouldReturnNoKeys()
+        {
+            // Arrange
+            var multiMap = _container.AllocMultiMap<int, int>(10);
+
+            // Act & Assert
+            int count = 0;
+            foreach (var key in multiMap.GetKeysEnumerator(_container))
+            {
+                count++;
+            }
+            Assert.AreEqual(0, count, "空 MultiMap 不应该返回任何键");
+        }
+
+        [Test]
+        public void MultiMap_GetValuesEnumerator_WithEmptyMap_ShouldReturnNoValues()
+        {
+            // Arrange
+            var multiMap = _container.AllocMultiMap<int, int>(10);
+
+            // Act & Assert
+            int count = 0;
+            foreach (var value in multiMap.GetValuesEnumerator(_container))
+            {
+                count++;
+            }
+            Assert.AreEqual(0, count, "空 MultiMap 不应该返回任何值");
+        }
+
+        [Test]
+        public void MultiMap_GetValuesPerKeyEnumerator_WithSingleValue_ShouldReturnOneValue()
+        {
+            // Arrange
+            var multiMap = _container.AllocMultiMap<int, int>(10);
+            multiMap.Add(_container, 1, 100);
+
+            // Act & Assert
+            int count = 0;
+            int value = 0;
+            foreach (var v in multiMap.GetValuesPerKeyEnumerator(_container, 1))
+            {
+                value = v;
+                count++;
+            }
+            Assert.AreEqual(1, count, "应该返回一个值");
+            Assert.AreEqual(100, value, "值应该是 100");
         }
     }
 }

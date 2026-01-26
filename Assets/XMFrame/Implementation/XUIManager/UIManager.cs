@@ -1457,7 +1457,7 @@ namespace XMFrame.Implementation
             return success;
         }
 
-        public async UniTask CreateUICtrlByAssetId(ModId mod, string path, int count, List<UIHandle> uiHandles)
+        public async UniTask CreateUICtrlByAssetId(ModHandle mod, string path, int count, List<UIHandle> uiHandles)
         {
             if (uiHandles == null)
             {

@@ -28,7 +28,7 @@ namespace XMFrame
 
     public struct StrLabelHandle
     {
-        public ModId DefinedModId;
+        public ModHandle DefinedModId;
         public int labelId;
     }
 

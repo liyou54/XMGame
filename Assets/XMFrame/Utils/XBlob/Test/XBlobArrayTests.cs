@@ -152,5 +152,62 @@ namespace XMFrame.XBlob.Tests
             Assert.AreEqual(100, array1[_container, 0]);
             Assert.AreEqual(200, array2[_container, 0]);
         }
+
+        [Test]
+        public void Array_Add1000Elements_ShouldWorkCorrectly()
+        {
+            // Arrange - 创建足够大的容器来容纳1000个元素的数组
+            // Array<int> 需要: length(int) + capacity * sizeof(int) = 4 + 1000 * 4 = 4004 字节
+            var largeContainer = new XBlobContainer();
+            largeContainer.Create(Allocator.Temp, 10000);
+            
+            const int elementCount = 1000;
+            var array = largeContainer.AllocArray<int>(elementCount);
+
+            // Act - 设置1000个元素的值
+            for (int i = 0; i < elementCount; i++)
+            {
+                array[largeContainer, i] = i * 10;
+            }
+
+            // Assert - 验证数组长度
+            Assert.AreEqual(elementCount, array.GetLength(largeContainer));
+
+            // Assert - 验证所有元素都能正确访问
+            for (int i = 0; i < elementCount; i++)
+            {
+                int expectedValue = i * 10;
+                Assert.AreEqual(expectedValue, array[largeContainer, i], 
+                    $"索引 {i} 的值应该是 {expectedValue}");
+            }
+
+            // Assert - 验证迭代器能遍历所有元素
+            int iteratedCount = 0;
+            foreach (var value in array.GetEnumerator(largeContainer))
+            {
+                int expectedValue = iteratedCount * 10;
+                Assert.AreEqual(expectedValue, value, 
+                    $"迭代器返回的值应该是 {expectedValue}（索引: {iteratedCount}）");
+                iteratedCount++;
+            }
+            Assert.AreEqual(elementCount, iteratedCount, "迭代器应该遍历所有元素");
+
+            // Assert - 验证引用迭代器能修改元素
+            foreach (ref var value in array.GetEnumeratorRef(largeContainer))
+            {
+                value *= 2; // 将每个值乘以2
+            }
+            
+            // 验证修改后的值
+            for (int i = 0; i < elementCount; i++)
+            {
+                int expectedValue = i * 10 * 2; // 原始值乘以2
+                Assert.AreEqual(expectedValue, array[largeContainer, i], 
+                    $"修改后索引 {i} 的值应该是 {expectedValue}");
+            }
+            
+            // Cleanup
+            largeContainer.Dispose();
+        }
     }
 }

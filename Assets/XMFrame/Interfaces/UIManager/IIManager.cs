@@ -20,7 +20,7 @@ namespace XMFrame.Interfaces
         public abstract UniTask OnQuitGame();
     }
 
-    public interface IManager< TI> : IManager 
+    public interface IManager<TI> : IManager
         where TI : IManager<TI>
     {
         public static TI I;

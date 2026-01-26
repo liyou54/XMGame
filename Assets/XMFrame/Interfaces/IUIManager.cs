@@ -123,7 +123,7 @@ namespace XMFrame.Interfaces
         /// <param name="count">创建数量</param>
         /// <param name="uiHandles">输出的UI句柄列表</param>
         /// <returns>异步任务</returns>
-        UniTask CreateUICtrlByAssetId(ModId mod, string path, int count, List<UIHandle> uiHandles);
+        UniTask CreateUICtrlByAssetId(ModHandle mod, string path, int count, List<UIHandle> uiHandles);
 
         /// <summary>
         /// 通过资源ID创建UI控制器

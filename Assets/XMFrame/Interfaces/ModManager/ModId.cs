@@ -4,57 +4,7 @@ using XMFrame;
 using XMFrame.Interfaces;
 
 /// <summary>
-/// Mod ID 结构体，满足 unmanaged 约束
-/// </summary>
-public readonly struct ModId : IEquatable<ModId>
-{
-    public readonly short Value;
 
-    public ModId(short value)
-    {
-        Value = value;
-    }
-
-    public bool Equals(ModId other)
-    {
-        return Value == other.Value;
-    }
-
-    public override bool Equals(object obj)
-    {
-        return obj is ModId other && Equals(other);
-    }
-
-    public override int GetHashCode()
-    {
-        return Value.GetHashCode();
-    }
-
-    public static bool operator ==(ModId left, ModId right)
-    {
-        return left.Equals(right);
-    }
-
-    public static bool operator !=(ModId left, ModId right)
-    {
-        return !(left == right);
-    }
-
-    public static implicit operator short(ModId modId)
-    {
-        return modId.Value;
-    }
-
-    public static implicit operator ModId(short value)
-    {
-        return new ModId(value);
-    }
-
-    public override string ToString()
-    {
-        return Value.ToString();
-    }
-}
 
 /// <summary>
 /// Mod Handle 结构体，满足 unmanaged 约束
@@ -103,6 +53,7 @@ public readonly struct ModHandle : IEquatable<ModHandle>
 [StructLayout(LayoutKind.Explicit)]
 public readonly struct TableHandle : IEquatable<TableHandle>
 {
+    
     [FieldOffset(0)] public readonly short TableId;
 
     [FieldOffset(2)] public readonly ModHandle Mod;
@@ -156,6 +107,7 @@ public readonly struct TableHandle : IEquatable<TableHandle>
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct TableHandle<T> : IEquatable<TableHandle<T>> where T : unmanaged
 {
+    public static readonly ModHandle DefinedInMod;
     public readonly short TableId;
     public readonly ModHandle Mod;
 

@@ -14,6 +14,7 @@ using UnityEditor;
 namespace XMFrame.Implementation
 {
     [AutoCreate]
+    [ManagerDependency(typeof(ISaveManager))]
     public class XModManager : ManagerBase<IModManager>, IModManager
     {
         public const string ModsFolder = "Mods";
@@ -576,7 +577,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 通过Mod名称获取ModId
         /// </summary>
-        public ModId GetModId(string modName)
+        public ModHandle GetModId(string modName)
         {
             if (string.IsNullOrEmpty(modName))
             {
@@ -595,8 +596,58 @@ namespace XMFrame.Implementation
                 return default;
             }
 
-            // 将int转换为ModId（short）
-            return new ModId((short)staticId);
+            // 将int转换为ModHandle（short）
+            return new ModHandle((short)staticId);
+        }
+
+        public IEnumerable<ModConfig> GetEnabledModConfigs()
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// 通过ModHandle获取Mod的XML文件路径列表
+        /// </summary>
+        public IEnumerable<string> GetModXmlFilePathByModId(ModHandle modId)
+        {
+            if (!modId.Valid)
+            {
+                return Enumerable.Empty<string>();
+            }
+
+            // 通过ModHandle的ModId获取ModKey
+            int staticId = modId.ModId;
+            if (!ModStaticToRuntimeDict.TryGetValueByKey(staticId, out var modKey))
+            {
+                return Enumerable.Empty<string>();
+            }
+
+            // 通过ModKey获取ModRuntime
+            if (!_modRuntimeDict.TryGetValue(modKey, out var modRuntime))
+            {
+                return Enumerable.Empty<string>();
+            }
+
+            // 获取Mod配置
+            var modConfig = modRuntime.Config;
+            if (modConfig == null)
+            {
+                return Enumerable.Empty<string>();
+            }
+
+            // 获取Mod文件夹路径（从ModDefine.xml的路径推断）
+            var modsFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ModsFolder);
+            var modFolder = Path.Combine(modsFolderPath, modConfig.ModName);
+
+            // 如果Mod文件夹不存在，返回空列表
+            if (!Directory.Exists(modFolder))
+            {
+                return Enumerable.Empty<string>();
+            }
+
+            // 查找所有XML文件（递归搜索）
+            var xmlFiles = Directory.GetFiles(modFolder, "*.xml", SearchOption.AllDirectories);
+            return xmlFiles;
         }
 
         public override UniTask OnCreate()

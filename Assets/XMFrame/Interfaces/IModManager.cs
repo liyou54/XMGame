@@ -8,7 +8,10 @@ namespace XMFrame.Interfaces
         /// <summary>
         /// 通过Mod名称获取ModId
         /// </summary>
-        ModId GetModId(string modName);
+        ModHandle GetModId(string modName);
+        
+        public IEnumerable<ModConfig> GetEnabledModConfigs();
+        public IEnumerable<string> GetModXmlFilePathByModId(ModHandle modId);
     }
     
 

@@ -24,7 +24,7 @@ namespace XMFrame.Implementation
         /// </summary>
         private class ResPackageInfo
         {
-            public ModId ModId { get; set; }
+            public ModHandle ModId { get; set; }
             public string PackageName { get; set; }
             public string Path { get; set; }
             public ResourcePackage ResourcePackage { get; set; }
@@ -60,7 +60,7 @@ namespace XMFrame.Implementation
         #region 私有字段
 
         // ModId -> ResPackageInfo 映射
-        private Dictionary<ModId, ResPackageInfo> _resPackages = new Dictionary<ModId, ResPackageInfo>();
+        private Dictionary<ModHandle, ResPackageInfo> _resPackages = new Dictionary<ModHandle, ResPackageInfo>();
 
         // AddressId -> AssetAddressInfo 映射
         private Dictionary<int, AssetAddressInfo> _assetAddresses = new Dictionary<int, AssetAddressInfo>();
@@ -70,12 +70,12 @@ namespace XMFrame.Implementation
         private Dictionary<XAssetId, LoadedAssetInfo> _loadedAssets = new Dictionary<XAssetId, LoadedAssetInfo>();
 
         // 资源路径 -> AssetId 映射（用于快速查找）
-        private Dictionary<string, Dictionary<ModId, XAssetId>> _pathToAssetId =
-            new Dictionary<string, Dictionary<ModId, XAssetId>>();
+        private Dictionary<string, Dictionary<ModHandle, XAssetId>> _pathToAssetId =
+            new Dictionary<string, Dictionary<ModHandle, XAssetId>>();
 
         // AssetId -> (ModId, Path) 映射（用于通过AssetId查找路径信息，用于延迟加载）
-        private Dictionary<XAssetId, (ModId modId, string path)> _assetIdToPathInfo =
-            new Dictionary<XAssetId, (ModId, string)>();
+        private Dictionary<XAssetId, (ModHandle modId, string path)> _assetIdToPathInfo =
+            new Dictionary<XAssetId, (ModHandle, string)>();
 
         // 下一个资源ID（全局计数器）
         private int _nextAssetId = 1;
@@ -93,24 +93,24 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 创建资源包 时用modId注册 使用 modName为包名 
         /// </summary>
-        public async UniTask<bool> CreateResPackage(ModId modId, string modName, string path)
+        public async UniTask<bool> CreateResPackage(ModHandle modId, string modName, string path)
         {
             if (string.IsNullOrEmpty(path))
             {
-                XLog.ErrorFormat("资源包路径不能为空，ModId: {0}", modId.Value);
+                XLog.ErrorFormat("资源包路径不能为空，ModId: {0}", modId.ModId);
                 return false;
             }
 
             if (_resPackages.ContainsKey(modId))
             {
-                XLog.WarningFormat("资源包已存在，ModId: {0}, Path: {1}", modId.Value, path);
+                XLog.WarningFormat("资源包已存在，ModId: {0}, Path: {1}", modId.ModId, path);
                 return false;
             }
 
             // 检查路径是否存在
             if (!File.Exists(path) && !Directory.Exists(path))
             {
-                XLog.ErrorFormat("资源包路径不存在，ModId: {0}, Path: {1}", modId.Value, path);
+                XLog.ErrorFormat("资源包路径不存在，ModId: {0}, Path: {1}", modId.ModId, path);
                 return false;
             }
 
@@ -119,7 +119,7 @@ namespace XMFrame.Implementation
                 // 检查modName是否为空
                 if (string.IsNullOrEmpty(modName))
                 {
-                    XLog.ErrorFormat("资源包名称不能为空，ModId: {0}", modId.Value);
+                    XLog.ErrorFormat("资源包名称不能为空，ModId: {0}", modId.ModId);
                     return false;
                 }
 
@@ -145,7 +145,7 @@ namespace XMFrame.Implementation
                 // 检查初始化是否成功
                 if (!resPackageInfo.IsInitialized)
                 {
-                    XLog.ErrorFormat("资源包初始化失败，ModId: {0}, PackageName: {1}, Path: {2}", modId.Value, packageName,
+                    XLog.ErrorFormat("资源包初始化失败，ModId: {0}, PackageName: {1}, Path: {2}", modId.ModId, packageName,
                         path);
                     // 清理已创建的ResourcePackage
                     try
@@ -154,19 +154,19 @@ namespace XMFrame.Implementation
                     }
                     catch (Exception ex)
                     {
-                        XLog.WarningFormat("清理失败的资源包时出错，ModId: {0}, 错误: {1}", modId.Value, ex.Message);
+                        XLog.WarningFormat("清理失败的资源包时出错，ModId: {0}, 错误: {1}", modId.ModId, ex.Message);
                     }
 
                     return false;
                 }
 
                 _resPackages[modId] = resPackageInfo;
-                XLog.InfoFormat("成功创建并加载资源包，ModId: {0}, PackageName: {1}, Path: {2}", modId.Value, packageName, path);
+                XLog.InfoFormat("成功创建并加载资源包，ModId: {0}, PackageName: {1}, Path: {2}", modId.ModId, packageName, path);
                 return true;
             }
             catch (Exception ex)
             {
-                XLog.ErrorFormat("创建资源包失败，ModId: {0}, Path: {1}, 错误: {2}", modId.Value, path, ex.Message);
+                XLog.ErrorFormat("创建资源包失败，ModId: {0}, Path: {1}, 错误: {2}", modId.ModId, path, ex.Message);
                 // 如果已经创建了ResourcePackage，需要清理
                 if (_resPackages.TryGetValue(modId, out var failedPackageInfo))
                 {
@@ -176,7 +176,7 @@ namespace XMFrame.Implementation
                     }
                     catch (Exception cleanupEx)
                     {
-                        XLog.WarningFormat("清理失败的资源包时出错，ModId: {0}, 错误: {1}", modId.Value, cleanupEx.Message);
+                        XLog.WarningFormat("清理失败的资源包时出错，ModId: {0}, 错误: {1}", modId.ModId, cleanupEx.Message);
                     }
 
                     _resPackages.Remove(modId);
@@ -193,11 +193,11 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 创建并注册资源ID（不加载资源）
         /// </summary>
-        public TAssetId CreateAssetId<TAssetId>(ModId modId, string path) where TAssetId : IAssetId
+        public TAssetId CreateAssetId<TAssetId>(ModHandle modId, string path) where TAssetId : IAssetId
         {
             if (string.IsNullOrEmpty(path))
             {
-                XLog.ErrorFormat("资源路径不能为空，ModId: {0}", modId.Value);
+                XLog.ErrorFormat("资源路径不能为空，ModId: {0}", modId.ModId);
                 return default(TAssetId);
             }
 
@@ -206,7 +206,7 @@ namespace XMFrame.Implementation
                 // 检查资源包是否存在
                 if (!_resPackages.TryGetValue(modId, out var resPackageInfo))
                 {
-                    XLog.ErrorFormat("资源包不存在，ModId: {0}", modId.Value);
+                    XLog.ErrorFormat("资源包不存在，ModId: {0}", modId.ModId);
                     return default(TAssetId);
                 }
 
@@ -218,19 +218,18 @@ namespace XMFrame.Implementation
                     // 已存在，直接返回现有的AssetId
                     xAssetIdStruct = existingAssetId;
                     XLog.DebugFormat("AssetId已存在，直接返回，ModId: {0}, Path: {1}, AssetId: {2}",
-                        modId.Value, path, xAssetIdStruct.Id);
+                        modId.ModId, path, xAssetIdStruct.Id);
                 }
                 else
                 {
                     // 创建新的AssetId并注册
-                    var modHandle = new ModHandle(modId.Value);
                     int assetId = _nextAssetId++;
-                    xAssetIdStruct = new XAssetId(modHandle, assetId);
+                    xAssetIdStruct = new XAssetId(modId, assetId);
 
                     // 建立路径映射
                     if (!_pathToAssetId.ContainsKey(path))
                     {
-                        _pathToAssetId[path] = new Dictionary<ModId, XAssetId>();
+                        _pathToAssetId[path] = new Dictionary<ModHandle, XAssetId>();
                     }
                     _pathToAssetId[path][modId] = xAssetIdStruct;
 
@@ -238,7 +237,7 @@ namespace XMFrame.Implementation
                     _assetIdToPathInfo[xAssetIdStruct] = (modId, path);
 
                     XLog.InfoFormat("成功创建并注册AssetId，ModId: {0}, Path: {1}, AssetId: {2}", 
-                        modId.Value, path, assetId);
+                        modId.ModId, path, assetId);
                 }
 
                 // 转换为TAssetId类型
@@ -251,7 +250,7 @@ namespace XMFrame.Implementation
             }
             catch (Exception ex)
             {
-                XLog.ErrorFormat("创建AssetId异常，ModId: {0}, Path: {1}, 错误: {2}", modId.Value, path, ex.Message);
+                XLog.ErrorFormat("创建AssetId异常，ModId: {0}, Path: {1}, 错误: {2}", modId.ModId, path, ex.Message);
                 return default(TAssetId);
             }
         }
@@ -259,7 +258,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 通过ModId和Path获取AssetId
         /// </summary>
-        public XAssetId GetAsstIdByModIdAndPath(ModId modId, string path)
+        public XAssetId GetAsstIdByModIdAndPath(ModHandle modId, string path)
         {
             if (string.IsNullOrEmpty(path))
             {
@@ -288,11 +287,11 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 异步加载资源
         /// </summary>
-        public async UniTask<Address> LoadAssetAsync<Address>(ModId modId, string path) where Address : IAssetId
+        public async UniTask<Address> LoadAssetAsync<Address>(ModHandle modId, string path) where Address : IAssetId
         {
             if (string.IsNullOrEmpty(path))
             {
-                XLog.ErrorFormat("资源路径不能为空，ModId: {0}", modId.Value);
+                XLog.ErrorFormat("资源路径不能为空，ModId: {0}", modId.ModId);
                 return default(Address);
             }
 
@@ -308,7 +307,7 @@ namespace XMFrame.Implementation
                 // 检查资源包是否存在
                 if (!_resPackages.TryGetValue(modId, out var resPackageInfo))
                 {
-                    XLog.ErrorFormat("资源包不存在，ModId: {0}", modId.Value);
+                    XLog.ErrorFormat("资源包不存在，ModId: {0}", modId.ModId);
                     return default(Address);
                 }
 
@@ -318,7 +317,7 @@ namespace XMFrame.Implementation
                     await InitializeResourcePackageAsync(resPackageInfo);
                     if (!resPackageInfo.IsInitialized)
                     {
-                        XLog.ErrorFormat("资源包初始化失败，ModId: {0}", modId.Value);
+                        XLog.ErrorFormat("资源包初始化失败，ModId: {0}", modId.ModId);
                         return default(Address);
                     }
                 }
@@ -337,7 +336,7 @@ namespace XMFrame.Implementation
                 else
                 {
                     XLog.DebugFormat("资源已加载，直接返回现有AssetId，ModId: {0}, Path: {1}, AssetId: {2}",
-                        modId.Value, path, xAssetId.Id);
+                        modId.ModId, path, xAssetId.Id);
                 }
 
                 // 转换为Address类型
@@ -350,7 +349,7 @@ namespace XMFrame.Implementation
             }
             catch (Exception ex)
             {
-                XLog.ErrorFormat("异步加载资源异常，ModId: {0}, Path: {1}, 错误: {2}", modId.Value, path, ex.Message);
+                XLog.ErrorFormat("异步加载资源异常，ModId: {0}, Path: {1}, 错误: {2}", modId.ModId, path, ex.Message);
                 return default(Address);
             }
         }
@@ -358,11 +357,11 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 同步加载资源
         /// </summary>
-        public TAsset LoadAsset<TAsset>(ModId modId, string path) where TAsset : IAssetId
+        public TAsset LoadAsset<TAsset>(ModHandle modId, string path) where TAsset : IAssetId
         {
             if (string.IsNullOrEmpty(path))
             {
-                XLog.ErrorFormat("资源路径不能为空，ModId: {0}", modId.Value);
+                XLog.ErrorFormat("资源路径不能为空，ModId: {0}", modId.ModId);
                 return default(TAsset);
             }
 
@@ -378,7 +377,7 @@ namespace XMFrame.Implementation
                 // 检查资源包是否存在
                 if (!_resPackages.TryGetValue(modId, out var resPackageInfo))
                 {
-                    XLog.ErrorFormat("资源包不存在，ModId: {0}", modId.Value);
+                    XLog.ErrorFormat("资源包不存在，ModId: {0}", modId.ModId);
                     return default(TAsset);
                 }
 
@@ -388,7 +387,7 @@ namespace XMFrame.Implementation
                     InitializeResourcePackageSyncBlocking(resPackageInfo);
                     if (!resPackageInfo.IsInitialized)
                     {
-                        XLog.ErrorFormat("资源包初始化失败，ModId: {0}", modId.Value);
+                        XLog.ErrorFormat("资源包初始化失败，ModId: {0}", modId.ModId);
                         return default(TAsset);
                     }
                 }
@@ -407,7 +406,7 @@ namespace XMFrame.Implementation
                 else
                 {
                     XLog.DebugFormat("资源已加载，直接返回现有AssetId，ModId: {0}, Path: {1}, AssetId: {2}",
-                        modId.Value, path, xAssetId.Id);
+                        modId.ModId, path, xAssetId.Id);
                 }
 
                 // 转换为Address类型
@@ -420,7 +419,7 @@ namespace XMFrame.Implementation
             }
             catch (Exception ex)
             {
-                XLog.ErrorFormat("同步加载资源异常，ModId: {0}, Path: {1}, 错误: {2}", modId.Value, path, ex.Message);
+                XLog.ErrorFormat("同步加载资源异常，ModId: {0}, Path: {1}, 错误: {2}", modId.ModId, path, ex.Message);
                 return default(TAsset);
             }
         }
@@ -600,7 +599,7 @@ namespace XMFrame.Implementation
                 // 检查资源包是否存在
                 if (!_resPackages.TryGetValue(modId, out var resPackageInfo))
                 {
-                    XLog.ErrorFormat("资源包不存在，ModId: {0}", modId.Value);
+                    XLog.ErrorFormat("资源包不存在，ModId: {0}", modId.ModId);
                     return null;
                 }
 
@@ -610,7 +609,7 @@ namespace XMFrame.Implementation
                     await InitializeResourcePackageAsync(resPackageInfo);
                     if (!resPackageInfo.IsInitialized)
                     {
-                        XLog.ErrorFormat("资源包初始化失败，无法加载资源，ModId: {0}", modId.Value);
+                        XLog.ErrorFormat("资源包初始化失败，无法加载资源，ModId: {0}", modId.ModId);
                         return null;
                     }
                 }
@@ -633,14 +632,14 @@ namespace XMFrame.Implementation
                     }
                     else
                     {
-                        XLog.ErrorFormat("加载资源失败，资源句柄无效，ModId: {0}, Path: {1}", modId.Value, path);
+                        XLog.ErrorFormat("加载资源失败，资源句柄无效，ModId: {0}, Path: {1}", modId.ModId, path);
                         assetHandle?.Release();
                         return null;
                     }
                 }
                 catch (Exception ex)
                 {
-                    XLog.ErrorFormat("YooAsset加载资源异常，ModId: {0}, Path: {1}, 错误: {2}", modId.Value, path, ex.Message);
+                    XLog.ErrorFormat("YooAsset加载资源异常，ModId: {0}, Path: {1}, 错误: {2}", modId.ModId, path, ex.Message);
                     assetHandle?.Release();
                     return null;
                 }
@@ -655,7 +654,7 @@ namespace XMFrame.Implementation
                 };
                 _loadedAssets[xAssetId] = loadedAssetInfo;
 
-                XLog.InfoFormat("延迟加载资源成功，ModId: {0}, Path: {1}, AssetId: {2}", modId.Value, path, xAssetId.Id);
+                XLog.InfoFormat("延迟加载资源成功，ModId: {0}, Path: {1}, AssetId: {2}", modId.ModId, path, xAssetId.Id);
             }
 
             // 从对象池获取句柄
@@ -752,7 +751,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 内部异步加载资源方法（提取公共逻辑）
         /// </summary>
-        private async UniTask<XAssetId> LoadAssetInternalAsync(ResPackageInfo resPackageInfo, ModId modId, string path, XAssetId xAssetId)
+        private async UniTask<XAssetId> LoadAssetInternalAsync(ResPackageInfo resPackageInfo, ModHandle modId, string path, XAssetId xAssetId)
         {
             // 使用已创建的AssetId
             var assetIdStruct = xAssetId;
@@ -775,14 +774,14 @@ namespace XMFrame.Implementation
                 }
                 else
                 {
-                    XLog.ErrorFormat("加载资源失败，资源句柄无效，ModId: {0}, Path: {1}", modId.Value, path);
+                    XLog.ErrorFormat("加载资源失败，资源句柄无效，ModId: {0}, Path: {1}", modId.ModId, path);
                     assetHandle?.Release();
                     return new XAssetId(assetIdStruct.ModHandle, 0); // 返回无效的AssetId
                 }
             }
             catch (Exception ex)
             {
-                XLog.ErrorFormat("YooAsset加载资源异常，ModId: {0}, Path: {1}, 错误: {2}", modId.Value, path, ex.Message);
+                XLog.ErrorFormat("YooAsset加载资源异常，ModId: {0}, Path: {1}, 错误: {2}", modId.ModId, path, ex.Message);
                 assetHandle?.Release();
                 return new XAssetId(assetIdStruct.ModHandle, 0); // 返回无效的AssetId
             }
@@ -800,14 +799,14 @@ namespace XMFrame.Implementation
             // 如果资源在待回收Set中，移除它（资源被重新加载）
             _assetsToRecycle.Remove(assetIdStruct);
 
-            XLog.InfoFormat("成功异步加载资源，ModId: {0}, Path: {1}, AssetId: {2}", modId.Value, path, assetIdStruct.Id);
+            XLog.InfoFormat("成功异步加载资源，ModId: {0}, Path: {1}, AssetId: {2}", modId.ModId, path, assetIdStruct.Id);
             return assetIdStruct;
         }
 
         /// <summary>
         /// 内部同步加载资源方法（提取公共逻辑）
         /// </summary>
-        private XAssetId LoadAssetInternalSync(ResPackageInfo resPackageInfo, ModId modId, string path, XAssetId xAssetId)
+        private XAssetId LoadAssetInternalSync(ResPackageInfo resPackageInfo, ModHandle modId, string path, XAssetId xAssetId)
         {
             // 使用已创建的AssetId
             var assetIdStruct = xAssetId;
@@ -827,14 +826,14 @@ namespace XMFrame.Implementation
                 }
                 else
                 {
-                    XLog.ErrorFormat("加载资源失败，资源句柄无效，ModId: {0}, Path: {1}", modId.Value, path);
+                    XLog.ErrorFormat("加载资源失败，资源句柄无效，ModId: {0}, Path: {1}", modId.ModId, path);
                     assetHandle?.Release();
                     return new XAssetId(assetIdStruct.ModHandle, 0); // 返回无效的AssetId
                 }
             }
             catch (Exception ex)
             {
-                XLog.ErrorFormat("YooAsset加载资源异常，ModId: {0}, Path: {1}, 错误: {2}", modId.Value, path, ex.Message);
+                XLog.ErrorFormat("YooAsset加载资源异常，ModId: {0}, Path: {1}, 错误: {2}", modId.ModId, path, ex.Message);
                 assetHandle?.Release();
                 return new XAssetId(assetIdStruct.ModHandle, 0); // 返回无效的AssetId
             }
@@ -852,7 +851,7 @@ namespace XMFrame.Implementation
             // 如果资源在待回收Set中，移除它（资源被重新加载）
             _assetsToRecycle.Remove(assetIdStruct);
 
-            XLog.InfoFormat("成功同步加载资源，ModId: {0}, Path: {1}, AssetId: {2}", modId.Value, path, assetIdStruct.Id);
+            XLog.InfoFormat("成功同步加载资源，ModId: {0}, Path: {1}, AssetId: {2}", modId.ModId, path, assetIdStruct.Id);
             return assetIdStruct;
         }
 
@@ -885,18 +884,18 @@ namespace XMFrame.Implementation
                 {
                     resPackageInfo.IsInitialized = true;
                     XLog.InfoFormat("成功初始化资源包，ModId: {0}, PackageName: {1}",
-                        resPackageInfo.ModId.Value, resPackageInfo.PackageName);
+                        resPackageInfo.ModId.ModId, resPackageInfo.PackageName);
                 }
                 else
                 {
                     XLog.ErrorFormat("初始化资源包失败，ModId: {0}, PackageName: {1}, Status: {2}",
-                        resPackageInfo.ModId.Value, resPackageInfo.PackageName, initOperation.Status);
+                        resPackageInfo.ModId.ModId, resPackageInfo.PackageName, initOperation.Status);
                 }
             }
             catch (Exception ex)
             {
                 XLog.ErrorFormat("初始化资源包异常，ModId: {0}, PackageName: {1}, 错误: {2}",
-                    resPackageInfo.ModId.Value, resPackageInfo.PackageName, ex.Message);
+                    resPackageInfo.ModId.ModId, resPackageInfo.PackageName, ex.Message);
                 resPackageInfo.IsInitialized = false;
             }
         }
@@ -934,7 +933,7 @@ namespace XMFrame.Implementation
                 if (waitedTime >= maxWaitTime)
                 {
                     XLog.ErrorFormat("初始化资源包超时，ModId: {0}, PackageName: {1}",
-                        resPackageInfo.ModId.Value, resPackageInfo.PackageName);
+                        resPackageInfo.ModId.ModId, resPackageInfo.PackageName);
                     resPackageInfo.IsInitialized = false;
                     return;
                 }
@@ -943,19 +942,19 @@ namespace XMFrame.Implementation
                 {
                     resPackageInfo.IsInitialized = true;
                     XLog.InfoFormat("成功初始化资源包，ModId: {0}, PackageName: {1}",
-                        resPackageInfo.ModId.Value, resPackageInfo.PackageName);
+                        resPackageInfo.ModId.ModId, resPackageInfo.PackageName);
                 }
                 else
                 {
                     XLog.ErrorFormat("初始化资源包失败，ModId: {0}, PackageName: {1}, Status: {2}",
-                        resPackageInfo.ModId.Value, resPackageInfo.PackageName, initOperation.Status);
+                        resPackageInfo.ModId.ModId, resPackageInfo.PackageName, initOperation.Status);
                     resPackageInfo.IsInitialized = false;
                 }
             }
             catch (Exception ex)
             {
                 XLog.ErrorFormat("初始化资源包异常，ModId: {0}, PackageName: {1}, 错误: {2}",
-                    resPackageInfo.ModId.Value, resPackageInfo.PackageName, ex.Message);
+                    resPackageInfo.ModId.ModId, resPackageInfo.PackageName, ex.Message);
                 resPackageInfo.IsInitialized = false;
             }
         }
@@ -1068,7 +1067,7 @@ namespace XMFrame.Implementation
                     // 获取路径信息（在删除前）
                     var pathInfo = _assetIdToPathInfo.TryGetValue(assetId, out var pi)
                         ? pi
-                        : (modId: default(ModId), path: null);
+                        : (modId: default(ModHandle), path: null);
 
                     // 清理资源信息
                     _loadedAssets.Remove(assetId);
@@ -1180,7 +1179,7 @@ namespace XMFrame.Implementation
                     catch (Exception ex)
                     {
                         XLog.WarningFormat("卸载资源包时出错，ModId: {0}, 错误: {1}",
-                            resPackageInfo.ModId.Value, ex.Message);
+                            resPackageInfo.ModId.ModId, ex.Message);
                     }
                 }
             }

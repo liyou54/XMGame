@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using Unity.Burst;
+using Unity.Collections.LowLevel.Unsafe;
 
+[BurstCompile]
 internal struct XBlobHashSetEntry<T>
     where T : unmanaged
 {
@@ -9,6 +12,7 @@ internal struct XBlobHashSetEntry<T>
     public T Value;
 }
 
+[BurstCompile]
 internal ref struct XBlobHashSetView<T>
     where T : unmanaged
 {
@@ -18,6 +22,34 @@ internal ref struct XBlobHashSetView<T>
     internal Span<XBlobHashSetEntry<T>> Entries;
 }
 
+// Burst 优化的 Set 查找方法
+[BurstCompile]
+internal static unsafe class XBlobSetBurst
+{
+    [BurstCompile]
+    public static int FindEntry<T>(
+        int* buckets,
+        XBlobHashSetEntry<T>* entries,
+        int bucketCount,
+        in T value,
+        int hashCode)
+        where T : unmanaged, IEquatable<T>
+    {
+        int bucketIndex = hashCode % bucketCount;
+        if (bucketIndex < 0) bucketIndex += bucketCount;
+        
+        for (int i = buckets[bucketIndex] - 1; i >= 0; i = entries[i].Next)
+        {
+            if (entries[i].HashCode == hashCode && entries[i].Value.Equals(value))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+}
+
+[BurstCompile]
 public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
 {
     internal readonly int Offset;
@@ -27,17 +59,20 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
     private const int BucketCountOffset = sizeof(int);
     private const int BucketsOffset = sizeof(int) * 2;
 
-    private int GetBucketCount(XBlobContainer container)
+    [BurstCompile]
+    private int GetBucketCount(in XBlobContainer container)
     {
         return container.Get<int>(Offset + BucketCountOffset);
     }
 
-    private int GetCount(XBlobContainer container)
+    [BurstCompile]
+    private int GetCount(in XBlobContainer container)
     {
         return container.Get<int>(Offset + CountOffset);
     }
 
-    private unsafe XBlobHashSetView<T> GetView(XBlobContainer container)
+    [BurstCompile]
+    private unsafe XBlobHashSetView<T> GetView(in XBlobContainer container)
     {
         int bucketCount = GetBucketCount(container);
         int count = GetCount(container);
@@ -58,12 +93,14 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
         };
     }
 
+    [BurstCompile]
     private static int GetHashCode(in T value)
     {
         return value.GetHashCode();
     }
 
-    private int FindEntry(XBlobContainer container, in T value, int hashCode)
+    [BurstCompile]
+    private int FindEntry(in XBlobContainer container, in T value, int hashCode)
     {
         var view = GetView(container);
         int bucketIndex = hashCode % view.BucketCount;
@@ -79,12 +116,13 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
         return -1;
     }
 
-    public int GetLength(XBlobContainer container)
+    [BurstCompile]
+    public int GetLength(in XBlobContainer container)
     {
         return GetCount(container);
     }
 
-    public T this[XBlobContainer container, int index]
+    public T this[in XBlobContainer container, int index]
     {
         get
         {
@@ -95,13 +133,15 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
         }
     }
 
-    public bool Contains(XBlobContainer container, in T value)
+    [BurstCompile]
+    public bool Contains(in XBlobContainer container, in T value)
     {
         int hashCode = GetHashCode(value);
         return FindEntry(container, value, hashCode) >= 0;
     }
 
-    public bool Add(XBlobContainer container, in T value)
+    [BurstCompile]
+    public bool Add(in XBlobContainer container, in T value)
     {
         int hashCode = GetHashCode(value);
         int index = FindEntry(container, value, hashCode);
@@ -142,17 +182,19 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
         }
     }
 
-    public Enumerable GetEnumerator(XBlobContainer container)
+    [BurstCompile]
+    public Enumerable GetEnumerator(in XBlobContainer container)
     {
         return new Enumerable(this, container);
     }
 
+    [BurstCompile]
     public ref struct Enumerator
     {
         private XBlobHashSetView<T> _view;
         private int _index;
 
-        internal Enumerator(XBlobSet<T> set, XBlobContainer container)
+        internal Enumerator(in XBlobSet<T> set, in XBlobContainer container)
         {
             _view = set.GetView(container);
             _index = -1;
@@ -160,6 +202,7 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
 
         public T Current => _view.Entries[_index].Value;
 
+        [BurstCompile]
         public bool MoveNext()
         {
             _index++;
@@ -167,17 +210,19 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
         }
     }
 
+    [BurstCompile]
     public ref struct Enumerable
     {
         private readonly XBlobSet<T> _set;
         private readonly XBlobContainer _container;
 
-        internal Enumerable(XBlobSet<T> set, XBlobContainer container)
+        internal Enumerable(in XBlobSet<T> set, in XBlobContainer container)
         {
             _set = set;
             _container = container;
         }
 
+        [BurstCompile]
         public Enumerator GetEnumerator()
         {
             return new Enumerator(_set, _container);
