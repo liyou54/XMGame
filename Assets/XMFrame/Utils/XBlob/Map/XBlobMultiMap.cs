@@ -197,25 +197,25 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(in XBlobContainer container, in TKey key, in TValue value)
     {
-        // 超级快速路径：最小化内存访问和函数调用
+        // 写操作：使用安全路径，带验证以确保数据一致性
+        int count = container.Get<int>(Offset + CountOffset);
+        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
+        
+        if (count >= bucketCount)
+            throw new InvalidOperationException(XBlobHashCommon.FullMessage);
+
+        int hashCode = GetHashCode(key);
+        int bi = hashCode % bucketCount;
+        if (bi < 0) bi += bucketCount;
+
         unsafe
         {
-            byte* dataPtr = container.Data->GetDataPointer(Offset);
-            int count = *(int*)dataPtr;
-            int bucketCount = *(int*)(dataPtr + BucketCountOffset);
-            
-            if (count >= bucketCount)
-                throw new InvalidOperationException(XBlobHashCommon.FullMessage);
-
-            int hashCode = GetHashCode(key);
-            int bi = hashCode % bucketCount;
-            if (bi < 0) bi += bucketCount;
-
-            byte* bucketsPtr = dataPtr + BucketsOffset;
-            int* buckets = (int*)bucketsPtr;
+            int bucketsOffset = Offset + BucketsOffset;
+            byte* basePtr = container.GetDataPointer(bucketsOffset);
+            int* buckets = (int*)basePtr;
             int entrySize = sizeof(int) * 3;
             int bucketsSize = bucketCount * sizeof(int);
-            XBlobMultiMapEntry<TKey, TValue>* entries = (XBlobMultiMapEntry<TKey, TValue>*)(bucketsPtr + bucketsSize);
+            XBlobMultiMapEntry<TKey, TValue>* entries = (XBlobMultiMapEntry<TKey, TValue>*)(basePtr + bucketsSize);
             TKey* keys = (TKey*)((byte*)entries + bucketCount * entrySize);
             TValue* values = (TValue*)((byte*)keys + bucketCount * UnsafeUtility.SizeOf<TKey>());
 
@@ -247,7 +247,7 @@ public readonly struct XBlobMultiMap<TKey, TValue>
                 buckets[bi] = count;
             }
 
-            *(int*)dataPtr = count + 1;
+            container.GetRef<int>(Offset + CountOffset) = count + 1; // 安全写入
         }
     }
 

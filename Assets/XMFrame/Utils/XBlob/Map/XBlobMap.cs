@@ -235,22 +235,21 @@ public struct XBlobMap<TKey, TValue>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool AddOrUpdate(in XBlobContainer container, in TKey key, in TValue value)
     {
-        // 超级快速路径：最小化内存访问和函数调用
+        // 写操作：使用安全路径，带验证以确保数据一致性
+        int count = container.Get<int>(Offset + CountOffset);
+        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
+        int hashCode = GetHashCode(key);
+        int bi = hashCode % bucketCount;
+        if (bi < 0) bi += bucketCount;
+
         unsafe
         {
-            byte* dataPtr = container.Data->GetDataPointer(Offset);
-            int count = *(int*)dataPtr;
-            int bucketCount = *(int*)(dataPtr + BucketCountOffset);
-            int hashCode = GetHashCode(key);
-            int bi = hashCode % bucketCount;
-            if (bi < 0) bi += bucketCount;
-
-            // 一次计算所有指针
-            byte* bucketsPtr = dataPtr + BucketsOffset;
-            int* buckets = (int*)bucketsPtr;
+            int bucketsOffset = Offset + BucketsOffset;
+            byte* basePtr = container.GetDataPointer(bucketsOffset);
+            int* buckets = (int*)basePtr;
             int entrySize = sizeof(int) + sizeof(int);
             int bucketsSize = bucketCount * sizeof(int);
-            XBlobHashMapEntry<TKey, TValue>* entries = (XBlobHashMapEntry<TKey, TValue>*)(bucketsPtr + bucketsSize);
+            XBlobHashMapEntry<TKey, TValue>* entries = (XBlobHashMapEntry<TKey, TValue>*)(basePtr + bucketsSize);
             TKey* keys = (TKey*)((byte*)entries + bucketCount * entrySize);
             TValue* values = (TValue*)((byte*)keys + bucketCount * UnsafeUtility.SizeOf<TKey>());
 
@@ -273,7 +272,7 @@ public struct XBlobMap<TKey, TValue>
             buckets[bi] = count;
             keys[count] = key;
             values[count] = value;
-            *(int*)dataPtr = count + 1; // 直接写入 count
+            container.GetRef<int>(Offset + CountOffset) = count + 1; // 安全写入
             return true; // 新增
         }
     }
