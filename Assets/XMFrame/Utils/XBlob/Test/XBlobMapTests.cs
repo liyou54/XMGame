@@ -217,6 +217,84 @@ namespace XMFrame.XBlob.Tests
         }
 
         [Test]
+        public void Map_WhenFull_UpdateExistingKey_ShouldNotThrowException()
+        {
+            // Arrange - 创建容量为 2 的 Map 并填满
+            var map = _container.AllocMap<int, int>(2);
+            map.AddOrUpdate(_container, 1, 10);
+            map.AddOrUpdate(_container, 2, 20);
+            Assert.AreEqual(2, map.GetLength(_container), "Map 应该已满");
+
+            // Act - 更新已存在的键不应触发满容异常
+            bool updated1 = map.AddOrUpdate(_container, 1, 100);
+            bool updated2 = map.AddOrUpdate(_container, 2, 200);
+
+            // Assert
+            Assert.IsFalse(updated1, "更新已存在的键应该返回 false");
+            Assert.IsFalse(updated2, "更新已存在的键应该返回 false");
+            Assert.AreEqual(2, map.GetLength(_container), "Map 长度不应变化");
+            Assert.AreEqual(100, map[_container, 1], "键 1 的值应该被更新");
+            Assert.AreEqual(200, map[_container, 2], "键 2 的值应该被更新");
+        }
+
+        [Test]
+        public void Map_FillToCapacity_ShouldWorkCorrectly()
+        {
+            // Arrange
+            const int capacity = 5;
+            var map = _container.AllocMap<int, string>(capacity);
+
+            // Act - 填充到容量上限
+            for (int i = 0; i < capacity; i++)
+            {
+                bool added = map.AddOrUpdate(_container, i, $"value{i}");
+                Assert.IsTrue(added, $"添加第 {i} 个元素应该成功");
+            }
+
+            // Assert
+            Assert.AreEqual(capacity, map.GetLength(_container), "Map 应该已满");
+            for (int i = 0; i < capacity; i++)
+            {
+                Assert.IsTrue(map.HasKey(_container, i), $"应该包含键 {i}");
+                Assert.IsTrue(map.TryGetValue(_container, i, out string value), $"应该能获取键 {i}");
+                Assert.AreEqual($"value{i}", value, $"键 {i} 的值应该正确");
+            }
+        }
+
+        [Test]
+        public void Map_ExceedCapacity_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            const int capacity = 3;
+            var map = _container.AllocMap<int, int>(capacity);
+            for (int i = 0; i < capacity; i++)
+            {
+                map.AddOrUpdate(_container, i, i * 10);
+            }
+
+            // Act & Assert - 尝试添加超过容量的元素
+            var exception = Assert.Throws<InvalidOperationException>(() => 
+                map.AddOrUpdate(_container, capacity, capacity * 10));
+            Assert.That(exception.Message, Does.Contain("full").Or.Contain("满"));
+        }
+
+        [Test]
+        public void Map_SingleCapacity_ShouldWorkAndThrowOnSecond()
+        {
+            // Arrange - 容量为 1 的极限情况
+            var map = _container.AllocMap<int, int>(1);
+
+            // Act & Assert - 第一个元素应该成功
+            bool added = map.AddOrUpdate(_container, 1, 10);
+            Assert.IsTrue(added, "第一个元素应该添加成功");
+            Assert.AreEqual(1, map.GetLength(_container));
+
+            // 第二个元素应该失败
+            Assert.Throws<InvalidOperationException>(() => 
+                map.AddOrUpdate(_container, 2, 20));
+        }
+
+        [Test]
         public void Map_Add1000Elements_ShouldWorkCorrectly()
         {
             // Arrange - 创建足够大的容器来容纳1000个元素

@@ -191,6 +191,99 @@ namespace XMFrame.XBlob.Tests
         }
 
         [Test]
+        public void MultiMap_WhenFull_AddToExistingKey_ShouldThrowException()
+        {
+            // Arrange - MultiMap 满容后，即使添加到已存在的键也应该失败
+            var multiMap = _container.AllocMultiMap<int, int>(2);
+            multiMap.Add(_container, 1, 10);
+            multiMap.Add(_container, 2, 20);
+            Assert.AreEqual(2, multiMap.GetLength(_container), "MultiMap 应该已满");
+
+            // Act & Assert - MultiMap 添加到已存在的键也会占用新的 slot
+            var exception = Assert.Throws<InvalidOperationException>(() => 
+                multiMap.Add(_container, 1, 100));
+            Assert.That(exception.Message, Does.Contain("full").Or.Contain("满"));
+        }
+
+        [Test]
+        public void MultiMap_FillToCapacity_ShouldWorkCorrectly()
+        {
+            // Arrange
+            const int capacity = 5;
+            var multiMap = _container.AllocMultiMap<int, string>(capacity);
+
+            // Act - 填充到容量上限（不同的键）
+            for (int i = 0; i < capacity; i++)
+            {
+                multiMap.Add(_container, i, $"value{i}");
+            }
+
+            // Assert
+            Assert.AreEqual(capacity, multiMap.GetLength(_container), "MultiMap 应该已满");
+            for (int i = 0; i < capacity; i++)
+            {
+                Assert.IsTrue(multiMap.ContainsKey(_container, i), $"应该包含键 {i}");
+                Assert.AreEqual(1, multiMap.GetValueCount(_container, i), $"键 {i} 应该有 1 个值");
+            }
+        }
+
+        [Test]
+        public void MultiMap_FillWithMultipleValuesPerKey_ShouldRespectCapacity()
+        {
+            // Arrange - 测试同一个键添加多个值时的容量限制
+            const int capacity = 4;
+            var multiMap = _container.AllocMultiMap<int, int>(capacity);
+
+            // Act - 给同一个键添加多个值
+            multiMap.Add(_container, 1, 10);
+            multiMap.Add(_container, 1, 20);
+            multiMap.Add(_container, 1, 30);
+            multiMap.Add(_container, 2, 100);
+
+            // Assert - 应该使用了 4 个 slot
+            Assert.AreEqual(4, multiMap.GetLength(_container), "应该使用了 4 个 slot");
+            Assert.AreEqual(3, multiMap.GetValueCount(_container, 1), "键 1 应该有 3 个值");
+            Assert.AreEqual(1, multiMap.GetValueCount(_container, 2), "键 2 应该有 1 个值");
+
+            // Act & Assert - 第 5 个元素应该失败
+            Assert.Throws<InvalidOperationException>(() => 
+                multiMap.Add(_container, 3, 200));
+        }
+
+        [Test]
+        public void MultiMap_ExceedCapacity_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            const int capacity = 3;
+            var multiMap = _container.AllocMultiMap<string, int>(capacity);
+            multiMap.Add(_container, "key1", 1);
+            multiMap.Add(_container, "key2", 2);
+            multiMap.Add(_container, "key3", 3);
+
+            // Act & Assert - 尝试添加超过容量的元素
+            var exception = Assert.Throws<InvalidOperationException>(() => 
+                multiMap.Add(_container, "key4", 4));
+            Assert.That(exception.Message, Does.Contain("full").Or.Contain("满"));
+        }
+
+        [Test]
+        public void MultiMap_SingleCapacity_ShouldWorkAndThrowOnSecond()
+        {
+            // Arrange - 容量为 1 的极限情况
+            var multiMap = _container.AllocMultiMap<int, int>(1);
+
+            // Act & Assert - 第一个元素应该成功
+            multiMap.Add(_container, 1, 10);
+            Assert.AreEqual(1, multiMap.GetLength(_container));
+
+            // 第二个元素应该失败（即使是给同一个键添加）
+            Assert.Throws<InvalidOperationException>(() => 
+                multiMap.Add(_container, 1, 20));
+            Assert.Throws<InvalidOperationException>(() => 
+                multiMap.Add(_container, 2, 20));
+        }
+
+        [Test]
         public void MultiMap_MultipleKeys_ShouldWorkIndependently()
         {
             // Arrange

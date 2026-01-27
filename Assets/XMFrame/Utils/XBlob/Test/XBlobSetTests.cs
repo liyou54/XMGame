@@ -146,6 +146,80 @@ namespace XMFrame.XBlob.Tests
         }
 
         [Test]
+        public void Set_WhenFull_AddDuplicate_ShouldNotThrowException()
+        {
+            // Arrange - 创建容量为 2 的 Set 并填满
+            var set = _container.AllocSet<int>(2);
+            set.Add(_container, 1);
+            set.Add(_container, 2);
+            Assert.AreEqual(2, set.GetLength(_container), "Set 应该已满");
+
+            // Act - 添加已存在的值不应触发满容异常
+            bool added1 = set.Add(_container, 1);
+            bool added2 = set.Add(_container, 2);
+
+            // Assert
+            Assert.IsFalse(added1, "添加重复值应该返回 false");
+            Assert.IsFalse(added2, "添加重复值应该返回 false");
+            Assert.AreEqual(2, set.GetLength(_container), "Set 长度不应变化");
+        }
+
+        [Test]
+        public void Set_FillToCapacity_ShouldWorkCorrectly()
+        {
+            // Arrange
+            const int capacity = 5;
+            var set = _container.AllocSet<int>(capacity);
+
+            // Act - 填充到容量上限
+            for (int i = 0; i < capacity; i++)
+            {
+                bool added = set.Add(_container, i * 10);
+                Assert.IsTrue(added, $"添加第 {i} 个元素应该成功");
+            }
+
+            // Assert
+            Assert.AreEqual(capacity, set.GetLength(_container), "Set 应该已满");
+            for (int i = 0; i < capacity; i++)
+            {
+                Assert.IsTrue(set.Contains(_container, i * 10), $"应该包含值 {i * 10}");
+            }
+        }
+
+        [Test]
+        public void Set_ExceedCapacity_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            const int capacity = 3;
+            var set = _container.AllocSet<string>(capacity);
+            for (int i = 0; i < capacity; i++)
+            {
+                set.Add(_container, $"item{i}");
+            }
+
+            // Act & Assert - 尝试添加超过容量的元素
+            var exception = Assert.Throws<InvalidOperationException>(() => 
+                set.Add(_container, $"item{capacity}"));
+            Assert.That(exception.Message, Does.Contain("full").Or.Contain("满"));
+        }
+
+        [Test]
+        public void Set_SingleCapacity_ShouldWorkAndThrowOnSecond()
+        {
+            // Arrange - 容量为 1 的极限情况
+            var set = _container.AllocSet<int>(1);
+
+            // Act & Assert - 第一个元素应该成功
+            bool added = set.Add(_container, 100);
+            Assert.IsTrue(added, "第一个元素应该添加成功");
+            Assert.AreEqual(1, set.GetLength(_container));
+
+            // 第二个元素应该失败
+            Assert.Throws<InvalidOperationException>(() => 
+                set.Add(_container, 200));
+        }
+
+        [Test]
         public void Set_WithIntValues_ShouldWork()
         {
             // Arrange
