@@ -90,29 +90,72 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
     }
 
     [BurstCompile]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(in XBlobContainer container, in T value)
     {
-        var view = GetView(container);
-        return view.FindEntry(value, GetHashCode(value)) >= 0;
+        // 快速路径：直接访问内存，避免创建完整 View
+        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
+        int hashCode = GetHashCode(value);
+        int bi = hashCode % bucketCount;
+        if (bi < 0) bi += bucketCount;
+
+        unsafe
+        {
+            int bucketsOffset = Offset + BucketsOffset;
+            byte* basePtr = container.GetDataPointer(bucketsOffset);
+            int* buckets = (int*)basePtr;
+            int entrySize = sizeof(int) + sizeof(int);
+            XBlobHashSetEntry* entries = (XBlobHashSetEntry*)(basePtr + bucketCount * sizeof(int));
+            T* values = (T*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
+
+            for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
+            {
+                if (entries[i].HashCode == hashCode && values[i].Equals(value))
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     [BurstCompile]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Add(in XBlobContainer container, in T value)
     {
-        var view = GetView(container);
+        // 快速路径：直接访问内存，避免创建完整 View
+        int count = container.Get<int>(Offset + CountOffset);
+        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
         int hashCode = GetHashCode(value);
-        if (view.FindEntry(value, hashCode) >= 0)
-            return false;
-        int slot = view.Count;
-        if (slot >= view.BucketCount)
-            throw new InvalidOperationException(XBlobHashCommon.FullMessage);
-        int bi = XBlobHashCommon.BucketIndex(hashCode, view.BucketCount);
-        view.Entries[slot].HashCode = hashCode;
-        view.Entries[slot].Next = view.Buckets[bi];
-        view.Buckets[bi] = slot;
-        view.Values[slot] = value;
-        container.GetRef<int>(Offset + CountOffset) = slot + 1;
-        return true;
+        int bi = hashCode % bucketCount;
+        if (bi < 0) bi += bucketCount;
+
+        unsafe
+        {
+            int bucketsOffset = Offset + BucketsOffset;
+            byte* basePtr = container.GetDataPointer(bucketsOffset);
+            int* buckets = (int*)basePtr;
+            int entrySize = sizeof(int) + sizeof(int);
+            XBlobHashSetEntry* entries = (XBlobHashSetEntry*)(basePtr + bucketCount * sizeof(int));
+            T* values = (T*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
+
+            // 检查是否已存在
+            for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
+            {
+                if (entries[i].HashCode == hashCode && values[i].Equals(value))
+                    return false; // 已存在
+            }
+
+            // 添加新元素
+            if (count >= bucketCount)
+                throw new InvalidOperationException(XBlobHashCommon.FullMessage);
+
+            entries[count].HashCode = hashCode;
+            entries[count].Next = buckets[bi];
+            buckets[bi] = count;
+            values[count] = value;
+            container.GetRef<int>(Offset + CountOffset) = count + 1;
+            return true;
+        }
     }
 
     [BurstCompile]

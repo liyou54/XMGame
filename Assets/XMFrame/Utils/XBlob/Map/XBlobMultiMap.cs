@@ -122,10 +122,32 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     }
 
     [BurstCompile]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(in XBlobContainer container, in TKey key)
     {
-        var view = GetView(container);
-        return view.FindFirstEntry(key, GetHashCode(key)) >= 0;
+        // 快速路径：直接访问内存，避免创建完整 View
+        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
+        int hashCode = GetHashCode(key);
+        int bi = hashCode % bucketCount;
+        if (bi < 0) bi += bucketCount;
+
+        unsafe
+        {
+            int bucketsOffset = Offset + BucketsOffset;
+            byte* basePtr = container.GetDataPointer(bucketsOffset);
+            int* buckets = (int*)basePtr;
+            int entrySize = sizeof(int) * 3;
+            XBlobMultiMapEntry* entries = (XBlobMultiMapEntry*)(basePtr + bucketCount * sizeof(int));
+            TKey* keys = (TKey*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
+
+            for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
+            {
+                if (entries[i].HashCode == hashCode && keys[i].Equals(key))
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     [BurstCompile]
@@ -171,34 +193,59 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     }
 
     [BurstCompile]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(in XBlobContainer container, in TKey key, in TValue value)
     {
-        var view = GetView(container);
+        // 快速路径：直接访问内存，避免创建完整 View
+        int count = container.Get<int>(Offset + CountOffset);
+        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
         int hashCode = GetHashCode(key);
-        int firstIndex = view.FindFirstEntry(key, hashCode);
-        int slot = view.Count;
-        if (slot >= view.BucketCount)
+        int bi = hashCode % bucketCount;
+        if (bi < 0) bi += bucketCount;
+
+        if (count >= bucketCount)
             throw new InvalidOperationException(XBlobHashCommon.FullMessage);
 
-        view.Entries[slot].HashCode = hashCode;
-        view.Keys[slot] = key;
-        view.Values[slot] = value;
-
-        if (firstIndex >= 0)
+        unsafe
         {
-            view.Entries[slot].Next = -1;
-            view.Entries[slot].ValueNext = view.Entries[firstIndex].ValueNext;
-            view.Entries[firstIndex].ValueNext = slot;
-        }
-        else
-        {
-            int bi = XBlobHashCommon.BucketIndex(hashCode, view.BucketCount);
-            view.Entries[slot].Next = view.Buckets[bi];
-            view.Entries[slot].ValueNext = -1;
-            view.Buckets[bi] = slot;
-        }
+            int bucketsOffset = Offset + BucketsOffset;
+            byte* basePtr = container.GetDataPointer(bucketsOffset);
+            int* buckets = (int*)basePtr;
+            int entrySize = sizeof(int) * 3;
+            XBlobMultiMapEntry* entries = (XBlobMultiMapEntry*)(basePtr + bucketCount * sizeof(int));
+            TKey* keys = (TKey*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
+            TValue* values = (TValue*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize + bucketCount * UnsafeUtility.SizeOf<TKey>());
 
-        container.GetRef<int>(Offset + CountOffset) = slot + 1;
+            // 查找 firstIndex
+            int firstIndex = -1;
+            for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
+            {
+                if (entries[i].HashCode == hashCode && keys[i].Equals(key))
+                {
+                    firstIndex = i;
+                    break;
+                }
+            }
+
+            entries[count].HashCode = hashCode;
+            keys[count] = key;
+            values[count] = value;
+
+            if (firstIndex >= 0)
+            {
+                entries[count].Next = -1;
+                entries[count].ValueNext = entries[firstIndex].ValueNext;
+                entries[firstIndex].ValueNext = count;
+            }
+            else
+            {
+                entries[count].Next = buckets[bi];
+                entries[count].ValueNext = -1;
+                buckets[bi] = count;
+            }
+
+            container.GetRef<int>(Offset + CountOffset) = count + 1;
+        }
     }
 
     [BurstCompile]

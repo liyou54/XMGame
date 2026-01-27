@@ -141,23 +141,65 @@ public struct XBlobMap<TKey, TValue>
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(in XBlobContainer container, in TKey key, out TValue value)
     {
-        var view = GetView(container);
-        int index = view.FindEntry(key, GetHashCode(key));
-        if (index >= 0)
+        // 快速路径：直接访问内存，避免创建完整 View
+        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
+        int hashCode = GetHashCode(key);
+        int bi = hashCode % bucketCount;
+        if (bi < 0) bi += bucketCount;
+
+        unsafe
         {
-            value = view.Values[index];
-            return true;
+            int bucketsOffset = Offset + BucketsOffset;
+            byte* basePtr = container.GetDataPointer(bucketsOffset);
+            int* buckets = (int*)basePtr;
+            int entrySize = sizeof(int) + sizeof(int); // HashCode + Next
+            XBlobHashMapEntry<TKey, TValue>* entries = (XBlobHashMapEntry<TKey, TValue>*)(basePtr + bucketCount * sizeof(int));
+            TKey* keys = (TKey*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
+            TValue* values = (TValue*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize + bucketCount * UnsafeUtility.SizeOf<TKey>());
+
+            for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
+            {
+                if (entries[i].HashCode == hashCode && keys[i].Equals(key))
+                {
+                    value = values[i];
+                    return true;
+                }
+            }
         }
+
         value = default;
         return false;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool HasKey(in XBlobContainer container, in TKey key)
     {
-        var view = GetView(container);
-        return view.FindEntry(key, GetHashCode(key)) >= 0;
+        // 快速路径：直接访问内存，避免创建完整 View
+        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
+        int hashCode = GetHashCode(key);
+        int bi = hashCode % bucketCount;
+        if (bi < 0) bi += bucketCount;
+
+        unsafe
+        {
+            int bucketsOffset = Offset + BucketsOffset;
+            byte* basePtr = container.GetDataPointer(bucketsOffset);
+            int* buckets = (int*)basePtr;
+            int entrySize = sizeof(int) + sizeof(int);
+            XBlobHashMapEntry<TKey, TValue>* entries = (XBlobHashMapEntry<TKey, TValue>*)(basePtr + bucketCount * sizeof(int));
+            TKey* keys = (TKey*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
+
+            for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
+            {
+                if (entries[i].HashCode == hashCode && keys[i].Equals(key))
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     public TKey GetKey(in XBlobContainer container, int index)
@@ -186,28 +228,48 @@ public struct XBlobMap<TKey, TValue>
         return view.Values.Slice(0, view.Count);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool AddOrUpdate(in XBlobContainer container, in TKey key, in TValue value)
     {
-        var view = GetView(container);
+        // 快速路径：直接访问内存，避免创建完整 View
+        int count = container.Get<int>(Offset + CountOffset);
+        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
         int hashCode = GetHashCode(key);
-        int index = view.FindEntry(key, hashCode);
-        if (index >= 0)
+        int bi = hashCode % bucketCount;
+        if (bi < 0) bi += bucketCount;
+
+        unsafe
         {
-            view.Values[index] = value;
-            return false;
+            int bucketsOffset = Offset + BucketsOffset;
+            byte* basePtr = container.GetDataPointer(bucketsOffset);
+            int* buckets = (int*)basePtr;
+            int entrySize = sizeof(int) + sizeof(int);
+            XBlobHashMapEntry<TKey, TValue>* entries = (XBlobHashMapEntry<TKey, TValue>*)(basePtr + bucketCount * sizeof(int));
+            TKey* keys = (TKey*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
+            TValue* values = (TValue*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize + bucketCount * UnsafeUtility.SizeOf<TKey>());
+
+            // 查找已存在的 key
+            for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
+            {
+                if (entries[i].HashCode == hashCode && keys[i].Equals(key))
+                {
+                    values[i] = value;
+                    return false; // 已存在，更新
+                }
+            }
+
+            // 添加新元素
+            if (count >= bucketCount)
+                throw new InvalidOperationException(XBlobHashCommon.FullMessage);
+
+            entries[count].HashCode = hashCode;
+            entries[count].Next = buckets[bi];
+            buckets[bi] = count;
+            keys[count] = key;
+            values[count] = value;
+            container.GetRef<int>(Offset + CountOffset) = count + 1;
+            return true; // 新增
         }
-        int count = view.Count;
-        if (count >= view.BucketCount)
-            throw new InvalidOperationException(XBlobHashCommon.FullMessage);
-        int bi = XBlobHashCommon.BucketIndex(hashCode, view.BucketCount);
-        ref var entry = ref view.Entries[count];
-        entry.HashCode = hashCode;
-        entry.Next = view.Buckets[bi];
-        view.Buckets[bi] = count;
-        view.Keys[count] = key;
-        view.Values[count] = value;
-        container.GetRef<int>(Offset + CountOffset) = count + 1;
-        return true;
     }
 
     public Enumerable GetEnumerator(in XBlobContainer container)
