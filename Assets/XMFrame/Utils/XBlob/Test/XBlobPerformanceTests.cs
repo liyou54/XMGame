@@ -686,10 +686,12 @@ namespace XMFrame.XBlob.Tests
         [Test]
         public void Benchmark_CompareAllContainersWithNative()
         {
-            const int testSize = 100000; // 10万数据用于快速测试
+            const int containerSize = 100000; // 10万容器大小
+            const int testIterations = 1000000; // 100万次测试
             var results = new System.Text.StringBuilder();
             results.AppendLine("\n========== XBlob 容器 vs 原生容器 性能对比基准测试 ==========");
-            results.AppendLine($"测试数据量: {testSize:N0} 元素");
+            results.AppendLine($"容器大小: {containerSize:N0} 元素");
+            results.AppendLine($"测试次数: {testIterations:N0} 次");
             results.AppendLine("================================================================\n");
 
             // ==================== Map vs NativeHashMap ====================
@@ -697,11 +699,11 @@ namespace XMFrame.XBlob.Tests
             
             // Map 插入测试
             var container = new XBlobContainer();
-            container.Create(Allocator.TempJob, 10000000);
-            var xblobMap = container.AllocMap<int, int>(testSize);
+            container.Create(Allocator.TempJob, 50000000); // 50MB容器
+            var xblobMap = container.AllocMap<int, int>(containerSize);
             
             var sw = Stopwatch.StartNew();
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < containerSize; i++)
             {
                 xblobMap.AddOrUpdate(container, i, i * 10);
             }
@@ -709,9 +711,9 @@ namespace XMFrame.XBlob.Tests
             long mapInsertMs = sw.ElapsedMilliseconds;
             
             // NativeHashMap 插入测试
-            var nativeMap = new NativeHashMap<int, int>(testSize, Allocator.TempJob);
+            var nativeMap = new NativeHashMap<int, int>(containerSize, Allocator.TempJob);
             sw.Restart();
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < containerSize; i++)
             {
                 nativeMap.TryAdd(i, i * 10);
             }
@@ -720,23 +722,25 @@ namespace XMFrame.XBlob.Tests
             
             results.AppendLine($"  插入:   XBlobMap={mapInsertMs}ms | NativeHashMap={nativeMapInsertMs}ms | 比率={GetRatio(mapInsertMs, nativeMapInsertMs)}");
             
-            // Map 查询测试
+            // Map 查询测试 - 100万次查询
             sw.Restart();
             int mapQueryHit = 0;
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < testIterations; i++)
             {
-                if (xblobMap.TryGetValue(container, i, out int val))
+                int key = i % containerSize; // 循环查询容器内的键
+                if (xblobMap.TryGetValue(container, key, out int val))
                     mapQueryHit++;
             }
             sw.Stop();
             long mapQueryMs = sw.ElapsedMilliseconds;
             
-            // NativeHashMap 查询测试
+            // NativeHashMap 查询测试 - 100万次查询
             sw.Restart();
             int nativeQueryHit = 0;
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < testIterations; i++)
             {
-                if (nativeMap.TryGetValue(i, out int val))
+                int key = i % containerSize;
+                if (nativeMap.TryGetValue(key, out int val))
                     nativeQueryHit++;
             }
             sw.Stop();
@@ -744,43 +748,47 @@ namespace XMFrame.XBlob.Tests
             
             results.AppendLine($"  查询:   XBlobMap={mapQueryMs}ms | NativeHashMap={nativeMapQueryMs}ms | 比率={GetRatio(mapQueryMs, nativeMapQueryMs)}");
             
-            // Map 更新测试
+            // Map 更新测试 - 100万次更新
             sw.Restart();
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < testIterations; i++)
             {
-                xblobMap.AddOrUpdate(container, i, i * 20);
+                int key = i % containerSize;
+                xblobMap.AddOrUpdate(container, key, i * 20);
             }
             sw.Stop();
             long mapUpdateMs = sw.ElapsedMilliseconds;
             
-            // NativeHashMap 更新测试
+            // NativeHashMap 更新测试 - 100万次更新
             sw.Restart();
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < testIterations; i++)
             {
-                nativeMap[i] = i * 20;
+                int key = i % containerSize;
+                nativeMap[key] = i * 20;
             }
             sw.Stop();
             long nativeMapUpdateMs = sw.ElapsedMilliseconds;
             
             results.AppendLine($"  更新:   XBlobMap={mapUpdateMs}ms | NativeHashMap={nativeMapUpdateMs}ms | 比率={GetRatio(mapUpdateMs, nativeMapUpdateMs)}");
             
-            // Map HasKey 测试
+            // Map HasKey 测试 - 100万次检查
             sw.Restart();
             int mapHasKeyCount = 0;
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < testIterations; i++)
             {
-                if (xblobMap.HasKey(container, i))
+                int key = i % containerSize;
+                if (xblobMap.HasKey(container, key))
                     mapHasKeyCount++;
             }
             sw.Stop();
             long mapHasKeyMs = sw.ElapsedMilliseconds;
             
-            // NativeHashMap ContainsKey 测试
+            // NativeHashMap ContainsKey 测试 - 100万次检查
             sw.Restart();
             int nativeContainsCount = 0;
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < testIterations; i++)
             {
-                if (nativeMap.ContainsKey(i))
+                int key = i % containerSize;
+                if (nativeMap.ContainsKey(key))
                     nativeContainsCount++;
             }
             sw.Stop();
@@ -821,12 +829,12 @@ namespace XMFrame.XBlob.Tests
             results.AppendLine("【Set vs NativeHashSet】");
             
             container = new XBlobContainer();
-            container.Create(Allocator.TempJob, 10000000);
-            var xblobSet = container.AllocSet<int>(testSize);
+            container.Create(Allocator.TempJob, 50000000);
+            var xblobSet = container.AllocSet<int>(containerSize);
             
             // Set 插入测试
             sw.Restart();
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < containerSize; i++)
             {
                 xblobSet.Add(container, i);
             }
@@ -834,9 +842,9 @@ namespace XMFrame.XBlob.Tests
             long setInsertMs = sw.ElapsedMilliseconds;
             
             // NativeHashSet 插入测试
-            var nativeSet = new NativeHashSet<int>(testSize, Allocator.TempJob);
+            var nativeSet = new NativeHashSet<int>(containerSize, Allocator.TempJob);
             sw.Restart();
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < containerSize; i++)
             {
                 nativeSet.Add(i);
             }
@@ -845,23 +853,25 @@ namespace XMFrame.XBlob.Tests
             
             results.AppendLine($"  插入:   XBlobSet={setInsertMs}ms | NativeHashSet={nativeSetInsertMs}ms | 比率={GetRatio(setInsertMs, nativeSetInsertMs)}");
             
-            // Set Contains 测试
+            // Set Contains 测试 - 100万次查询
             sw.Restart();
             int setContainsCount = 0;
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < testIterations; i++)
             {
-                if (xblobSet.Contains(container, i))
+                int val = i % containerSize;
+                if (xblobSet.Contains(container, val))
                     setContainsCount++;
             }
             sw.Stop();
             long setContainsMs = sw.ElapsedMilliseconds;
             
-            // NativeHashSet Contains 测试
+            // NativeHashSet Contains 测试 - 100万次查询
             sw.Restart();
             int nativeSetContainsCount = 0;
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < testIterations; i++)
             {
-                if (nativeSet.Contains(i))
+                int val = i % containerSize;
+                if (nativeSet.Contains(val))
                     nativeSetContainsCount++;
             }
             sw.Stop();
@@ -898,26 +908,26 @@ namespace XMFrame.XBlob.Tests
             nativeSet.Dispose();
             container.Dispose();
 
-            // ==================== MultiMap vs NativeMultiHashMap ====================
-            results.AppendLine("【MultiMap vs NativeMultiHashMap】");
+            // ==================== MultiMap vs NativeParallelMultiHashMap ====================
+            results.AppendLine("【MultiMap vs NativeParallelMultiHashMap】");
             
             container = new XBlobContainer();
-            container.Create(Allocator.TempJob, 10000000);
-            var xblobMultiMap = container.AllocMultiMap<int, int>(testSize);
+            container.Create(Allocator.TempJob, 50000000);
+            var xblobMultiMap = container.AllocMultiMap<int, int>(containerSize);
             
             // MultiMap 插入测试（每个键1个值）
             sw.Restart();
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < containerSize; i++)
             {
                 xblobMultiMap.Add(container, i, i * 10);
             }
             sw.Stop();
             long multiMapInsertMs = sw.ElapsedMilliseconds;
             
-            // NativeMultiHashMap 插入测试
-            var nativeMultiMap = new NativeMultiHashMap<int, int>(testSize, Allocator.TempJob);
+            // NativeParallelMultiHashMap 插入测试
+            var nativeMultiMap = new NativeParallelMultiHashMap<int, int>(containerSize, Allocator.TempJob);
             sw.Restart();
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < containerSize; i++)
             {
                 nativeMultiMap.Add(i, i * 10);
             }
@@ -926,23 +936,25 @@ namespace XMFrame.XBlob.Tests
             
             results.AppendLine($"  插入:   XBlobMultiMap={multiMapInsertMs}ms | NativeMultiHashMap={nativeMultiMapInsertMs}ms | 比率={GetRatio(multiMapInsertMs, nativeMultiMapInsertMs)}");
             
-            // MultiMap ContainsKey 测试
+            // MultiMap ContainsKey 测试 - 100万次查询
             sw.Restart();
             int multiMapContainsCount = 0;
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < testIterations; i++)
             {
-                if (xblobMultiMap.ContainsKey(container, i))
+                int key = i % containerSize;
+                if (xblobMultiMap.ContainsKey(container, key))
                     multiMapContainsCount++;
             }
             sw.Stop();
             long multiMapContainsMs = sw.ElapsedMilliseconds;
             
-            // NativeMultiHashMap ContainsKey 测试
+            // NativeParallelMultiHashMap ContainsKey 测试 - 100万次查询
             sw.Restart();
             int nativeMultiContainsCount = 0;
-            for (int i = 0; i < testSize; i++)
+            for (int i = 0; i < testIterations; i++)
             {
-                if (nativeMultiMap.ContainsKey(i))
+                int key = i % containerSize;
+                if (nativeMultiMap.ContainsKey(key))
                     nativeMultiContainsCount++;
             }
             sw.Stop();
@@ -974,7 +986,7 @@ namespace XMFrame.XBlob.Tests
             
             long multiMapTotalMs = multiMapInsertMs + multiMapContainsMs + multiMapIterMs;
             long nativeMultiMapTotalMs = nativeMultiMapInsertMs + nativeMultiMapContainsMs + nativeMultiMapIterMs;
-            results.AppendLine($"  总计:   XBlobMultiMap={multiMapTotalMs}ms | NativeMultiHashMap={nativeMultiMapTotalMs}ms | 比率={GetRatio(multiMapTotalMs, nativeMultiMapTotalMs)}\n");
+            results.AppendLine($"  总计:   XBlobMultiMap={multiMapTotalMs}ms | NativeParallelMultiHashMap={nativeMultiMapTotalMs}ms | 比率={GetRatio(multiMapTotalMs, nativeMultiMapTotalMs)}\n");
             
             nativeMultiMap.Dispose();
             container.Dispose();
