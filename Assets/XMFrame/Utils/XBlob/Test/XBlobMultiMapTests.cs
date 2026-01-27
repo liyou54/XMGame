@@ -210,12 +210,12 @@ namespace XMFrame.XBlob.Tests
         {
             // Arrange
             const int capacity = 5;
-            var multiMap = _container.AllocMultiMap<int, string>(capacity);
+            var multiMap = _container.AllocMultiMap<int, int>(capacity);
 
             // Act - 填充到容量上限（不同的键）
             for (int i = 0; i < capacity; i++)
             {
-                multiMap.Add(_container, i, $"value{i}");
+                multiMap.Add(_container, i, i * 100);
             }
 
             // Assert
@@ -255,14 +255,14 @@ namespace XMFrame.XBlob.Tests
         {
             // Arrange
             const int capacity = 3;
-            var multiMap = _container.AllocMultiMap<string, int>(capacity);
-            multiMap.Add(_container, "key1", 1);
-            multiMap.Add(_container, "key2", 2);
-            multiMap.Add(_container, "key3", 3);
+            var multiMap = _container.AllocMultiMap<int, int>(capacity);
+            multiMap.Add(_container, 1, 10);
+            multiMap.Add(_container, 2, 20);
+            multiMap.Add(_container, 3, 30);
 
             // Act & Assert - 尝试添加超过容量的元素
             var exception = Assert.Throws<InvalidOperationException>(() => 
-                multiMap.Add(_container, "key4", 4));
+                multiMap.Add(_container, 4, 40));
             Assert.That(exception.Message, Does.Contain("full").Or.Contain("满"));
         }
 

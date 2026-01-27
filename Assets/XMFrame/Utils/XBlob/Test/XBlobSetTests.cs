@@ -191,15 +191,15 @@ namespace XMFrame.XBlob.Tests
         {
             // Arrange
             const int capacity = 3;
-            var set = _container.AllocSet<string>(capacity);
+            var set = _container.AllocSet<int>(capacity);
             for (int i = 0; i < capacity; i++)
             {
-                set.Add(_container, $"item{i}");
+                set.Add(_container, i * 100);
             }
 
             // Act & Assert - 尝试添加超过容量的元素
             var exception = Assert.Throws<InvalidOperationException>(() => 
-                set.Add(_container, $"item{capacity}"));
+                set.Add(_container, capacity * 100));
             Assert.That(exception.Message, Does.Contain("full").Or.Contain("满"));
         }
 

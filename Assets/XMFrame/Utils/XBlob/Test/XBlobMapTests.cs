@@ -242,12 +242,12 @@ namespace XMFrame.XBlob.Tests
         {
             // Arrange
             const int capacity = 5;
-            var map = _container.AllocMap<int, string>(capacity);
+            var map = _container.AllocMap<int, int>(capacity);
 
             // Act - 填充到容量上限
             for (int i = 0; i < capacity; i++)
             {
-                bool added = map.AddOrUpdate(_container, i, $"value{i}");
+                bool added = map.AddOrUpdate(_container, i, i * 100);
                 Assert.IsTrue(added, $"添加第 {i} 个元素应该成功");
             }
 
@@ -256,8 +256,8 @@ namespace XMFrame.XBlob.Tests
             for (int i = 0; i < capacity; i++)
             {
                 Assert.IsTrue(map.HasKey(_container, i), $"应该包含键 {i}");
-                Assert.IsTrue(map.TryGetValue(_container, i, out string value), $"应该能获取键 {i}");
-                Assert.AreEqual($"value{i}", value, $"键 {i} 的值应该正确");
+                Assert.IsTrue(map.TryGetValue(_container, i, out int value), $"应该能获取键 {i}");
+                Assert.AreEqual(i * 100, value, $"键 {i} 的值应该正确");
             }
         }
 
