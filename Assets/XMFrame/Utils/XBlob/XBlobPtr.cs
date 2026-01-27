@@ -6,6 +6,38 @@ public readonly struct XBlobPtr
 {
     internal readonly int Offset;
     internal XBlobPtr(int offset) => Offset = offset;
+
+    /// <summary>从 blob 内偏移构造指针，用于 AllocMapByTypes 等返回的 offset。</summary>
+    public static XBlobPtr FromOffset(int offset) => new XBlobPtr(offset);
+
+    /// <summary>向 Container 申请：在容器上分配一块 HashMap，返回指向该 blob HashMap 容器的指针。</summary>
+    /// <param name="container">XBlob 容器，从中申请</param>
+    /// <param name="keyType">键类型（如 typeof(CfgId)）</param>
+    /// <param name="valueType">值类型（如 TUnmanaged）</param>
+    /// <param name="capacity">初始容量</param>
+    /// <returns>指向新分配的 XBlobMap 的指针，可用 AsMap / AsMapKey 操作</returns>
+    public static XBlobPtr AllocMapFrom(in XBlobContainer container, Type keyType, Type valueType, int capacity)
+    {
+        int offset = container.AllocMapByTypes(keyType, valueType, capacity);
+        return FromOffset(offset);
+    }
+
+    /// <summary>泛型分配 Map 并返回指针，供 ConfigData 等无反射调用。</summary>
+    public static XBlobPtr AllocMapFrom<TKey, TValue>(in XBlobContainer container, int capacity)
+        where TKey : unmanaged, IEquatable<TKey>
+        where TValue : unmanaged
+    {
+        int offset = container.AllocMapOffset<TKey, TValue>(capacity);
+        return FromOffset(offset);
+    }
+
+    /// <summary>向 blob HashMap 容器申请：同 AllocMapFrom，语义为“向 blob 内的 HashMap 容器申请一块新 Map”。</summary>
+    public static XBlobPtr AllocHashMapFrom(in XBlobContainer container, Type keyType, Type valueType, int capacity)
+        => AllocMapFrom(container, keyType, valueType, capacity);
+
+    /// <summary>blob 内偏移，供 ConfigData 等按类型操作 Map 时使用。</summary>
+    public int OffsetValue => Offset;
+
     public bool Valid => Offset > 0;
 
     [BurstCompile]

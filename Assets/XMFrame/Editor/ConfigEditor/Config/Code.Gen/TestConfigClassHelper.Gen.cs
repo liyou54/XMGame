@@ -69,6 +69,43 @@ public class TestConfigClassHelper : IConfigClassHelper<TestConfig>
         }
     }
 
+    public TableDefine GetTableDefine()
+    {
+        return new TableDefine(new ModKey("DefaultMod"), ConfigKey<TestConfigUnManaged>.TableName ?? "TestConfig");
+    }
+
+    public (ModKey mod, string configName) GetPrimaryKey(XMFrame.XConfig config)
+    {
+        var c = (TestConfig)config;
+        return (c.Id.ModKey, c.Id.ConfigName);
+    }
+
+    public void SetCfgId(XMFrame.XConfig config, CfgId cfgId)
+    {
+        ((TestConfig)config).Data = cfgId;
+    }
+
+    public void FillToUnmanaged(IConfigDataWriter writer, TableHandle tableHandle, XMFrame.XConfig config, CfgId cfgId)
+    {
+        var dest = new TestConfigUnManaged();
+        var c = (TestConfig)config;
+        dest.Id = cfgId.As<TestConfigUnManaged>();
+        dest.TestInt = c.TestInt;
+        if (_dataCenter.TryGetCfgId(GetTableDefine(), c.Foreign.ModKey, c.Foreign.ConfigName, out var fc))
+            dest.Foreign = fc.As<TestConfigUnManaged>();
+        writer.AddOrUpdateRow<TestConfigUnManaged>(tableHandle, cfgId, dest);
+    }
+
+    public void AllocTableMap(IConfigDataWriter writer, TableHandle tableHandle, int capacity)
+    {
+        writer.AllocTableMap<TestConfigUnManaged>(tableHandle, capacity);
+    }
+
+    public void AddPrimaryKeyOnly(IConfigDataWriter writer, TableHandle tableHandle, CfgId cfgId)
+    {
+        writer.AddPrimaryKeyOnly<TestConfigUnManaged>(tableHandle, cfgId);
+    }
+
     /// <summary>
     /// 从 XML 元素加载单个配置项，返回配置对象
     /// </summary>

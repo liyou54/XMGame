@@ -2,6 +2,8 @@ namespace XMFrame
 {
     public abstract class XConfig
     {
+        /// <summary>由 ConfigDataCenter 在 RegisterData 时分配并写回，用于 CfgId→TUnmanaged 映射</summary>
+        public CfgId Data;
     }
 
     public abstract class XConfig<T, TUnmanaged>

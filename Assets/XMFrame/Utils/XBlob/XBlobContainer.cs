@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -97,6 +98,38 @@ public unsafe struct XBlobContainer : IDisposable
         
         int offset = AllocHashMap<TKey, TValue>(capacity);
         return new XBlobMap<TKey, TValue>(offset);
+    }
+
+    /// <summary>
+    /// 泛型分配 Map 并返回偏移，供 ConfigData 等无反射调用。
+    /// </summary>
+    public int AllocMapOffset<TKey, TValue>(int capacity)
+        where TKey : unmanaged, IEquatable<TKey>
+        where TValue : unmanaged
+    {
+        var map = AllocMap<TKey, TValue>(capacity);
+        return map.Offset;
+    }
+
+    /// <summary>
+    /// 按运行时类型分配 Map，用于建立 CfgId->TUnmanaged 等映射。
+    /// 返回 Map 在容器内的偏移（可用 XBlobPtr.FromOffset 转成指针）。
+    /// </summary>
+    public int AllocMapByTypes(Type keyType, Type valueType, int capacity)
+    {
+        ThrowIfInvalid();
+        if (capacity <= 0)
+            throw new ArgumentException("Capacity must be positive", nameof(capacity));
+        var m = typeof(XBlobContainer).GetMethod("AllocMap", BindingFlags.NonPublic | BindingFlags.Instance);
+        if (m == null)
+            throw new MissingMethodException(nameof(XBlobContainer), "AllocMap");
+        var generic = m.MakeGenericMethod(keyType, valueType);
+        object boxed = this;
+        var map = generic.Invoke(boxed, new object[] { capacity });
+        var offsetField = map.GetType().GetField("Offset", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        if (offsetField == null)
+            throw new MissingFieldException("XBlobMap", "Offset");
+        return (int)offsetField.GetValue(map);
     }
 
     internal XBlobSet<T> AllocSet<T>(int capacity) 

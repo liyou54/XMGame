@@ -57,10 +57,13 @@ namespace XMFrame.Interfaces
         /// </summary>
         IConfigClassHelper GetClassHelperByTable(TableDefine tableDefine);
 
-        public void RegisterData<T>(T data)where T : XConfig;
-        
-        public void UpdateData<T>(T data)where T : XConfig;
-        
-        
+        public void RegisterData<T>(T data) where T : XConfig;
+
+        public void UpdateData<T>(T data) where T : XConfig;
+
+        /// <summary>
+        /// 根据 (TableDefine, ModKey, ConfigName) 解析已分配的 CfgId，供 FillToUnmanaged 外键解析。
+        /// </summary>
+        bool TryGetCfgId(TableDefine tableDefine, ModKey mod, string configName, out CfgId cfgId);
     }
 }

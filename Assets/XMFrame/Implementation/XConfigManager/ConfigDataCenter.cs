@@ -14,21 +14,53 @@ using XMFrame.Utils;
 namespace XMFrame
 {
     [ManagerDependency(typeof(IModManager))]
-    public class ConfigDataCenter : ManagerBase<IConfigDataCenter>, IConfigDataCenter
+    public class ConfigDataCenter : ManagerBase<IConfigDataCenter>, IConfigDataCenter, IConfigDataWriter
     {
         // ClassHelper 实例缓存：TableDefine、HelperType -> IConfigClassHelper 实例
         private readonly MultiKeyDictionary<TableDefine, Type, IConfigClassHelper> _classHelperCache = new();
 
         private readonly BidirectionalDictionary<TableDefine, TableHandle> _typeLookUp = new();
-        
-        private XBlobContainer BlobContainer { get; set; }
-        
+
+        /// <summary>持有 ConfigData 以便 IConfigDataWriter 通过 ref 写入</summary>
+        private sealed class ConfigDataHolder
+        {
+            public ConfigData Data;
+        }
+
+        private readonly ConfigDataHolder _configHolder = new ConfigDataHolder();
+
+        /// <summary>按表保存已注册的 config，供 InitUnManagedData 按数量申请与填充</summary>
+        private readonly Dictionary<TableHandle, List<XConfig>> _configsByTable = new();
+
+        /// <summary>ConfigKey (tableHandle, mod, configName) -> CfgId，用于 overwrite 复用与 FillToUnmanaged 外键解析</summary>
+        private readonly Dictionary<(TableHandle table, ModKey mod, string configName), CfgId> _configKeyToCfgId = new();
+
+        /// <summary>(TableHandle, ModHandle) 自增 Id，用于分配 CfgId</summary>
+        private readonly Dictionary<(TableHandle table, ModHandle mod), short> _nextCfgIdByTableMod = new();
+
         public override UniTask OnCreate()
         {
-            BlobContainer = new XBlobContainer();
-            // 预分配4m内存
-            BlobContainer.Create(Allocator.Persistent,4*1024*1024);
+            _configHolder.Data = new ConfigData();
+            _configHolder.Data.Create(Allocator.Persistent, 4 * 1024 * 1024);
             return UniTask.CompletedTask;
+        }
+
+        void IConfigDataWriter.AllocTableMap<TUnmanaged>(TableHandle tableHandle, int capacity)
+        {
+            ref var d = ref _configHolder.Data;
+            d.AllocTableMap<TUnmanaged>(tableHandle, capacity);
+        }
+
+        void IConfigDataWriter.AddPrimaryKeyOnly<TUnmanaged>(TableHandle tableHandle, CfgId cfgId)
+        {
+            ref var d = ref _configHolder.Data;
+            d.AddPrimaryKeyOnly<TUnmanaged>(tableHandle, cfgId);
+        }
+
+        void IConfigDataWriter.AddOrUpdateRow<TUnmanaged>(TableHandle tableHandle, CfgId cfgId, TUnmanaged value)
+        {
+            ref var d = ref _configHolder.Data;
+            d.AddOrUpdateRow<TUnmanaged>(tableHandle, cfgId, value);
         }
 
 
@@ -145,6 +177,7 @@ namespace XMFrame
         {
             RegisterModConfig();
             ReadAllConfigFromMods();
+            InitUnManagedData();
             SolveConfigReference();
             return UniTask.CompletedTask;
         }
@@ -261,6 +294,27 @@ namespace XMFrame
         {
             RegisterModHelper();
             RegisterDynamicConfigType();
+        }
+
+        private void InitUnManagedData()
+        {
+            var writer = (IConfigDataWriter)this;
+            foreach (var kvp in _typeLookUp.Pairs)
+            {
+                var tableDefine = kvp.Key;
+                var tableHandle = kvp.Value;
+                var helper = _classHelperCache.GetByKey1(tableDefine);
+                if (helper == null) continue;
+                if (!_configsByTable.TryGetValue(tableHandle, out var list) || list == null || list.Count == 0)
+                    continue;
+                int capacity = Math.Max(1, list.Count);
+                helper.AllocTableMap(writer, tableHandle, capacity);
+                foreach (var config in list)
+                {
+                    helper.AddPrimaryKeyOnly(writer, tableHandle, config.Data);
+                    helper.FillToUnmanaged(writer, tableHandle, config, config.Data);
+                }
+            }
         }
 
 
@@ -383,6 +437,44 @@ namespace XMFrame
 
         public void RegisterData<T>(T data) where T : XConfig
         {
+            if (data == null) return;
+            var helper = GetClassHelper(data.GetType());
+            var tableDefine = helper.GetTableDefine();
+            if (!_typeLookUp.TryGetValueByKey(tableDefine, out var tableHandle))
+                return;
+            var pk = helper.GetPrimaryKey(data);
+            var modHandle = IModManager.I.GetModId(pk.mod.Name);
+            var key = (tableHandle, pk.mod, pk.configName);
+            CfgId cfgId;
+            if (_configKeyToCfgId.TryGetValue(key, out var existing))
+            {
+                cfgId = existing;
+            }
+            else
+            {
+                var counterKey = (tableHandle, modHandle);
+                if (!_nextCfgIdByTableMod.TryGetValue(counterKey, out short nextId))
+                    nextId = 1;
+                _nextCfgIdByTableMod[counterKey] = (short)(nextId + 1);
+                cfgId = new CfgId(nextId, modHandle, tableHandle);
+                _configKeyToCfgId[key] = cfgId;
+            }
+            helper.SetCfgId(data, cfgId);
+            if (!_configsByTable.TryGetValue(tableHandle, out var list))
+            {
+                list = new List<XConfig>();
+                _configsByTable[tableHandle] = list;
+            }
+            list.Add(data);
+        }
+
+        public bool TryGetCfgId(TableDefine tableDefine, ModKey mod, string configName, out CfgId cfgId)
+        {
+            cfgId = default;
+            if (!_typeLookUp.TryGetValueByKey(tableDefine, out var tableHandle))
+                return false;
+            var key = (tableHandle, mod, configName);
+            return _configKeyToCfgId.TryGetValue(key, out cfgId);
         }
 
         public void UpdateData<T>(T data) where T : XConfig

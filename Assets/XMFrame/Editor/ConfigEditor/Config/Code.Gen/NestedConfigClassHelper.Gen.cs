@@ -71,6 +71,42 @@ public class NestedConfigClassHelper : IConfigClassHelper<NestedConfig>
         }
     }
 
+    public TableDefine GetTableDefine()
+    {
+        return new TableDefine(new ModKey("DefaultMod"), ConfigKey<NestedConfigUnManaged>.TableName ?? "NestedConfig");
+    }
+
+    public (ModKey mod, string configName) GetPrimaryKey(XMFrame.XConfig config)
+    {
+        var c = (NestedConfig)config;
+        return (new ModKey("DefaultMod"), "Nested");
+    }
+
+    public void SetCfgId(XMFrame.XConfig config, CfgId cfgId)
+    {
+        ((NestedConfig)config).Data = cfgId;
+    }
+
+    public void FillToUnmanaged(IConfigDataWriter writer, TableHandle tableHandle, XMFrame.XConfig config, CfgId cfgId)
+    {
+        var dest = new NestedConfigUnManaged();
+        var c = (NestedConfig)config;
+        dest.Test = c.Test;
+        dest.TestCustom = c.TestCustom;
+        dest.TestGlobalConvert = c.TestGlobalConvert;
+        writer.AddOrUpdateRow<NestedConfigUnManaged>(tableHandle, cfgId, dest);
+    }
+
+    public void AllocTableMap(IConfigDataWriter writer, TableHandle tableHandle, int capacity)
+    {
+        writer.AllocTableMap<NestedConfigUnManaged>(tableHandle, capacity);
+    }
+
+    public void AddPrimaryKeyOnly(IConfigDataWriter writer, TableHandle tableHandle, CfgId cfgId)
+    {
+        writer.AddPrimaryKeyOnly<NestedConfigUnManaged>(tableHandle, cfgId);
+    }
+
     /// <summary>
     /// 从 XML 元素加载单个配置项，返回配置对象
     /// </summary>

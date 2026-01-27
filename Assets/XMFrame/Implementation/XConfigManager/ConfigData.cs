@@ -7,13 +7,13 @@ namespace XMFrame
     /// 配置数据容器，使用 XBlob 存储配置数据
     /// 内部使用 NativeHashMap 管理不同表类型的 XBlobMap 指针
     /// </summary>
-    public struct ConfigData:IDisposable
+    public struct ConfigData : IDisposable
     {
         /// <summary>
         /// XBlob 容器，用于存储所有配置数据
         /// </summary>
         XBlobContainer BlobContainer;
-        
+
         /// <summary>
         /// 表类型到 XBlobMap 指针的映射
         /// 每个表实际上存储的是 XBlobMap&lt;CfgId, ConfigType&gt; 的外观
@@ -25,11 +25,45 @@ namespace XMFrame
         /// </summary>
         /// <param name="allocator">内存分配器</param>
         /// <param name="capacity">初始容量，默认 4MB</param>
-        public void Create(Allocator allocator,int capacity = 4*1024*1024)
+        public void Create(Allocator allocator, int capacity = 4 * 1024 * 1024)
         {
             BlobContainer = new XBlobContainer();
             BlobContainer.Create(allocator, capacity);
-            TypeBlobMap  = new NativeHashMap<TableHandle, XBlobPtr>(512, allocator);
+            TypeBlobMap = new NativeHashMap<TableHandle, XBlobPtr>(512, allocator);
+        }
+
+        /// <summary>
+        /// 为指定表在 unmanaged 中分配 CfgId->TUnmanaged 的 Map（泛型、无反射）。
+        /// </summary>
+        public void AllocTableMap<TUnmanaged>(TableHandle tableHandle, int capacity)
+            where TUnmanaged : unmanaged, IConfigUnManaged<TUnmanaged>
+        {
+            if (capacity <= 0) capacity = 1;
+            TypeBlobMap[tableHandle] = XBlobPtr.AllocMapFrom<CfgId, TUnmanaged>(BlobContainer, capacity);
+        }
+
+        /// <summary>
+        /// 仅插入主键，值为 default(TUnmanaged)（泛型、无反射）。
+        /// </summary>
+        public void AddPrimaryKeyOnly<TUnmanaged>(TableHandle tableHandle, CfgId cfgId)
+            where TUnmanaged : unmanaged, IConfigUnManaged<TUnmanaged>
+        {
+            if (!TypeBlobMap.TryGetValue(tableHandle, out var blobPtr) || !blobPtr.Valid)
+                return;
+            var map = blobPtr.AsMap<CfgId, TUnmanaged>();
+            map.AddOrUpdate(BlobContainer, cfgId, default);
+        }
+
+        /// <summary>
+        /// 写入整行 TUnmanaged（泛型、无反射）。
+        /// </summary>
+        public void AddOrUpdateRow<TUnmanaged>(TableHandle tableHandle, CfgId cfgId, TUnmanaged value)
+            where TUnmanaged : unmanaged, IConfigUnManaged<TUnmanaged>
+        {
+            if (!TypeBlobMap.TryGetValue(tableHandle, out var blobPtr) || !blobPtr.Valid)
+                return;
+            var map = blobPtr.AsMap<CfgId, TUnmanaged>();
+            map.AddOrUpdate(BlobContainer, cfgId, value);
         }
 
         /// <summary>
