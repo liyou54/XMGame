@@ -137,7 +137,7 @@ public readonly struct XBlobMultiMap<TKey, TValue>
             byte* basePtr = container.GetDataPointer(bucketsOffset);
             int* buckets = (int*)basePtr;
             int entrySize = sizeof(int) * 3;
-            XBlobMultiMapEntry* entries = (XBlobMultiMapEntry*)(basePtr + bucketCount * sizeof(int));
+            XBlobMultiMapEntry<TKey, TValue>* entries = (XBlobMultiMapEntry<TKey, TValue>*)(basePtr + bucketCount * sizeof(int));
             TKey* keys = (TKey*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
 
             for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
@@ -212,7 +212,7 @@ public readonly struct XBlobMultiMap<TKey, TValue>
             byte* basePtr = container.GetDataPointer(bucketsOffset);
             int* buckets = (int*)basePtr;
             int entrySize = sizeof(int) * 3;
-            XBlobMultiMapEntry* entries = (XBlobMultiMapEntry*)(basePtr + bucketCount * sizeof(int));
+            XBlobMultiMapEntry<TKey, TValue>* entries = (XBlobMultiMapEntry<TKey, TValue>*)(basePtr + bucketCount * sizeof(int));
             TKey* keys = (TKey*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
             TValue* values = (TValue*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize + bucketCount * UnsafeUtility.SizeOf<TKey>());
 
