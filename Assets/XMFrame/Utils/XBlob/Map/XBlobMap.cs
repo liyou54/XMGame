@@ -144,22 +144,25 @@ public struct XBlobMap<TKey, TValue>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(in XBlobContainer container, in TKey key, out TValue value)
     {
-        // 快速路径：直接访问内存，避免创建完整 View
-        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
-        int hashCode = GetHashCode(key);
-        int bi = hashCode % bucketCount;
-        if (bi < 0) bi += bucketCount;
-
+        // 超级快速路径：最小化内存访问和函数调用
         unsafe
         {
-            int bucketsOffset = Offset + BucketsOffset;
-            byte* basePtr = container.GetDataPointer(bucketsOffset);
-            int* buckets = (int*)basePtr;
-            int entrySize = sizeof(int) + sizeof(int); // HashCode + Next
-            XBlobHashMapEntry<TKey, TValue>* entries = (XBlobHashMapEntry<TKey, TValue>*)(basePtr + bucketCount * sizeof(int));
-            TKey* keys = (TKey*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
-            TValue* values = (TValue*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize + bucketCount * UnsafeUtility.SizeOf<TKey>());
+            byte* dataPtr = container.Data->GetDataPointer(Offset);
+            int bucketCount = *(int*)(dataPtr + BucketCountOffset);
+            int hashCode = GetHashCode(key);
+            int bi = hashCode % bucketCount;
+            if (bi < 0) bi += bucketCount;
 
+            // 一次计算所有指针，避免重复运算
+            byte* bucketsPtr = dataPtr + BucketsOffset;
+            int* buckets = (int*)bucketsPtr;
+            int entrySize = sizeof(int) + sizeof(int);
+            int bucketsSize = bucketCount * sizeof(int);
+            XBlobHashMapEntry<TKey, TValue>* entries = (XBlobHashMapEntry<TKey, TValue>*)(bucketsPtr + bucketsSize);
+            TKey* keys = (TKey*)((byte*)entries + bucketCount * entrySize);
+            TValue* values = (TValue*)((byte*)keys + bucketCount * UnsafeUtility.SizeOf<TKey>());
+
+            // 查找循环
             for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
             {
                 if (entries[i].HashCode == hashCode && keys[i].Equals(key))
@@ -177,20 +180,21 @@ public struct XBlobMap<TKey, TValue>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool HasKey(in XBlobContainer container, in TKey key)
     {
-        // 快速路径：直接访问内存，避免创建完整 View
-        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
-        int hashCode = GetHashCode(key);
-        int bi = hashCode % bucketCount;
-        if (bi < 0) bi += bucketCount;
-
+        // 超级快速路径：最小化内存访问和函数调用
         unsafe
         {
-            int bucketsOffset = Offset + BucketsOffset;
-            byte* basePtr = container.GetDataPointer(bucketsOffset);
-            int* buckets = (int*)basePtr;
+            byte* dataPtr = container.Data->GetDataPointer(Offset);
+            int bucketCount = *(int*)(dataPtr + BucketCountOffset);
+            int hashCode = GetHashCode(key);
+            int bi = hashCode % bucketCount;
+            if (bi < 0) bi += bucketCount;
+
+            byte* bucketsPtr = dataPtr + BucketsOffset;
+            int* buckets = (int*)bucketsPtr;
             int entrySize = sizeof(int) + sizeof(int);
-            XBlobHashMapEntry<TKey, TValue>* entries = (XBlobHashMapEntry<TKey, TValue>*)(basePtr + bucketCount * sizeof(int));
-            TKey* keys = (TKey*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
+            int bucketsSize = bucketCount * sizeof(int);
+            XBlobHashMapEntry<TKey, TValue>* entries = (XBlobHashMapEntry<TKey, TValue>*)(bucketsPtr + bucketsSize);
+            TKey* keys = (TKey*)((byte*)entries + bucketCount * entrySize);
 
             for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
             {
@@ -231,22 +235,24 @@ public struct XBlobMap<TKey, TValue>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool AddOrUpdate(in XBlobContainer container, in TKey key, in TValue value)
     {
-        // 快速路径：直接访问内存，避免创建完整 View
-        int count = container.Get<int>(Offset + CountOffset);
-        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
-        int hashCode = GetHashCode(key);
-        int bi = hashCode % bucketCount;
-        if (bi < 0) bi += bucketCount;
-
+        // 超级快速路径：最小化内存访问和函数调用
         unsafe
         {
-            int bucketsOffset = Offset + BucketsOffset;
-            byte* basePtr = container.GetDataPointer(bucketsOffset);
-            int* buckets = (int*)basePtr;
+            byte* dataPtr = container.Data->GetDataPointer(Offset);
+            int count = *(int*)dataPtr;
+            int bucketCount = *(int*)(dataPtr + BucketCountOffset);
+            int hashCode = GetHashCode(key);
+            int bi = hashCode % bucketCount;
+            if (bi < 0) bi += bucketCount;
+
+            // 一次计算所有指针
+            byte* bucketsPtr = dataPtr + BucketsOffset;
+            int* buckets = (int*)bucketsPtr;
             int entrySize = sizeof(int) + sizeof(int);
-            XBlobHashMapEntry<TKey, TValue>* entries = (XBlobHashMapEntry<TKey, TValue>*)(basePtr + bucketCount * sizeof(int));
-            TKey* keys = (TKey*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
-            TValue* values = (TValue*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize + bucketCount * UnsafeUtility.SizeOf<TKey>());
+            int bucketsSize = bucketCount * sizeof(int);
+            XBlobHashMapEntry<TKey, TValue>* entries = (XBlobHashMapEntry<TKey, TValue>*)(bucketsPtr + bucketsSize);
+            TKey* keys = (TKey*)((byte*)entries + bucketCount * entrySize);
+            TValue* values = (TValue*)((byte*)keys + bucketCount * UnsafeUtility.SizeOf<TKey>());
 
             // 查找已存在的 key
             for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
@@ -267,7 +273,7 @@ public struct XBlobMap<TKey, TValue>
             buckets[bi] = count;
             keys[count] = key;
             values[count] = value;
-            container.GetRef<int>(Offset + CountOffset) = count + 1;
+            *(int*)dataPtr = count + 1; // 直接写入 count
             return true; // 新增
         }
     }

@@ -93,20 +93,21 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(in XBlobContainer container, in T value)
     {
-        // 快速路径：直接访问内存，避免创建完整 View
-        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
-        int hashCode = GetHashCode(value);
-        int bi = hashCode % bucketCount;
-        if (bi < 0) bi += bucketCount;
-
+        // 超级快速路径：最小化内存访问和函数调用
         unsafe
         {
-            int bucketsOffset = Offset + BucketsOffset;
-            byte* basePtr = container.GetDataPointer(bucketsOffset);
-            int* buckets = (int*)basePtr;
+            byte* dataPtr = container.Data->GetDataPointer(Offset);
+            int bucketCount = *(int*)(dataPtr + BucketCountOffset);
+            int hashCode = GetHashCode(value);
+            int bi = hashCode % bucketCount;
+            if (bi < 0) bi += bucketCount;
+
+            byte* bucketsPtr = dataPtr + BucketsOffset;
+            int* buckets = (int*)bucketsPtr;
             int entrySize = sizeof(int) + sizeof(int);
-            XBlobHashSetEntry* entries = (XBlobHashSetEntry*)(basePtr + bucketCount * sizeof(int));
-            T* values = (T*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
+            int bucketsSize = bucketCount * sizeof(int);
+            XBlobHashSetEntry* entries = (XBlobHashSetEntry*)(bucketsPtr + bucketsSize);
+            T* values = (T*)((byte*)entries + bucketCount * entrySize);
 
             for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
             {
@@ -122,21 +123,22 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Add(in XBlobContainer container, in T value)
     {
-        // 快速路径：直接访问内存，避免创建完整 View
-        int count = container.Get<int>(Offset + CountOffset);
-        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
-        int hashCode = GetHashCode(value);
-        int bi = hashCode % bucketCount;
-        if (bi < 0) bi += bucketCount;
-
+        // 超级快速路径：最小化内存访问和函数调用
         unsafe
         {
-            int bucketsOffset = Offset + BucketsOffset;
-            byte* basePtr = container.GetDataPointer(bucketsOffset);
-            int* buckets = (int*)basePtr;
+            byte* dataPtr = container.Data->GetDataPointer(Offset);
+            int count = *(int*)dataPtr;
+            int bucketCount = *(int*)(dataPtr + BucketCountOffset);
+            int hashCode = GetHashCode(value);
+            int bi = hashCode % bucketCount;
+            if (bi < 0) bi += bucketCount;
+
+            byte* bucketsPtr = dataPtr + BucketsOffset;
+            int* buckets = (int*)bucketsPtr;
             int entrySize = sizeof(int) + sizeof(int);
-            XBlobHashSetEntry* entries = (XBlobHashSetEntry*)(basePtr + bucketCount * sizeof(int));
-            T* values = (T*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
+            int bucketsSize = bucketCount * sizeof(int);
+            XBlobHashSetEntry* entries = (XBlobHashSetEntry*)(bucketsPtr + bucketsSize);
+            T* values = (T*)((byte*)entries + bucketCount * entrySize);
 
             // 检查是否已存在
             for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
@@ -153,7 +155,7 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
             entries[count].Next = buckets[bi];
             buckets[bi] = count;
             values[count] = value;
-            container.GetRef<int>(Offset + CountOffset) = count + 1;
+            *(int*)dataPtr = count + 1;
             return true;
         }
     }

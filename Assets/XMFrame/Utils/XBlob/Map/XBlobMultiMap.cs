@@ -125,20 +125,21 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(in XBlobContainer container, in TKey key)
     {
-        // 快速路径：直接访问内存，避免创建完整 View
-        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
-        int hashCode = GetHashCode(key);
-        int bi = hashCode % bucketCount;
-        if (bi < 0) bi += bucketCount;
-
+        // 超级快速路径：最小化内存访问和函数调用
         unsafe
         {
-            int bucketsOffset = Offset + BucketsOffset;
-            byte* basePtr = container.GetDataPointer(bucketsOffset);
-            int* buckets = (int*)basePtr;
+            byte* dataPtr = container.Data->GetDataPointer(Offset);
+            int bucketCount = *(int*)(dataPtr + BucketCountOffset);
+            int hashCode = GetHashCode(key);
+            int bi = hashCode % bucketCount;
+            if (bi < 0) bi += bucketCount;
+
+            byte* bucketsPtr = dataPtr + BucketsOffset;
+            int* buckets = (int*)bucketsPtr;
             int entrySize = sizeof(int) * 3;
-            XBlobMultiMapEntry<TKey, TValue>* entries = (XBlobMultiMapEntry<TKey, TValue>*)(basePtr + bucketCount * sizeof(int));
-            TKey* keys = (TKey*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
+            int bucketsSize = bucketCount * sizeof(int);
+            XBlobMultiMapEntry<TKey, TValue>* entries = (XBlobMultiMapEntry<TKey, TValue>*)(bucketsPtr + bucketsSize);
+            TKey* keys = (TKey*)((byte*)entries + bucketCount * entrySize);
 
             for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
             {
@@ -196,25 +197,27 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(in XBlobContainer container, in TKey key, in TValue value)
     {
-        // 快速路径：直接访问内存，避免创建完整 View
-        int count = container.Get<int>(Offset + CountOffset);
-        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
-        int hashCode = GetHashCode(key);
-        int bi = hashCode % bucketCount;
-        if (bi < 0) bi += bucketCount;
-
-        if (count >= bucketCount)
-            throw new InvalidOperationException(XBlobHashCommon.FullMessage);
-
+        // 超级快速路径：最小化内存访问和函数调用
         unsafe
         {
-            int bucketsOffset = Offset + BucketsOffset;
-            byte* basePtr = container.GetDataPointer(bucketsOffset);
-            int* buckets = (int*)basePtr;
+            byte* dataPtr = container.Data->GetDataPointer(Offset);
+            int count = *(int*)dataPtr;
+            int bucketCount = *(int*)(dataPtr + BucketCountOffset);
+            
+            if (count >= bucketCount)
+                throw new InvalidOperationException(XBlobHashCommon.FullMessage);
+
+            int hashCode = GetHashCode(key);
+            int bi = hashCode % bucketCount;
+            if (bi < 0) bi += bucketCount;
+
+            byte* bucketsPtr = dataPtr + BucketsOffset;
+            int* buckets = (int*)bucketsPtr;
             int entrySize = sizeof(int) * 3;
-            XBlobMultiMapEntry<TKey, TValue>* entries = (XBlobMultiMapEntry<TKey, TValue>*)(basePtr + bucketCount * sizeof(int));
-            TKey* keys = (TKey*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize);
-            TValue* values = (TValue*)(basePtr + bucketCount * sizeof(int) + bucketCount * entrySize + bucketCount * UnsafeUtility.SizeOf<TKey>());
+            int bucketsSize = bucketCount * sizeof(int);
+            XBlobMultiMapEntry<TKey, TValue>* entries = (XBlobMultiMapEntry<TKey, TValue>*)(bucketsPtr + bucketsSize);
+            TKey* keys = (TKey*)((byte*)entries + bucketCount * entrySize);
+            TValue* values = (TValue*)((byte*)keys + bucketCount * UnsafeUtility.SizeOf<TKey>());
 
             // 查找 firstIndex
             int firstIndex = -1;
@@ -244,7 +247,7 @@ public readonly struct XBlobMultiMap<TKey, TValue>
                 buckets[bi] = count;
             }
 
-            container.GetRef<int>(Offset + CountOffset) = count + 1;
+            *(int*)dataPtr = count + 1;
         }
     }
 
