@@ -4,51 +4,36 @@ using Unity.Burst;
 using Unity.Collections.LowLevel.Unsafe;
 
 [BurstCompile]
-internal struct XBlobHashSetEntry<T>
-    where T : unmanaged
+internal struct XBlobHashSetEntry
 {
     public int HashCode;
     public int Next;
-    public T Value;
 }
 
 [BurstCompile]
+/// <summary>只读视图，读逻辑全在此层；写（含 Count）由 container 负责。</summary>
 internal ref struct XBlobHashSetView<T>
-    where T : unmanaged
+    where T : unmanaged, IEquatable<T>
 {
     internal int Count;
     internal int BucketCount;
     internal Span<int> Buckets;
-    internal Span<XBlobHashSetEntry<T>> Entries;
-}
+    internal Span<XBlobHashSetEntry> Entries;
+    internal Span<T> Values;
 
-// Burst 优化的 Set 查找方法
-[BurstCompile]
-internal static unsafe class XBlobSetBurst
-{
-    [BurstCompile]
-    public static int FindEntry<T>(
-        int* buckets,
-        XBlobHashSetEntry<T>* entries,
-        int bucketCount,
-        in T value,
-        int hashCode)
-        where T : unmanaged, IEquatable<T>
+    internal int FindEntry(in T value, int hashCode)
     {
-        int bucketIndex = hashCode % bucketCount;
-        if (bucketIndex < 0) bucketIndex += bucketCount;
-        
-        for (int i = buckets[bucketIndex] - 1; i >= 0; i = entries[i].Next)
+        int bucketIndex = XBlobHashCommon.BucketIndex(hashCode, BucketCount);
+        for (int i = Buckets[bucketIndex]; i >= 0; i = Entries[i].Next)
         {
-            if (entries[i].HashCode == hashCode && entries[i].Value.Equals(value))
-            {
+            if (Entries[i].HashCode == hashCode && Values[i].Equals(value))
                 return i;
-            }
         }
         return -1;
     }
 }
 
+/// <summary>基于 XBlob 的集合，链地址法、无 Remove，下一槽=Count。读由 View 负责，写（含 Count）经 container。</summary>
 [BurstCompile]
 public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
 {
@@ -57,39 +42,24 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
 
     private const int CountOffset = 0;
     private const int BucketCountOffset = sizeof(int);
-    private const int BucketsOffset = sizeof(int) * 2;
-
-    [BurstCompile]
-    private int GetBucketCount(in XBlobContainer container)
-    {
-        return container.Get<int>(Offset + BucketCountOffset);
-    }
-
-    [BurstCompile]
-    private int GetCount(in XBlobContainer container)
-    {
-        return container.Get<int>(Offset + CountOffset);
-    }
+    private const int BucketsOffset = sizeof(int) * 2; // 布局: [Count][BucketCount][Buckets][Entries][Values]
 
     [BurstCompile]
     private unsafe XBlobHashSetView<T> GetView(in XBlobContainer container)
     {
-        int bucketCount = GetBucketCount(container);
-        int count = GetCount(container);
-        
+        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
+        int count = container.Get<int>(Offset + CountOffset);
+        int entrySize = sizeof(int) * 2;
         int bucketsOffset = Offset + BucketsOffset;
-        int entriesOffset = bucketsOffset + bucketCount * sizeof(int);
-        
         byte* dataPtr = container.GetDataPointer(bucketsOffset);
-        int* bucketsPtr = (int*)dataPtr;
-        XBlobHashSetEntry<T>* entriesPtr = (XBlobHashSetEntry<T>*)(dataPtr + bucketCount * sizeof(int));
-        
+
         return new XBlobHashSetView<T>
         {
             Count = count,
             BucketCount = bucketCount,
-            Buckets = new Span<int>(bucketsPtr, bucketCount),
-            Entries = new Span<XBlobHashSetEntry<T>>(entriesPtr, bucketCount)
+            Buckets = new Span<int>((int*)dataPtr, bucketCount),
+            Entries = new Span<XBlobHashSetEntry>((XBlobHashSetEntry*)(dataPtr + bucketCount * sizeof(int)), bucketCount),
+            Values = new Span<T>((T*)(dataPtr + bucketCount * sizeof(int) + bucketCount * entrySize), bucketCount)
         };
     }
 
@@ -100,26 +70,9 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
     }
 
     [BurstCompile]
-    private int FindEntry(in XBlobContainer container, in T value, int hashCode)
-    {
-        var view = GetView(container);
-        int bucketIndex = hashCode % view.BucketCount;
-        if (bucketIndex < 0) bucketIndex += view.BucketCount;
-        
-        for (int i = view.Buckets[bucketIndex] - 1; i >= 0; i = view.Entries[i].Next)
-        {
-            if (view.Entries[i].HashCode == hashCode && view.Entries[i].Value.Equals(value))
-            {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    [BurstCompile]
     public int GetLength(in XBlobContainer container)
     {
-        return GetCount(container);
+        return container.Get<int>(Offset + CountOffset);
     }
 
     public T this[in XBlobContainer container, int index]
@@ -127,59 +80,35 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
         get
         {
             var view = GetView(container);
-            if (index < 0 || index >= view.Count)
-                throw new IndexOutOfRangeException($"Index {index} is out of range [0, {view.Count})");
-            return view.Entries[index].Value;
+            XBlobHashCommon.ThrowIfIndexOutOfRange(index, view.Count, nameof(index));
+            return view.Values[index];
         }
     }
 
     [BurstCompile]
     public bool Contains(in XBlobContainer container, in T value)
     {
-        int hashCode = GetHashCode(value);
-        return FindEntry(container, value, hashCode) >= 0;
+        var view = GetView(container);
+        return view.FindEntry(value, GetHashCode(value)) >= 0;
     }
 
     [BurstCompile]
     public bool Add(in XBlobContainer container, in T value)
     {
+        var view = GetView(container);
         int hashCode = GetHashCode(value);
-        int index = FindEntry(container, value, hashCode);
-        
-        if (index >= 0)
-        {
-            return false; // 已存在，返回 false
-        }
-        else
-        {
-            // 添加新值
-            int count = GetCount(container);
-            int bucketCount = GetBucketCount(container);
-            
-            if (count >= bucketCount)
-            {
-                throw new InvalidOperationException("Set is full, cannot add more elements");
-            }
-            
-            var view = GetView(container);
-            int bucketIndex = hashCode % bucketCount;
-            if (bucketIndex < 0) bucketIndex += bucketCount;
-            
-            // 创建新条目
-            ref var entry = ref view.Entries[count];
-            entry.HashCode = hashCode;
-            entry.Next = view.Buckets[bucketIndex] - 1;
-            entry.Value = value;
-            
-            // 更新桶
-            view.Buckets[bucketIndex] = count + 1;
-            
-            // 更新计数
-            ref int countRef = ref container.GetRef<int>(Offset + CountOffset);
-            countRef = count + 1;
-            
-            return true; // 返回 true 表示新增
-        }
+        if (view.FindEntry(value, hashCode) >= 0)
+            return false;
+        int slot = view.Count;
+        if (slot >= view.BucketCount)
+            throw new InvalidOperationException(XBlobHashCommon.FullMessage);
+        int bi = XBlobHashCommon.BucketIndex(hashCode, view.BucketCount);
+        view.Entries[slot].HashCode = hashCode;
+        view.Entries[slot].Next = view.Buckets[bi];
+        view.Buckets[bi] = slot;
+        view.Values[slot] = value;
+        container.GetRef<int>(Offset + CountOffset) = slot + 1;
+        return true;
     }
 
     [BurstCompile]
@@ -192,21 +121,36 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
     public ref struct Enumerator
     {
         private XBlobHashSetView<T> _view;
-        private int _index;
+        private int _bucketIndex;
+        private int _currentIndex;
 
         internal Enumerator(in XBlobSet<T> set, in XBlobContainer container)
         {
             _view = set.GetView(container);
-            _index = -1;
+            _bucketIndex = 0;
+            _currentIndex = -1;
         }
 
-        public T Current => _view.Entries[_index].Value;
+        public T Current => _view.Values[_currentIndex];
 
         [BurstCompile]
         public bool MoveNext()
         {
-            _index++;
-            return _index < _view.Count;
+            if (_currentIndex >= 0)
+            {
+                _currentIndex = _view.Entries[_currentIndex].Next;
+                if (_currentIndex >= 0) return true;
+            }
+            for (; _bucketIndex < _view.BucketCount; _bucketIndex++)
+            {
+                _currentIndex = _view.Buckets[_bucketIndex];
+                if (_currentIndex >= 0)
+                {
+                    _bucketIndex++;
+                    return true;
+                }
+            }
+            return false;
         }
     }
 

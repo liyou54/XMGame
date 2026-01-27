@@ -103,6 +103,30 @@ namespace XMFrame.XBlob.Tests
         }
 
         [Test]
+        public void Map_GetKey_WithInvalidIndex_ShouldThrowException()
+        {
+            // Arrange
+            var map = _container.AllocMap<int, int>(10);
+            map.AddOrUpdate(_container, 1, 100);
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => { var _ = map.GetKey(_container, -1); });
+            Assert.Throws<ArgumentOutOfRangeException>(() => { var _ = map.GetKey(_container, 1); }); // Count=1, index 1 越界
+        }
+
+        [Test]
+        public void Map_GetValue_WithInvalidIndex_ShouldThrowException()
+        {
+            // Arrange
+            var map = _container.AllocMap<int, int>(10);
+            map.AddOrUpdate(_container, 1, 100);
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => { var _ = map.GetValue(_container, -1); });
+            Assert.Throws<ArgumentOutOfRangeException>(() => { var _ = map.GetValue(_container, 1); });
+        }
+
+        [Test]
         public void Map_TryGetValue_ShouldReturnTrueForExistingKey()
         {
             // Arrange
@@ -621,6 +645,35 @@ namespace XMFrame.XBlob.Tests
 
             // Assert - GetKeys 返回空 Span（因为 KeyEntries 是结构数组，无法直接提取 Key 的 Span）
             Assert.AreEqual(0, keysSpan.Length, "GetKeys 应该返回空 Span（建议使用 GetKeysEnumerator）");
+        }
+
+        [Test]
+        public void Map_WithCustomStructKeyAndValue_ShouldWork()
+        {
+            var map = _container.AllocMap<TestKey, TestValue>(16);
+            var k1 = new TestKey { Id = 1, Tag = 10 };
+            var k2 = new TestKey { Id = 2, Tag = 20 };
+            var v1 = new TestValue { X = 100, Y = 200 };
+            var v2 = new TestValue { X = 300, Y = 400 };
+            Assert.IsTrue(map.AddOrUpdate(_container, k1, v1));
+            Assert.IsTrue(map.AddOrUpdate(_container, k2, v2));
+            Assert.AreEqual(2, map.GetLength(_container));
+            Assert.IsTrue(map.HasKey(_container, k1));
+            Assert.IsTrue(map.HasKey(_container, k2));
+            Assert.IsTrue(map.TryGetValue(_container, k1, out var out1));
+            Assert.AreEqual(100, out1.X);
+            Assert.AreEqual(200, out1.Y);
+            Assert.IsTrue(map.TryGetValue(_container, k2, out var out2));
+            Assert.AreEqual(300, out2.X);
+            Assert.AreEqual(400, out2.Y);
+            int count = 0;
+            foreach (var kvp in map.GetEnumerator(_container))
+            {
+                count++;
+                Assert.IsTrue(kvp.Key.Id == 1 || kvp.Key.Id == 2);
+                Assert.IsTrue(kvp.Value.X == 100 || kvp.Value.X == 300);
+            }
+            Assert.AreEqual(2, count);
         }
     }
 }

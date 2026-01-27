@@ -192,5 +192,28 @@ namespace XMFrame.XBlob.Tests
             Assert.AreEqual(3.14f, floatPtr.Get(_container), 0.001f);
             Assert.AreEqual(2.718, doublePtr.Get(_container), 0.001);
         }
+
+        [Test]
+        public void Alloc_WithCustomStruct_ShouldWork()
+        {
+            _container.Create(Allocator.Temp, 1024);
+            var ptr = _container.Alloc<TestBlobStruct>();
+            ref var r = ref _container.GetRef<TestBlobStruct>(ptr.Offset);
+            r = new TestBlobStruct { A = 11, B = 22 };
+            var got = ptr.Get(_container);
+            Assert.AreEqual(11, got.A);
+            Assert.AreEqual(22, got.B);
+        }
+
+        [Test]
+        public void Ptr_Get_WithCustomStruct_ShouldReturnSetValue()
+        {
+            _container.Create(Allocator.Temp, 1024);
+            var ptr = _container.Alloc<TestBlobStruct>();
+            ref var r = ref _container.GetRef<TestBlobStruct>(ptr.Offset);
+            r = new TestBlobStruct { A = 100, B = 200 };
+            Assert.AreEqual(100, ptr.Get(_container).A);
+            Assert.AreEqual(200, ptr.Get(_container).B);
+        }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Collections;
 using UnityEngine;
@@ -109,8 +110,8 @@ namespace XMFrame.XBlob.Tests
             set.Add(_container, 42);
 
             // Act & Assert
-            Assert.Throws<IndexOutOfRangeException>(() => { var _ = set[_container, 1]; });
-            Assert.Throws<IndexOutOfRangeException>(() => { var _ = set[_container, -1]; });
+            Assert.Throws<ArgumentOutOfRangeException>(() => { var _ = set[_container, 1]; });
+            Assert.Throws<ArgumentOutOfRangeException>(() => { var _ = set[_container, -1]; });
         }
 
         [Test]
@@ -158,6 +159,116 @@ namespace XMFrame.XBlob.Tests
             Assert.IsTrue(set.Contains(_container, 1));
             Assert.IsTrue(set.Contains(_container, 2));
             Assert.AreEqual(2, set.GetLength(_container));
+        }
+
+        [Test]
+        public void Set_GetEnumerator_WithEmptySet_ShouldReturnNoValues()
+        {
+            var set = _container.AllocSet<int>(10);
+            int count = 0;
+            foreach (var _ in set.GetEnumerator(_container))
+                count++;
+            Assert.AreEqual(0, count);
+        }
+
+        [Test]
+        public void Set_Indexer_InsertionOrder_MatchesGetEnumerator_Count()
+        {
+            var set = _container.AllocSet<int>(10);
+            set.Add(_container, 5);
+            set.Add(_container, 3);
+            set.Add(_container, 7);
+            int indexerCount = set.GetLength(_container);
+            int enumCount = 0;
+            foreach (var _ in set.GetEnumerator(_container))
+                enumCount++;
+            Assert.AreEqual(indexerCount, enumCount, "迭代数量应与 Count 一致");
+            Assert.AreEqual(3, indexerCount);
+        }
+
+        [Test]
+        public void Set_HashCollision_ShouldHandleCorrectly()
+        {
+            var largeContainer = new XBlobContainer();
+            largeContainer.Create(Allocator.Temp, 20000);
+            const int bucketCount = 10;
+            const int elementCount = 100;
+            var set = largeContainer.AllocSet<int>(elementCount);
+
+            for (int i = 0; i < elementCount; i++)
+            {
+                int value = i * bucketCount;
+                bool added = set.Add(largeContainer, value);
+                Assert.IsTrue(added, $"值 {value} 应成功添加");
+            }
+            Assert.AreEqual(elementCount, set.GetLength(largeContainer));
+
+            for (int i = 0; i < elementCount; i++)
+            {
+                int value = i * bucketCount;
+                Assert.IsTrue(set.Contains(largeContainer, value), $"应包含 {value}");
+                Assert.AreEqual(value, set[largeContainer, i], $"索引 {i} 应为插入顺序的值");
+            }
+
+            var visited = new System.Collections.Generic.HashSet<int>();
+            foreach (var v in set.GetEnumerator(largeContainer))
+            {
+                Assert.IsTrue(visited.Add(v), $"迭代不应重复 {v}");
+            }
+            Assert.AreEqual(elementCount, visited.Count);
+            largeContainer.Dispose();
+        }
+
+        [Test]
+        public void Set_Add1000Elements_ShouldWorkCorrectly()
+        {
+            var largeContainer = new XBlobContainer();
+            largeContainer.Create(Allocator.Temp, 50000);
+            const int n = 1000;
+            var set = largeContainer.AllocSet<int>(n);
+
+            for (int i = 0; i < n; i++)
+            {
+                bool added = set.Add(largeContainer, i);
+                Assert.IsTrue(added, $"元素 {i} 应被添加");
+            }
+            Assert.AreEqual(n, set.GetLength(largeContainer));
+
+            for (int i = 0; i < n; i++)
+            {
+                Assert.IsTrue(set.Contains(largeContainer, i), $"应包含 {i}");
+                Assert.AreEqual(i, set[largeContainer, i], $"set[{i}] 应按插入顺序为 {i}");
+            }
+
+            var iterated = new HashSet<int>();
+            foreach (var v in set.GetEnumerator(largeContainer))
+                iterated.Add(v);
+            Assert.AreEqual(n, iterated.Count, "迭代应覆盖全部 1000 个元素");
+            for (int i = 0; i < n; i++)
+                Assert.IsTrue(iterated.Contains(i), $"迭代结果应包含 {i}");
+            largeContainer.Dispose();
+        }
+
+        [Test]
+        public void Set_WithCustomStruct_ShouldWork()
+        {
+            var set = _container.AllocSet<TestKey>(16);
+            var k1 = new TestKey { Id = 1, Tag = 10 };
+            var k2 = new TestKey { Id = 2, Tag = 20 };
+            Assert.IsTrue(set.Add(_container, k1));
+            Assert.IsTrue(set.Add(_container, k2));
+            Assert.IsFalse(set.Add(_container, k1));
+            Assert.AreEqual(2, set.GetLength(_container));
+            Assert.IsTrue(set.Contains(_container, k1));
+            Assert.IsTrue(set.Contains(_container, k2));
+            Assert.IsFalse(set.Contains(_container, new TestKey { Id = 99, Tag = 0 }));
+            int n = 0;
+            foreach (var k in set.GetEnumerator(_container))
+            {
+                Assert.IsTrue(k.Id == 1 || k.Id == 2);
+                n++;
+            }
+            Assert.AreEqual(2, n);
         }
     }
 }

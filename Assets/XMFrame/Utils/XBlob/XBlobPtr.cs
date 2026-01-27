@@ -33,7 +33,8 @@ public readonly struct XBlobPtr
     /// <typeparam name="TKey">键类型，必须满足 unmanaged 和 IEquatable 约束</typeparam>
     /// <returns>XBlobMapKey 外观实例，可用于键的查询操作</returns>
     [BurstCompile]
-    public XBlobMapKey<TKey> AsMapKey<TKey>() where TKey : unmanaged, IEquatable<TKey>
+    public XBlobMapKey<TKey> AsMapKey<TKey>() 
+    where TKey : unmanaged, IEquatable<TKey>
     {
         return new XBlobMapKey<TKey>(Offset);
     }

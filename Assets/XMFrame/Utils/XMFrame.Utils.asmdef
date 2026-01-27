@@ -3,7 +3,9 @@
     "rootNamespace": "XMFrame.Utils",
     "references": [
         "GUID:b2f1fc1aca9012145bfe9a26035d1fea",
-        "Unity.Burst"
+        "GUID:e34a5702dd353724aa315fb8011f08c3",
+        "GUID:2665a8d13d1b3f18800f46e256720795",
+        "GUID:e0cd26848372d4e5c891c569017e11f1"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -118,6 +118,30 @@ namespace XMFrame.XBlob.Tests
         }
 
         [Test]
+        public void MultiMap_GetKey_WithInvalidIndex_ShouldThrowException()
+        {
+            // Arrange
+            var multiMap = _container.AllocMultiMap<int, int>(10);
+            multiMap.Add(_container, 1, 100);
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => { var _ = multiMap.GetKey(_container, -1); });
+            Assert.Throws<ArgumentOutOfRangeException>(() => { var _ = multiMap.GetKey(_container, 1); });
+        }
+
+        [Test]
+        public void MultiMap_GetValue_WithInvalidIndex_ShouldThrowException()
+        {
+            // Arrange
+            var multiMap = _container.AllocMultiMap<int, int>(10);
+            multiMap.Add(_container, 1, 100);
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => { var _ = multiMap.GetValue(_container, -1); });
+            Assert.Throws<ArgumentOutOfRangeException>(() => { var _ = multiMap.GetValue(_container, 1); });
+        }
+
+        [Test]
         public void MultiMap_GetEnumerator_ShouldIterateAllEntries()
         {
             // Arrange
@@ -448,6 +472,30 @@ namespace XMFrame.XBlob.Tests
             }
             Assert.AreEqual(1, count, "应该返回一个值");
             Assert.AreEqual(100, value, "值应该是 100");
+        }
+
+        [Test]
+        public void MultiMap_WithCustomStructKeyAndValue_ShouldWork()
+        {
+            var multiMap = _container.AllocMultiMap<TestKey, TestValue>(16);
+            var k1 = new TestKey { Id = 1, Tag = 10 };
+            var k2 = new TestKey { Id = 2, Tag = 20 };
+            multiMap.Add(_container, k1, new TestValue { X = 100, Y = 200 });
+            multiMap.Add(_container, k1, new TestValue { X = 101, Y = 201 });
+            multiMap.Add(_container, k2, new TestValue { X = 300, Y = 400 });
+            Assert.AreEqual(3, multiMap.GetLength(_container));
+            Assert.IsTrue(multiMap.ContainsKey(_container, k1));
+            Assert.IsTrue(multiMap.ContainsKey(_container, k2));
+            Assert.AreEqual(2, multiMap.GetValueCount(_container, k1));
+            Assert.AreEqual(1, multiMap.GetValueCount(_container, k2));
+            int count = 0;
+            foreach (var kvp in multiMap.GetEnumerator(_container))
+            {
+                count++;
+                Assert.IsTrue(kvp.Key.Id == 1 || kvp.Key.Id == 2);
+                Assert.IsTrue(kvp.Value.X >= 100 && kvp.Value.X <= 301);
+            }
+            Assert.AreEqual(3, count);
         }
     }
 }

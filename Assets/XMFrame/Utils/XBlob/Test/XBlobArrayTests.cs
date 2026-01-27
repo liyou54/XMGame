@@ -209,5 +209,28 @@ namespace XMFrame.XBlob.Tests
             // Cleanup
             largeContainer.Dispose();
         }
+
+        [Test]
+        public void Array_WithCustomStruct_ShouldWork()
+        {
+            var arr = _container.AllocArray<TestBlobStruct>(10);
+            for (int i = 0; i < 10; i++)
+                arr[_container, i] = new TestBlobStruct { A = i, B = i * 10 };
+            Assert.AreEqual(10, arr.GetLength(_container));
+            for (int i = 0; i < 10; i++)
+            {
+                var v = arr[_container, i];
+                Assert.AreEqual(i, v.A);
+                Assert.AreEqual(i * 10, v.B);
+            }
+            int n = 0;
+            foreach (var v in arr.GetEnumerator(_container))
+            {
+                Assert.AreEqual(n, v.A);
+                Assert.AreEqual(n * 10, v.B);
+                n++;
+            }
+            Assert.AreEqual(10, n);
+        }
     }
 }

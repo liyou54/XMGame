@@ -5,7 +5,7 @@ using Unity.Collections.LowLevel.Unsafe;
 
 [BurstCompile]
 public ref struct XBlobMultiMapEntryRef<TKey, TValue>
-    where TKey : unmanaged
+    where TKey : unmanaged, IEquatable<TKey>
     where TValue : unmanaged
 {
     private readonly XBlobMultiMapView<TKey, TValue> _view;
@@ -33,8 +33,9 @@ public struct XBlobMultiMapEntry<TKey, TValue>
 }
 
 [BurstCompile]
+/// <summary>只读视图，读逻辑全在此层；写（含 Count）由 container 负责。</summary>
 internal ref struct XBlobMultiMapView<TKey, TValue>
-    where TKey : unmanaged
+    where TKey : unmanaged, IEquatable<TKey>
     where TValue : unmanaged
 {
     internal int Count;
@@ -43,36 +44,20 @@ internal ref struct XBlobMultiMapView<TKey, TValue>
     internal Span<XBlobMultiMapEntry<TKey, TValue>> Entries;
     internal Span<TKey> Keys;
     internal Span<TValue> Values;
-}
 
-// Burst 优化的 MultiMap 查找方法
-[BurstCompile]
-internal static unsafe class XBlobMultiMapBurst
-{
-    [BurstCompile]
-    public static int FindFirstEntry<TKey>(
-        int* buckets,
-        XBlobMultiMapEntry<TKey, int>* entries,
-        TKey* keys,
-        int bucketCount,
-        in TKey key,
-        int hashCode)
-        where TKey : unmanaged, IEquatable<TKey>
+    internal int FindFirstEntry(in TKey key, int hashCode)
     {
-        int bucketIndex = hashCode % bucketCount;
-        if (bucketIndex < 0) bucketIndex += bucketCount;
-        
-        for (int i = buckets[bucketIndex] - 1; i >= 0; i = entries[i].Next)
+        int bucketIndex = XBlobHashCommon.BucketIndex(hashCode, BucketCount);
+        for (int i = Buckets[bucketIndex]; i >= 0; i = Entries[i].Next)
         {
-            if (entries[i].HashCode == hashCode && keys[i].Equals(key))
-            {
+            if (Entries[i].HashCode == hashCode && Keys[i].Equals(key))
                 return i;
-            }
         }
         return -1;
     }
 }
 
+/// <summary>基于 XBlob 的一键多值映射，链地址法、无 Remove，下一槽=Count。读由 View 负责，写（含 Count）经 container。</summary>
 [BurstCompile]
 public readonly struct XBlobMultiMap<TKey, TValue>
     where TKey : unmanaged, IEquatable<TKey>
@@ -83,46 +68,28 @@ public readonly struct XBlobMultiMap<TKey, TValue>
 
     private const int CountOffset = 0;
     private const int BucketCountOffset = sizeof(int);
-    private const int BucketsOffset = sizeof(int) * 2;
-
-    [BurstCompile]
-    private int GetBucketCount(in XBlobContainer container)
-    {
-        return container.Get<int>(Offset + BucketCountOffset);
-    }
-
-    [BurstCompile]
-    private int GetCount(in XBlobContainer container)
-    {
-        return container.Get<int>(Offset + CountOffset);
-    }
+    private const int BucketsOffset = sizeof(int) * 2; // 布局: [Count][BucketCount][Buckets][Entries][Keys][Values]
 
     [BurstCompile]
     private unsafe XBlobMultiMapView<TKey, TValue> GetView(in XBlobContainer container)
     {
-        int bucketCount = GetBucketCount(container);
-        int count = GetCount(container);
-        
+        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
+        int count = container.Get<int>(Offset + CountOffset);
+        int entrySize = sizeof(int) * 3;
+        int keySize = System.Runtime.InteropServices.Marshal.SizeOf<TKey>();
         int bucketsOffset = Offset + BucketsOffset;
         int entriesOffset = bucketsOffset + bucketCount * sizeof(int);
-        int entrySize = sizeof(int) + sizeof(int) + sizeof(int); // HashCode + Next + ValueNext
         int keysOffset = entriesOffset + bucketCount * entrySize;
-        int valuesOffset = keysOffset + bucketCount * System.Runtime.InteropServices.Marshal.SizeOf<TKey>();
-        
+
         byte* dataPtr = container.GetDataPointer(bucketsOffset);
-        int* bucketsPtr = (int*)dataPtr;
-        XBlobMultiMapEntry<TKey, TValue>* entriesPtr = (XBlobMultiMapEntry<TKey, TValue>*)(dataPtr + bucketCount * sizeof(int));
-        TKey* keysPtr = (TKey*)(dataPtr + bucketCount * sizeof(int) + bucketCount * entrySize);
-        TValue* valuesPtr = (TValue*)(dataPtr + bucketCount * sizeof(int) + bucketCount * entrySize + bucketCount * System.Runtime.InteropServices.Marshal.SizeOf<TKey>());
-        
         return new XBlobMultiMapView<TKey, TValue>
         {
             Count = count,
             BucketCount = bucketCount,
-            Buckets = new Span<int>(bucketsPtr, bucketCount),
-            Entries = new Span<XBlobMultiMapEntry<TKey, TValue>>(entriesPtr, bucketCount),
-            Keys = new Span<TKey>(keysPtr, bucketCount),
-            Values = new Span<TValue>(valuesPtr, bucketCount)
+            Buckets = new Span<int>((int*)dataPtr, bucketCount),
+            Entries = new Span<XBlobMultiMapEntry<TKey, TValue>>((XBlobMultiMapEntry<TKey, TValue>*)(dataPtr + bucketCount * sizeof(int)), bucketCount),
+            Keys = new Span<TKey>((TKey*)(dataPtr + bucketCount * sizeof(int) + bucketCount * entrySize), bucketCount),
+            Values = new Span<TValue>((TValue*)(dataPtr + bucketCount * sizeof(int) + bucketCount * entrySize + bucketCount * keySize), bucketCount)
         };
     }
 
@@ -133,100 +100,68 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     }
 
     [BurstCompile]
-    private int FindFirstEntry(in XBlobContainer container, in TKey key, int hashCode)
-    {
-        var view = GetView(container);
-        int bucketIndex = hashCode % view.BucketCount;
-        if (bucketIndex < 0) bucketIndex += view.BucketCount;
-        
-        for (int i = view.Buckets[bucketIndex] - 1; i >= 0; i = view.Entries[i].Next)
-        {
-            if (view.Entries[i].HashCode == hashCode && view.Keys[i].Equals(key))
-            {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    [BurstCompile]
     public int GetLength(in XBlobContainer container)
     {
-        return GetCount(container);
+        return container.Get<int>(Offset + CountOffset);
     }
 
     [BurstCompile]
     public int GetValueCount(in XBlobContainer container, in TKey key)
     {
-        int hashCode = GetHashCode(key);
-        int firstIndex = FindFirstEntry(container, key, hashCode);
-        if (firstIndex < 0) return 0;
-        
-        int count = 1;
         var view = GetView(container);
+        int firstIndex = view.FindFirstEntry(key, GetHashCode(key));
+        if (firstIndex < 0) return 0;
+        int count = 1;
         for (int i = view.Entries[firstIndex].ValueNext; i >= 0; i = view.Entries[i].ValueNext)
-        {
             count++;
-        }
         return count;
     }
 
     [BurstCompile]
     public bool ContainsKey(in XBlobContainer container, in TKey key)
     {
-        int hashCode = GetHashCode(key);
-        return FindFirstEntry(container, key, hashCode) >= 0;
+        var view = GetView(container);
+        return view.FindFirstEntry(key, GetHashCode(key)) >= 0;
     }
 
     [BurstCompile]
     public TKey GetKey(in XBlobContainer container, int index)
     {
-        if (index < 0 || index >= GetCount(container))
-            throw new ArgumentOutOfRangeException(nameof(index));
         var view = GetView(container);
+        XBlobHashCommon.ThrowIfIndexOutOfRange(index, view.Count, nameof(index));
         return view.Keys[index];
     }
 
     [BurstCompile]
     public TValue GetValue(in XBlobContainer container, int index)
     {
-        if (index < 0 || index >= GetCount(container))
-            throw new ArgumentOutOfRangeException(nameof(index));
         var view = GetView(container);
+        XBlobHashCommon.ThrowIfIndexOutOfRange(index, view.Count, nameof(index));
         return view.Values[index];
     }
 
     [BurstCompile]
     public Span<TKey> GetKeys(in XBlobContainer container)
     {
-        var view = GetView(container);
-        return view.Keys.Slice(0, view.Count);
+        return Span<TKey>.Empty;
     }
 
     [BurstCompile]
     public Span<TValue> GetValues(in XBlobContainer container)
     {
-        var view = GetView(container);
-        return view.Values.Slice(0, view.Count);
+        return Span<TValue>.Empty;
     }
 
     [BurstCompile]
     public bool ContainsValue(in XBlobContainer container, in TKey key, in TValue value)
     {
-        int hashCode = GetHashCode(key);
-        int firstIndex = FindFirstEntry(container, key, hashCode);
-        if (firstIndex < 0) return false;
-        
         var view = GetView(container);
-        // 检查第一个值
-        if (view.Values[firstIndex].Equals(value))
-            return true;
-        
-        // 检查链表中的其他值
+        int firstIndex = view.FindFirstEntry(key, GetHashCode(key));
+        if (firstIndex < 0) return false;
+        if (view.Values[firstIndex].Equals(value)) return true;
         for (int i = view.Entries[firstIndex].ValueNext; i >= 0; i = view.Entries[i].ValueNext)
         {
-            if (view.Values[i].Equals(value))
-                return true;
+            if (view.Values[i].Equals(value)) return true;
         }
         return false;
     }
@@ -234,50 +169,32 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     [BurstCompile]
     public void Add(in XBlobContainer container, in TKey key, in TValue value)
     {
-        int hashCode = GetHashCode(key);
-        int firstIndex = FindFirstEntry(container, key, hashCode);
-        
-        int count = GetCount(container);
-        int bucketCount = GetBucketCount(container);
-        
-        if (count >= bucketCount)
-        {
-            throw new InvalidOperationException("MultiMap is full, cannot add more elements");
-        }
-        
         var view = GetView(container);
-        
+        int hashCode = GetHashCode(key);
+        int firstIndex = view.FindFirstEntry(key, hashCode);
+        int slot = view.Count;
+        if (slot >= view.BucketCount)
+            throw new InvalidOperationException(XBlobHashCommon.FullMessage);
+
+        view.Entries[slot].HashCode = hashCode;
+        view.Keys[slot] = key;
+        view.Values[slot] = value;
+
         if (firstIndex >= 0)
         {
-            // 键已存在，添加到值的链表
-            ref var newEntry = ref view.Entries[count];
-            newEntry.HashCode = hashCode;
-            newEntry.Next = -1; // 不在桶链表中
-            newEntry.ValueNext = view.Entries[firstIndex].ValueNext;
-            view.Keys[count] = key;
-            view.Values[count] = value;
-            
-            view.Entries[firstIndex].ValueNext = count;
+            view.Entries[slot].Next = -1;
+            view.Entries[slot].ValueNext = view.Entries[firstIndex].ValueNext;
+            view.Entries[firstIndex].ValueNext = slot;
         }
         else
         {
-            // 新键，添加到桶链表
-            int bucketIndex = hashCode % bucketCount;
-            if (bucketIndex < 0) bucketIndex += bucketCount;
-            
-            ref var newEntry = ref view.Entries[count];
-            newEntry.HashCode = hashCode;
-            newEntry.Next = view.Buckets[bucketIndex] - 1;
-            newEntry.ValueNext = -1; // 第一个值，没有下一个值
-            view.Keys[count] = key;
-            view.Values[count] = value;
-            
-            view.Buckets[bucketIndex] = count + 1;
+            int bi = XBlobHashCommon.BucketIndex(hashCode, view.BucketCount);
+            view.Entries[slot].Next = view.Buckets[bi];
+            view.Entries[slot].ValueNext = -1;
+            view.Buckets[bi] = slot;
         }
-        
-        // 更新计数
-        ref int countRef = ref container.GetRef<int>(Offset + CountOffset);
-        countRef = count + 1;
+
+        container.GetRef<int>(Offset + CountOffset) = slot + 1;
     }
 
     [BurstCompile]
@@ -314,12 +231,16 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     public ref struct Enumerator
     {
         private XBlobMultiMapView<TKey, TValue> _view;
-        private int _index;
+        private int _bucketIndex;
+        private int _chainHead;
+        private int _currentIndex;
 
         internal Enumerator(in XBlobMultiMap<TKey, TValue> map, in XBlobContainer container)
         {
             _view = map.GetView(container);
-            _index = -1;
+            _bucketIndex = 0;
+            _chainHead = -1;
+            _currentIndex = -1;
         }
 
         public XBlobKeyValuePair<TKey, TValue> Current
@@ -328,16 +249,44 @@ public readonly struct XBlobMultiMap<TKey, TValue>
             {
                 return new XBlobKeyValuePair<TKey, TValue>
                 {
-                    Key = _view.Keys[_index],
-                    Value = _view.Values[_index]
+                    Key = _view.Keys[_currentIndex],
+                    Value = _view.Values[_currentIndex]
                 };
             }
         }
 
         public bool MoveNext()
         {
-            _index++;
-            return _index < _view.Count;
+            if (_currentIndex >= 0)
+            {
+                int valueNext = _view.Entries[_currentIndex].ValueNext;
+                if (valueNext >= 0)
+                {
+                    _currentIndex = valueNext;
+                    return true;
+                }
+                _chainHead = _view.Entries[_chainHead].Next;
+            }
+            else
+            {
+                _chainHead = -1;
+            }
+            if (_chainHead >= 0)
+            {
+                _currentIndex = _chainHead;
+                return true;
+            }
+            for (; _bucketIndex < _view.BucketCount; _bucketIndex++)
+            {
+                _chainHead = _view.Buckets[_bucketIndex];
+                if (_chainHead >= 0)
+                {
+                    _currentIndex = _chainHead;
+                    _bucketIndex++;
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -364,32 +313,62 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     public ref struct EnumeratorRef
     {
         private XBlobMultiMapView<TKey, TValue> _view;
-        private int _index;
+        private int _bucketIndex;
+        private int _chainHead;
+        private int _currentIndex;
         private XBlobMultiMapEntryRef<TKey, TValue> _current;
 
         internal EnumeratorRef(in XBlobMultiMap<TKey, TValue> map, in XBlobContainer container)
         {
             _view = map.GetView(container);
-            _index = -1;
+            _bucketIndex = 0;
+            _chainHead = -1;
+            _currentIndex = -1;
             _current = default;
         }
 
-        public  XBlobMultiMapEntryRef<TKey, TValue> Current
+        public XBlobMultiMapEntryRef<TKey, TValue> Current
         {
             get
             {
-                // 更新 _current 以反映当前的索引
-                _current = new XBlobMultiMapEntryRef<TKey, TValue>(_view, _index);
-                // 使用 unsafe 来返回引用
-                return  _current;
+                _current = new XBlobMultiMapEntryRef<TKey, TValue>(_view, _currentIndex);
+                return _current;
             }
         }
 
         [BurstCompile]
         public bool MoveNext()
         {
-            _index++;
-            return _index < _view.Count;
+            if (_currentIndex >= 0)
+            {
+                int valueNext = _view.Entries[_currentIndex].ValueNext;
+                if (valueNext >= 0)
+                {
+                    _currentIndex = valueNext;
+                    return true;
+                }
+                _chainHead = _view.Entries[_chainHead].Next;
+            }
+            else
+            {
+                _chainHead = -1;
+            }
+            if (_chainHead >= 0)
+            {
+                _currentIndex = _chainHead;
+                return true;
+            }
+            for (; _bucketIndex < _view.BucketCount; _bucketIndex++)
+            {
+                _chainHead = _view.Buckets[_bucketIndex];
+                if (_chainHead >= 0)
+                {
+                    _currentIndex = _chainHead;
+                    _bucketIndex++;
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -416,35 +395,36 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     public ref struct KeysEnumerator
     {
         private XBlobMultiMapView<TKey, TValue> _view;
-        private int _index;
+        private int _bucketIndex;
+        private int _currentIndex;
 
         internal KeysEnumerator(in XBlobMultiMap<TKey, TValue> map, in XBlobContainer container)
         {
             _view = map.GetView(container);
-            _index = -1;
+            _bucketIndex = 0;
+            _currentIndex = -1;
         }
 
-        public TKey Current => _view.Keys[_index];
+        public TKey Current => _view.Keys[_currentIndex];
 
         [BurstCompile]
         public bool MoveNext()
         {
-            // 遍历所有条目，只返回那些 ValueNext == -1 的条目（即每个 key 的第一个值对应的条目）
-            // 这样可以确保每个唯一的 key 只返回一次
-            while (true)
+            if (_currentIndex >= 0)
             {
-                _index++;
-                if (_index >= _view.Count)
+                _currentIndex = _view.Entries[_currentIndex].Next;
+                if (_currentIndex >= 0) return true;
+            }
+            for (; _bucketIndex < _view.BucketCount; _bucketIndex++)
+            {
+                _currentIndex = _view.Buckets[_bucketIndex];
+                if (_currentIndex >= 0)
                 {
-                    return false;
-                }
-
-                // 如果这个条目的 ValueNext == -1，说明这是某个 key 的第一个值
-                if (_view.Entries[_index].ValueNext == -1)
-                {
+                    _bucketIndex++;
                     return true;
                 }
             }
+            return false;
         }
     }
 
@@ -471,21 +451,54 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     public ref struct ValuesEnumerator
     {
         private XBlobMultiMapView<TKey, TValue> _view;
-        private int _index;
+        private int _bucketIndex;
+        private int _chainHead;
+        private int _currentIndex;
 
         internal ValuesEnumerator(in XBlobMultiMap<TKey, TValue> map, in XBlobContainer container)
         {
             _view = map.GetView(container);
-            _index = -1;
+            _bucketIndex = 0;
+            _chainHead = -1;
+            _currentIndex = -1;
         }
 
-        public TValue Current => _view.Values[_index];
+        public TValue Current => _view.Values[_currentIndex];
 
         [BurstCompile]
         public bool MoveNext()
         {
-            _index++;
-            return _index < _view.Count;
+            if (_currentIndex >= 0)
+            {
+                int valueNext = _view.Entries[_currentIndex].ValueNext;
+                if (valueNext >= 0)
+                {
+                    _currentIndex = valueNext;
+                    return true;
+                }
+                _chainHead = _view.Entries[_chainHead].Next;
+            }
+            else
+            {
+                _chainHead = -1;
+            }
+
+            if (_chainHead >= 0)
+            {
+                _currentIndex = _chainHead;
+                return true;
+            }
+            for (; _bucketIndex < _view.BucketCount; _bucketIndex++)
+            {
+                _chainHead = _view.Buckets[_bucketIndex];
+                if (_chainHead >= 0)
+                {
+                    _currentIndex = _chainHead;
+                    _bucketIndex++;
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -518,22 +531,7 @@ public readonly struct XBlobMultiMap<TKey, TValue>
         internal ValuesPerKeyEnumerator(in XBlobMultiMap<TKey, TValue> map, in XBlobContainer container, in TKey key)
         {
             _view = map.GetView(container);
-            // 查找第一个条目
-            int hashCode = key.GetHashCode();
-            int bucketIndex = hashCode % _view.BucketCount;
-            if (bucketIndex < 0) bucketIndex += _view.BucketCount;
-            
-            int firstIndex = -1;
-            for (int i = _view.Buckets[bucketIndex] - 1; i >= 0; i = _view.Entries[i].Next)
-            {
-                if (_view.Entries[i].HashCode == hashCode && _view.Keys[i].Equals(key))
-                {
-                    firstIndex = i;
-                    break;
-                }
-            }
-            
-            _currentIndex = firstIndex;
+            _currentIndex = _view.FindFirstEntry(key, key.GetHashCode());
             _started = false;
         }
 

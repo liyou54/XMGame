@@ -151,31 +151,30 @@ public unsafe struct XBlobContainer : IDisposable
         where TKey : unmanaged
         where TValue : unmanaged
     {
-        // Map 布局: [Count(int)] [BucketCount(int)] [KeyEntries: bucketCount * KeyEntry] [Values: bucketCount * TValue]
-        // KeyEntry 结构: Key(TKey) + HashCode(int)
-        int keyEntrySize = Marshal.SizeOf<TKey>() + sizeof(int);
+        // Map 布局（链地址 + Key/Value 线性，无 Remove 下一槽=Count）: [Count][BucketCount][Buckets][Entries][Keys][Values]
+        int entrySize = sizeof(int) * 2;
+        int keySize = Marshal.SizeOf<TKey>();
         int valueSize = Marshal.SizeOf<TValue>();
-        int size = KeyEntriesOffset + bucketCount * keyEntrySize + bucketCount * valueSize;
+        int headerSize = sizeof(int) * 2; // Count + BucketCount
+        int bucketsSize = bucketCount * sizeof(int);
+        int entriesSize = bucketCount * entrySize;
+        int keysSize = bucketCount * keySize;
+        int valuesSize = bucketCount * valueSize;
+        int size = headerSize + bucketsSize + entriesSize + keysSize + valuesSize;
         int offset = Data->AllocBytes(size);
         
-        // 初始化 Count = 0, BucketCount = bucketCount
         ref int countRef = ref GetRef<int>(offset + CountOffset);
         countRef = 0;
         ref int bucketCountRef = ref GetRef<int>(offset + BucketCountOffset);
         bucketCountRef = bucketCount;
-        
-        // 初始化所有 KeyEntry 的 HashCode 为 int.MinValue（表示空槽）
-        // 因为 AllocBytes 会清零内存（HashCode 为 0），但我们需要 int.MinValue 来表示空槽
-        int keyEntriesOffset = offset + KeyEntriesOffset;
-        int hashCodeOffset = Marshal.SizeOf<TKey>(); // HashCode 在 KeyEntry 中的偏移量
+
         unsafe
         {
-            byte* keyEntriesPtr = Data->GetDataPointer(keyEntriesOffset);
+            int bucketsOffset = offset + headerSize;
+            byte* bucketsPtr = Data->GetDataPointer(bucketsOffset);
+            int* buckets = (int*)bucketsPtr;
             for (int i = 0; i < bucketCount; i++)
-            {
-                int* hashCodePtr = (int*)(keyEntriesPtr + i * keyEntrySize + hashCodeOffset);
-                *hashCodePtr = int.MinValue; // 设置为 EmptyHashCode
-            }
+                buckets[i] = -1;
         }
         
         return offset;
@@ -183,17 +182,29 @@ public unsafe struct XBlobContainer : IDisposable
 
     private int AllocHashSet<T>(int bucketCount) where T : unmanaged
     {
-        // Set 布局: [Count(int)] [BucketCount(int)] [Buckets: bucketCount * int] [Entries: bucketCount * Entry]
-        // Entry 结构: HashCode(int) + Next(int) + Value(T)
-        int entrySize = sizeof(int) + sizeof(int) + Marshal.SizeOf<T>();
-        int size = BucketsOffset + bucketCount * sizeof(int) + bucketCount * entrySize;
+        // Set 布局（链地址 + Value 线性，下一槽=Count）: [Count][BucketCount][Buckets][Entries][Values]
+        int entrySize = sizeof(int) * 2;
+        int valueSize = Marshal.SizeOf<T>();
+        int headerSize = sizeof(int) * 2;
+        int bucketsSize = bucketCount * sizeof(int);
+        int entriesSize = bucketCount * entrySize;
+        int valuesSize = bucketCount * valueSize;
+        int size = headerSize + bucketsSize + entriesSize + valuesSize;
         int offset = Data->AllocBytes(size);
         
-        // 初始化 Count = 0, BucketCount = bucketCount
         ref int countRef = ref GetRef<int>(offset + CountOffset);
         countRef = 0;
         ref int bucketCountRef = ref GetRef<int>(offset + BucketCountOffset);
         bucketCountRef = bucketCount;
+
+        unsafe
+        {
+            int bucketsOffset = offset + headerSize;
+            byte* bucketsPtr = Data->GetDataPointer(bucketsOffset);
+            int* buckets = (int*)bucketsPtr;
+            for (int i = 0; i < bucketCount; i++)
+                buckets[i] = -1;
+        }
         
         return offset;
     }
@@ -202,19 +213,31 @@ public unsafe struct XBlobContainer : IDisposable
         where TKey : unmanaged
         where TValue : unmanaged
     {
-        // MultiMap 布局: [Count(int)] [BucketCount(int)] [Buckets: bucketCount * int] [Entries: bucketCount * Entry] [Keys: bucketCount * TKey] [Values: bucketCount * TValue]
-        // Entry 结构: HashCode(int) + Next(int) + ValueNext(int)
-        int entrySize = sizeof(int) + sizeof(int) + sizeof(int);
+        // MultiMap 布局（链地址 + Key/Value 线性，下一槽=Count）: [Count][BucketCount][Buckets][Entries][Keys][Values]
+        int entrySize = sizeof(int) * 3;
         int keySize = Marshal.SizeOf<TKey>();
         int valueSize = Marshal.SizeOf<TValue>();
-        int size = BucketsOffset + bucketCount * sizeof(int) + bucketCount * entrySize + bucketCount * keySize + bucketCount * valueSize;
+        int headerSize = sizeof(int) * 2;
+        int bucketsSize = bucketCount * sizeof(int);
+        int entriesSize = bucketCount * entrySize;
+        int keysSize = bucketCount * keySize;
+        int valuesSize = bucketCount * valueSize;
+        int size = headerSize + bucketsSize + entriesSize + keysSize + valuesSize;
         int offset = Data->AllocBytes(size);
         
-        // 初始化 Count = 0, BucketCount = bucketCount
         ref int countRef = ref GetRef<int>(offset + CountOffset);
         countRef = 0;
         ref int bucketCountRef = ref GetRef<int>(offset + BucketCountOffset);
         bucketCountRef = bucketCount;
+
+        unsafe
+        {
+            int bucketsOffset = offset + headerSize;
+            byte* bucketsPtr = Data->GetDataPointer(bucketsOffset);
+            int* buckets = (int*)bucketsPtr;
+            for (int i = 0; i < bucketCount; i++)
+                buckets[i] = -1;
+        }
         
         return offset;
     }
