@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using Unity.Collections.LowLevel.Unsafe;
 
 public struct XBlobHashMapEntry<TKey, TValue>
     where TKey : unmanaged
@@ -47,9 +49,11 @@ public ref struct XBlobHashMapView<TKey, TValue>
     internal Span<TKey> Keys;
     internal Span<TValue> Values;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal int FindEntry(in TKey key, int hashCode)
     {
-        int bi = XBlobHashCommon.BucketIndex(hashCode, BucketCount);
+        int bi = hashCode % BucketCount;
+        if (bi < 0) bi += BucketCount;
         for (int i = Buckets[bi]; i >= 0; i = Entries[i].Next)
             if (Entries[i].HashCode == hashCode && Keys[i].Equals(key))
                 return i;
@@ -69,11 +73,13 @@ public struct XBlobMap<TKey, TValue>
     private const int BucketCountOffset = sizeof(int);
     private const int BucketsOffset = sizeof(int) * 2; // 布局: [Count][BucketCount][Buckets][Entries][Keys][Values]
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int GetBucketCount(in XBlobContainer container)
     {
         return container.Get<int>(Offset + BucketCountOffset);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int GetCount(in XBlobContainer container)
     {
         return container.Get<int>(Offset + CountOffset);
@@ -88,14 +94,14 @@ public struct XBlobMap<TKey, TValue>
         int entriesOffset = bucketsOffset + bucketCount * sizeof(int);
         int entrySize = sizeof(int) + sizeof(int); // HashCode + Next
         int keysOffset = entriesOffset + bucketCount * entrySize;
-        int valuesOffset = keysOffset + bucketCount * System.Runtime.InteropServices.Marshal.SizeOf<TKey>();
+        int valuesOffset = keysOffset + bucketCount * UnsafeUtility.SizeOf<TKey>();
         
         // 直接通过数据指针创建 Span
         byte* dataPtr = container.GetDataPointer(bucketsOffset);
         int* bucketsPtr = (int*)dataPtr;
         XBlobHashMapEntry<TKey, TValue>* entriesPtr = (XBlobHashMapEntry<TKey, TValue>*)(dataPtr + bucketCount * sizeof(int));
         TKey* keysPtr = (TKey*)(dataPtr + bucketCount * sizeof(int) + bucketCount * entrySize);
-        TValue* valuesPtr = (TValue*)(dataPtr + bucketCount * sizeof(int) + bucketCount * entrySize + bucketCount * System.Runtime.InteropServices.Marshal.SizeOf<TKey>());
+        TValue* valuesPtr = (TValue*)(dataPtr + bucketCount * sizeof(int) + bucketCount * entrySize + bucketCount * UnsafeUtility.SizeOf<TKey>());
         
         return new XBlobHashMapView<TKey, TValue>
         {
@@ -108,6 +114,7 @@ public struct XBlobMap<TKey, TValue>
         };
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int GetHashCode(in TKey key)
     {
         return key.GetHashCode();
@@ -390,9 +397,11 @@ internal ref struct XBlobMapKeyView<TKey>
     internal Span<XBlobHashEntry> Entries;
     internal Span<TKey> Keys;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal int FindEntry(in TKey key, int hashCode)
     {
-        int bi = XBlobHashCommon.BucketIndex(hashCode, BucketCount);
+        int bi = hashCode % BucketCount;
+        if (bi < 0) bi += BucketCount;
         for (int i = Buckets[bi]; i >= 0; i = Entries[i].Next)
             if (Entries[i].HashCode == hashCode && Keys[i].Equals(key))
                 return i;

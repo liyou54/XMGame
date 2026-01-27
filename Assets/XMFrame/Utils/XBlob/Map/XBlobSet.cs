@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections.LowLevel.Unsafe;
 
@@ -21,9 +22,11 @@ internal ref struct XBlobHashSetView<T>
     internal Span<XBlobHashSetEntry> Entries;
     internal Span<T> Values;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal int FindEntry(in T value, int hashCode)
     {
-        int bucketIndex = XBlobHashCommon.BucketIndex(hashCode, BucketCount);
+        int bucketIndex = hashCode % BucketCount;
+        if (bucketIndex < 0) bucketIndex += BucketCount;
         for (int i = Buckets[bucketIndex]; i >= 0; i = Entries[i].Next)
         {
             if (Entries[i].HashCode == hashCode && Values[i].Equals(value))
@@ -64,6 +67,7 @@ public readonly struct XBlobSet<T> where T : unmanaged, IEquatable<T>
     }
 
     [BurstCompile]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int GetHashCode(in T value)
     {
         return value.GetHashCode();

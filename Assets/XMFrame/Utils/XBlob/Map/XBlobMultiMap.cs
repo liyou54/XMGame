@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections.LowLevel.Unsafe;
 
@@ -45,9 +46,11 @@ internal ref struct XBlobMultiMapView<TKey, TValue>
     internal Span<TKey> Keys;
     internal Span<TValue> Values;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal int FindFirstEntry(in TKey key, int hashCode)
     {
-        int bucketIndex = XBlobHashCommon.BucketIndex(hashCode, BucketCount);
+        int bucketIndex = hashCode % BucketCount;
+        if (bucketIndex < 0) bucketIndex += BucketCount;
         for (int i = Buckets[bucketIndex]; i >= 0; i = Entries[i].Next)
         {
             if (Entries[i].HashCode == hashCode && Keys[i].Equals(key))
@@ -76,7 +79,7 @@ public readonly struct XBlobMultiMap<TKey, TValue>
         int bucketCount = container.Get<int>(Offset + BucketCountOffset);
         int count = container.Get<int>(Offset + CountOffset);
         int entrySize = sizeof(int) * 3;
-        int keySize = System.Runtime.InteropServices.Marshal.SizeOf<TKey>();
+        int keySize = UnsafeUtility.SizeOf<TKey>();
         int bucketsOffset = Offset + BucketsOffset;
         int entriesOffset = bucketsOffset + bucketCount * sizeof(int);
         int keysOffset = entriesOffset + bucketCount * entrySize;
@@ -94,6 +97,7 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     }
 
     [BurstCompile]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int GetHashCode(in TKey key)
     {
         return key.GetHashCode();
