@@ -3,7 +3,7 @@ using NUnit.Framework;
 using Unity.Collections;
 using UnityEngine;
 
-namespace XMFrame.XBlob.Tests
+namespace XM.Utils.Tests
 {
     [TestFixture]
     public class XBlobContainerTests

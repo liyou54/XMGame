@@ -12,7 +12,7 @@ public readonly struct XBlobPtr
 
     /// <summary>向 Container 申请：在容器上分配一块 HashMap，返回指向该 blob HashMap 容器的指针。</summary>
     /// <param name="container">XBlob 容器，从中申请</param>
-    /// <param name="keyType">键类型（如 typeof(CfgId)）</param>
+    /// <param name="keyType">键类型（如 typeof(CfgI)）</param>
     /// <param name="valueType">值类型（如 TUnmanaged）</param>
     /// <param name="capacity">初始容量</param>
     /// <returns>指向新分配的 XBlobMap 的指针，可用 AsMap / AsMapKey 操作</returns>

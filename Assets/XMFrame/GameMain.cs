@@ -4,12 +4,12 @@ using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
-using XMFrame.Interfaces;
-using XMFrame.Utils;
-using XMFrame.Implementation;
-using XMFrame;
+using XM.Contracts;
+using XM.Utils;
+using XM;
+using XM;
 
-namespace XMFrame.Implementation
+namespace XM
 {
     /// <summary>
     /// 游戏主入口，负责管理器的查找、排序、创建和生命周期管理

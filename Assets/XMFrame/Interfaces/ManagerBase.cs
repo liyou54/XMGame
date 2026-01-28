@@ -1,8 +1,8 @@
 using UnityEngine;
 using Cysharp.Threading.Tasks;
-using XMFrame.Interfaces;
+using XM.Contracts;
 
-namespace XMFrame.Implementation
+namespace XM
 {
     /// <summary>
     /// 管理器基类

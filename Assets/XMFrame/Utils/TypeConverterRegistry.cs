@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using XMFrame.Interfaces;
-using XMFrame.Implementation;
+using XM.Contracts;
+using XM;
 
-namespace XMFrame.Utils
+namespace XM.Utils
 {
     /// <summary>
     /// 类型转换器注册表，支持全局和局部转换器

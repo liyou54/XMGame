@@ -1,6 +1,6 @@
 using System;
 
-namespace XMFrame.XBlob.Tests
+namespace XM.Utils.Tests
 {
     /// <summary>测试用自定义结构体，用于 Ptr / Array 的 unmanaged 元素。</summary>
     public struct TestBlobStruct

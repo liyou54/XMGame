@@ -1,6 +1,6 @@
 {
-    "name": "XMFrame.Utils",
-    "rootNamespace": "XMFrame.Utils",
+    "name": "XM.Utils",
+    "rootNamespace": "XM.Utils",
     "references": [
         "GUID:b2f1fc1aca9012145bfe9a26035d1fea",
         "GUID:e34a5702dd353724aa315fb8011f08c3",

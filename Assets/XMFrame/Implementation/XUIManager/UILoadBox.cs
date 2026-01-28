@@ -4,9 +4,9 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Pool;
 using UnityEngine.Serialization;
-using XMFrame.Interfaces;
+using XM.Contracts;
 
-namespace XMFrame.Implementation
+namespace XM
 {
     public enum ELoadBoxStatus
     {
@@ -18,7 +18,7 @@ namespace XMFrame.Implementation
 
     public class UILoadBoxParam
     {
-        public XAssetId? BasicAssetId;
+        public AssetI? BasicAssetId;
         public int? Count;
         public Canvas Canvas;
         public GameObject ParentGameObject;
@@ -27,10 +27,10 @@ namespace XMFrame.Implementation
         public Action<IReadOnlyList<UICtrlBase>> OnLoadSuccess;
         public UICtrlBase ParentCtrl;
         public ELoadBoxStatus Status;
-        public Dictionary<int,XAssetId?> SpecialAssetIdDic;
+        public Dictionary<int,AssetI?> SpecialAssetIdDic;
 
 
-        public UILoadBoxParam SetAssetId(XAssetId assetId)
+        public UILoadBoxParam SetAssetId(AssetI assetId)
         {
             if (assetId.Valid)
             {
@@ -88,7 +88,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 异步加载UI控制器并返回组件列表
         /// </summary>
-        private async UniTask<List<UICtrlBase>> LoadUICtrlAsync(XAssetId assetId, int count)
+        private async UniTask<List<UICtrlBase>> LoadUICtrlAsync(AssetI assetId, int count)
         {
             var instances = ListPool<UICtrlBase>.Get();
             var uim = IUIManager.I as UIManager;
@@ -159,17 +159,17 @@ namespace XMFrame.Implementation
             if (SpecialAssetIdDic != null && SpecialAssetIdDic.Count > 0)
             {
                 // 先规划任务：统计所有需要加载的资源ID和数量，同时记录每个索引对应的资源ID
-                var loadTasks = DictionaryPool<XAssetId, int>.Get();
-                var indexToAssetId = DictionaryPool<int, XAssetId>.Get();
+                var loadTasks = DictionaryPool<AssetI, int>.Get();
+                var indexToAssetId = DictionaryPool<int, AssetI>.Get();
                 
                 // 遍历0到Count-1，记录每个索引对应的资源ID
                 for (int index = 0; index < Count.Value; index++)
                 {
-                    XAssetId assetIdToUse;
+                    AssetI assetIdToUse;
                     
                     // 检查字典中是否存在该索引（注意：字典中的key可能是1-based）
                     int dictKey = index + 1;
-                    if (SpecialAssetIdDic.TryGetValue(dictKey, out XAssetId? specialAssetId) 
+                    if (SpecialAssetIdDic.TryGetValue(dictKey, out AssetI? specialAssetId) 
                         && specialAssetId.HasValue 
                         && specialAssetId.Value.Valid)
                     {
@@ -194,7 +194,7 @@ namespace XMFrame.Implementation
                 
                 // 并行加载所有资源，获得结果：assetId -> List<UICtrlBase>
                 var taskList = ListPool<UniTask<List<UICtrlBase>>>.Get();
-                var assetIdToTaskIndex = DictionaryPool<XAssetId, int>.Get();
+                var assetIdToTaskIndex = DictionaryPool<AssetI, int>.Get();
                 int taskIndex = 0;
                 
                 foreach (var kvp in loadTasks)
@@ -213,8 +213,8 @@ namespace XMFrame.Implementation
                 var results = await UniTask.WhenAll(taskList);
                 
                 // 构建结果字典：assetId -> List<UICtrlBase>
-                var assetIdToComponents = DictionaryPool<XAssetId, List<UICtrlBase>>.Get();
-                var assetIdToConsumedIndex = DictionaryPool<XAssetId, int>.Get();
+                var assetIdToComponents = DictionaryPool<AssetI, List<UICtrlBase>>.Get();
+                var assetIdToConsumedIndex = DictionaryPool<AssetI, int>.Get();
                 
                 foreach (var kvp in loadTasks)
                 {
@@ -244,13 +244,13 @@ namespace XMFrame.Implementation
                 }
                 
                 // 释放临时字典
-                DictionaryPool<XAssetId, int>.Release(loadTasks);
-                DictionaryPool<int, XAssetId>.Release(indexToAssetId);
-                DictionaryPool<XAssetId, int>.Release(assetIdToTaskIndex);
-                DictionaryPool<XAssetId, int>.Release(assetIdToConsumedIndex);
+                DictionaryPool<AssetI, int>.Release(loadTasks);
+                DictionaryPool<int, AssetI>.Release(indexToAssetId);
+                DictionaryPool<AssetI, int>.Release(assetIdToTaskIndex);
+                DictionaryPool<AssetI, int>.Release(assetIdToConsumedIndex);
                 
                 // 释放组件字典（注意：组件列表来自 results，会在后面统一释放）
-                DictionaryPool<XAssetId, List<UICtrlBase>>.Release(assetIdToComponents);
+                DictionaryPool<AssetI, List<UICtrlBase>>.Release(assetIdToComponents);
                 
                 // 释放 results 中的列表
                 foreach (var result in results)

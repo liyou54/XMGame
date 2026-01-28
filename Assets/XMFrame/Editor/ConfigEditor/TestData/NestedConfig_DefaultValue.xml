@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- OptionalWithDefault 缺失/空时使用 [XmlDefault("default")]；RequiredId 有值 -->
+<Item>
+  <RequiredId>100</RequiredId>
+  <Test>1</Test>
+</Item>

@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
-using XMFrame.Interfaces;
+using XM.Contracts;
 
-namespace XMFrame.Implementation
+namespace XM
 {
     /// <summary>
     /// PoolManager 使用示例

@@ -1,4 +1,4 @@
-{{- # 非托管结构体代码生成模板 -}}
+{{- # 非托管结构体代码生成模板（所有类型使用 global:: 全局命名空间限定） -}}
 {{- # 生成 using 语句 -}}
 {{~ for using in required_usings ~}}
 using {{ using }};
@@ -11,7 +11,7 @@ namespace {{ namespace }}
 {{~ end ~}}
 
 {{- # 第一部分：接口声明 -}}
-public partial struct {{ unmanaged_type_name }} : IConfigUnManaged<{{ unmanaged_type_name }}>
+public partial struct {{ unmanaged_type_name }} : global::XM.IConfigUnManaged<{{ unmanaged_type_name }}>
 {
 }
 
@@ -21,24 +21,23 @@ public partial struct {{ unmanaged_type_name }}
 {{~ for field in fields ~}}
     public {{ field.unmanaged_type }} {{ field.name }};
 {{~ if field.needs_ref_field ~}}
-    public XBlobPtr<{{ unmanaged_type_name }}> {{ field.ref_field_name }};
+    public global::XBlobPtr<{{ unmanaged_type_name }}> {{ field.ref_field_name }};
 {{~ end ~}}
 {{~ end ~}}
 }
 
-{{- # 第四部分：转换方法 -}}
+{{- # 第四部分：转换方法（从 IConfigDataCenter 获取转换器，不静态 new 转换器类型） -}}
 {{~ for field in fields ~}}
 {{~ if field.needs_converter ~}}
 public partial struct {{ unmanaged_type_name }}
 {
-    private static {{ field.converter_type_name }} _converter_{{ field.name }} = new {{ field.converter_type_name }}();
-    
     /// <summary>
-    /// 将 {{ field.name }} 从 {{ field.source_type }} 转换为 {{ field.target_type }}
+    /// 将 {{ field.name }} 从 {{ field.source_type }} 转换为 {{ field.target_type }}，转换器从 IConfigDataCenter 按域获取。
     /// </summary>
-    public {{ field.target_type }} Convert{{ field.name }}()
+    public static {{ field.target_type }} Convert{{ field.name }}({{ field.source_type }} source)
     {
-        return _converter_{{ field.name }}.Convert(this.{{ field.name }});
+        var c = global::XM.Contracts.IConfigDataCenter.I?.GetConverter<{{ field.source_type }}, {{ field.target_type }}>("{{ field.converter_domain_escaped }}");
+        return c != null ? c.Convert(source) : default;
     }
 }
 {{~ end ~}}
@@ -48,7 +47,7 @@ public partial struct {{ unmanaged_type_name }}
 {{~ for index_group in index_groups ~}}
 public partial struct {{ unmanaged_type_name }}
 {
-    public struct {{ index_group.index_name }}Index : IConfigIndexGroup<{{ unmanaged_type_name }}>, IEquatable<{{ index_group.index_name }}Index>
+    public struct {{ index_group.index_name }}Index : global::XM.IConfigIndexGroup<{{ unmanaged_type_name }}>, global::System.IEquatable<{{ index_group.index_name }}Index>
     {
 {{~ for field in index_group.fields ~}}
         public {{ field.unmanaged_type }} {{ field.name }};
@@ -66,14 +65,14 @@ public partial struct {{ unmanaged_type_name }}
             return {{ for field in index_group.fields }}{{ if for.index > 0 }} && {{ end }}{{ field.name }}.Equals(other.{{ field.name }}){{ end }};
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(global::System.Object obj)
         {
             return obj is {{ index_group.index_name }}Index other && Equals(other);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine({{~ for field in index_group.fields ~}}{{~ if for.index > 0 ~}}, {{~ end ~}}{{ field.name }}{{~ end ~}});
+            return global::System.HashCode.Combine({{~ for field in index_group.fields ~}}{{~ if for.index > 0 ~}}, {{~ end ~}}{{ field.name }}{{~ end ~}});
         }
     }
 }

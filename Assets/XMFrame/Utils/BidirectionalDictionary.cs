@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace XMFrame.Utils
+namespace XM.Utils
 {
     /// <summary>
     /// 双向索引容器，支持通过键查找值，也支持通过值查找键（一对一映射，无装箱）

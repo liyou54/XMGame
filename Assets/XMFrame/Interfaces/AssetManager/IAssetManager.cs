@@ -1,72 +1,72 @@
 using System;
 using Cysharp.Threading.Tasks;
-using XMFrame.Implementation;
+using XM;
 
-namespace XMFrame.Interfaces
+namespace XM.Contracts
 {
     public interface IAssetId
     {
-        public ModHandle ModHandle { get; set; }
+        public ModI Mod { get; set; }
         public int Id { get; set; }
 
-        public XAssetId GetAssetId()
+        public AssetI GetAssetId()
         {
-            return new XAssetId(ModHandle, Id);
+            return new AssetI(Mod, Id);
         }
     }
 
         /// <summary>
         /// 资源ID，用于标识资源（只是一个key，不能直接获取对象）
         /// </summary>
-        public readonly struct XAssetId : IEquatable<XAssetId>, IAssetId
+        public readonly struct AssetI : IEquatable<AssetI>, IAssetId
         {
-            public ModHandle ModHandle { get; }
+            public ModI Mod { get; }
             public int Id { get; }
             
-            public bool Valid => ModHandle.Valid && Id > 0;
+            public bool Valid => Mod.Valid && Id > 0;
 
-            public XAssetId(ModHandle modHandle, int id)
+            public AssetI(ModI mod, int id)
             {
-                ModHandle = modHandle;
+                Mod = mod;
                 Id = id;
             }
 
-            ModHandle IAssetId.ModHandle 
+            ModI IAssetId.Mod 
             { 
-                get => ModHandle; 
-                set => throw new NotSupportedException("AssetId is immutable"); 
+                get => Mod; 
+                set => throw new NotSupportedException("AssetI is immutable"); 
             }
 
             int IAssetId.Id 
             { 
                 get => Id; 
-                set => throw new NotSupportedException("AssetId is immutable"); 
+                set => throw new NotSupportedException("AssetI is immutable"); 
             }
 
-            public bool Equals(XAssetId other)
+            public bool Equals(AssetI other)
             {
-                return ModHandle.Equals(other.ModHandle) && Id == other.Id;
+                return Mod.Equals(other.Mod) && Id == other.Id;
             }
 
             public override bool Equals(object obj)
             {
-                return obj is XAssetId other && Equals(other);
+                return obj is AssetI other && Equals(other);
             }
 
             public override int GetHashCode()
             {
                 unchecked
                 {
-                    return (ModHandle.GetHashCode() * 397) ^ Id;
+                    return (Mod.GetHashCode() * 397) ^ Id;
                 }
             }
 
-            public static bool operator ==(XAssetId left, XAssetId right)
+            public static bool operator ==(AssetI left, AssetI right)
             {
                 return left.Equals(right);
             }
 
-            public static bool operator !=(XAssetId left, XAssetId right)
+            public static bool operator !=(AssetI left, AssetI right)
             {
                 return !left.Equals(right);
             }
@@ -110,13 +110,13 @@ namespace XMFrame.Interfaces
         /// <summary>
         /// 获取资源ID
         /// </summary>
-        public XAssetId? GetAssetId()
+        public AssetI? GetAssetId()
         {
             if (IAssetManager.I == null )
             {
                 return null;
             }
-            return IAssetManager.I.GetAssetByAddress<XAssetId, AssetAddress>(this);
+            return IAssetManager.I.GetAssetByAddress<AssetI, AssetAddress>(this);
         }
 
         /// <summary>
@@ -146,7 +146,7 @@ namespace XMFrame.Interfaces
         private static IPool<XAssetHandle> _pool;
         private const string PoolName = "XAssetHandlePool";
         
-        public XAssetId Id { get; set; }
+        public AssetI Id { get; set; }
         public EAssetStatus Status;
 
         private XAssetHandle()
@@ -301,17 +301,17 @@ namespace XMFrame.Interfaces
 
     public interface IAssetManager : IManager<IAssetManager>
     {
-        public UniTask<bool> CreateResPackage(ModHandle modId, string modName, string path);
-        public AssetAddress CreateAssetAddress(string resAddress, XAssetId? defaultResId = null);
-        public UniTask<Address> LoadAssetAsync<Address>(ModHandle modId, string path) where Address : IAssetId;
-        public TAssetId LoadAsset<TAssetId>(ModHandle modId, string path) where TAssetId : IAssetId;
-        public TAssetId CreateAssetId<TAssetId>(ModHandle modId, string path) where TAssetId : IAssetId;
+        public UniTask<bool> CreateResPackage(ModI modId, string modName, string path);
+        public AssetAddress CreateAssetAddress(string resAddress, AssetI? defaultResId = null);
+        public UniTask<Address> LoadAssetAsync<Address>(ModI modId, string path) where Address : IAssetId;
+        public TAssetId LoadAsset<TAssetId>(ModI modId, string path) where TAssetId : IAssetId;
+        public TAssetId CreateAssetId<TAssetId>(ModI modId, string path) where TAssetId : IAssetId;
 
         /// <summary>
-        /// 通过AssetId创建XAssetHandle（异步，如果资源未加载会自动加载）
+        /// 通过AssetI创建XAssetHandle（异步，如果资源未加载会自动加载）
         /// 使用引用计数机制，每次创建引用计数+1
         /// </summary>
-        public UniTask<XAssetHandle> CreateAssetHandleAsync(XAssetId xAssetId);
+        public UniTask<XAssetHandle> CreateAssetHandleAsync(AssetI xAssetId);
 
         public TAsset GetAssetByAddress<TAsset, TAddress>( TAddress address)
             where TAddress : IAssetAddress where TAsset : IAssetId;
@@ -327,9 +327,9 @@ namespace XMFrame.Interfaces
         /// <summary>
         /// 通过AssetId获取资源对象（内部使用，外部应通过XAssetHandle获取）
         /// </summary>
-        public T GetAssetObject<T>(XAssetId xAsset) where T : UnityEngine.Object;
+        public T GetAssetObject<T>(AssetI xAsset) where T : UnityEngine.Object;
 
-        XAssetId GetAsstIdByModIdAndPath(ModHandle modId, string path);
+        AssetI GetAsstIdByModIdAndPath(ModI modId, string path);
     }
 
 }

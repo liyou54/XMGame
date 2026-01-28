@@ -4,11 +4,11 @@ using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
-using XMFrame.Interfaces;
-using XMFrame.Utils;
+using XM.Contracts;
+using XM.Utils;
 using YooAsset;
 
-namespace XMFrame.Implementation
+namespace XM
 {
     /// <summary>
     /// 资源管理器实现（基于YooAsset）
@@ -24,7 +24,7 @@ namespace XMFrame.Implementation
         /// </summary>
         private class ResPackageInfo
         {
-            public ModHandle ModId { get; set; }
+            public ModI ModId { get; set; }
             public string PackageName { get; set; }
             public string Path { get; set; }
             public ResourcePackage ResourcePackage { get; set; }
@@ -38,8 +38,8 @@ namespace XMFrame.Implementation
         {
             public int AddressId { get; set; }
             public string ResAddress { get; set; }
-            public XAssetId? DefaultAssetId { get; set; }
-            public XAssetId? CurrentAssetId { get; set; }
+            public AssetI? DefaultAssetId { get; set; }
+            public AssetI? CurrentAssetId { get; set; }
         }
 
         /// <summary>
@@ -47,7 +47,7 @@ namespace XMFrame.Implementation
         /// </summary>
         private class LoadedAssetInfo
         {
-            public XAssetId XAssetId { get; set; }
+            public AssetI AssetI { get; set; }
             public YooAsset.AssetHandle YooAssetHandle { get; set; }
             public UnityEngine.Object Asset { get; set; }
 
@@ -60,28 +60,28 @@ namespace XMFrame.Implementation
         #region 私有字段
 
         // ModId -> ResPackageInfo 映射
-        private Dictionary<ModHandle, ResPackageInfo> _resPackages = new Dictionary<ModHandle, ResPackageInfo>();
+        private Dictionary<ModI, ResPackageInfo> _resPackages = new Dictionary<ModI, ResPackageInfo>();
 
         // AddressId -> AssetAddressInfo 映射
         private Dictionary<int, AssetAddressInfo> _assetAddresses = new Dictionary<int, AssetAddressInfo>();
         private int _nextAddressId = 1;
 
         // AssetId -> LoadedAssetInfo 映射
-        private Dictionary<XAssetId, LoadedAssetInfo> _loadedAssets = new Dictionary<XAssetId, LoadedAssetInfo>();
+        private Dictionary<AssetI, LoadedAssetInfo> _loadedAssets = new Dictionary<AssetI, LoadedAssetInfo>();
 
         // 资源路径 -> AssetId 映射（用于快速查找）
-        private Dictionary<string, Dictionary<ModHandle, XAssetId>> _pathToAssetId =
-            new Dictionary<string, Dictionary<ModHandle, XAssetId>>();
+        private Dictionary<string, Dictionary<ModI, AssetI>> _pathToAssetId =
+            new Dictionary<string, Dictionary<ModI, AssetI>>();
 
         // AssetId -> (ModId, Path) 映射（用于通过AssetId查找路径信息，用于延迟加载）
-        private Dictionary<XAssetId, (ModHandle modId, string path)> _assetIdToPathInfo =
-            new Dictionary<XAssetId, (ModHandle, string)>();
+        private Dictionary<AssetI, (ModI modId, string path)> _assetIdToPathInfo =
+            new Dictionary<AssetI, (ModI, string)>();
 
         // 下一个资源ID（全局计数器）
         private int _nextAssetId = 1;
 
         // 待回收的资源集合（用于定期回收，使用HashSet提高查找效率）
-        private HashSet<XAssetId> _assetsToRecycle = new HashSet<XAssetId>();
+        private HashSet<AssetI> _assetsToRecycle = new HashSet<AssetI>();
 
         // 回收协程的取消令牌
         private CancellationTokenSource _recycleCancellationTokenSource;
@@ -93,7 +93,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 创建资源包 时用modId注册 使用 modName为包名 
         /// </summary>
-        public async UniTask<bool> CreateResPackage(ModHandle modId, string modName, string path)
+        public async UniTask<bool> CreateResPackage(ModI modId, string modName, string path)
         {
             if (string.IsNullOrEmpty(path))
             {
@@ -193,7 +193,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 创建并注册资源ID（不加载资源）
         /// </summary>
-        public TAssetId CreateAssetId<TAssetId>(ModHandle modId, string path) where TAssetId : IAssetId
+        public TAssetId CreateAssetId<TAssetId>(ModI modId, string path) where TAssetId : IAssetId
         {
             if (string.IsNullOrEmpty(path))
             {
@@ -211,7 +211,7 @@ namespace XMFrame.Implementation
                 }
 
                 // 检查是否已经存在该路径的 AssetId
-                XAssetId xAssetIdStruct;
+                AssetI xAssetIdStruct;
                 if (_pathToAssetId.TryGetValue(path, out var modIdToAssetId) &&
                     modIdToAssetId.TryGetValue(modId, out var existingAssetId))
                 {
@@ -224,12 +224,12 @@ namespace XMFrame.Implementation
                 {
                     // 创建新的AssetId并注册
                     int assetId = _nextAssetId++;
-                    xAssetIdStruct = new XAssetId(modId, assetId);
+                    xAssetIdStruct = new AssetI(modId, assetId);
 
                     // 建立路径映射
                     if (!_pathToAssetId.ContainsKey(path))
                     {
-                        _pathToAssetId[path] = new Dictionary<ModHandle, XAssetId>();
+                        _pathToAssetId[path] = new Dictionary<ModI, AssetI>();
                     }
                     _pathToAssetId[path][modId] = xAssetIdStruct;
 
@@ -241,7 +241,7 @@ namespace XMFrame.Implementation
                 }
 
                 // 转换为TAssetId类型
-                if (typeof(TAssetId) == typeof(XAssetId))
+                if (typeof(TAssetId) == typeof(AssetI))
                 {
                     return (TAssetId)(object)xAssetIdStruct;
                 }
@@ -258,7 +258,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 通过ModId和Path获取AssetId
         /// </summary>
-        public XAssetId GetAsstIdByModIdAndPath(ModHandle modId, string path)
+        public AssetI GetAsstIdByModIdAndPath(ModI modId, string path)
         {
             if (string.IsNullOrEmpty(path))
             {
@@ -287,7 +287,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 异步加载资源
         /// </summary>
-        public async UniTask<Address> LoadAssetAsync<Address>(ModHandle modId, string path) where Address : IAssetId
+        public async UniTask<Address> LoadAssetAsync<Address>(ModI modId, string path) where Address : IAssetId
         {
             if (string.IsNullOrEmpty(path))
             {
@@ -298,7 +298,7 @@ namespace XMFrame.Implementation
             try
             {
                 // 先创建或获取AssetId
-                var xAssetId = CreateAssetId<XAssetId>(modId, path);
+                var xAssetId = CreateAssetId<AssetI>(modId, path);
                 if (xAssetId.Id == 0)
                 {
                     return default(Address);
@@ -340,7 +340,7 @@ namespace XMFrame.Implementation
                 }
 
                 // 转换为Address类型
-                if (typeof(Address) == typeof(XAssetId))
+                if (typeof(Address) == typeof(AssetI))
                 {
                     return (Address)(object)xAssetId;
                 }
@@ -357,7 +357,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 同步加载资源
         /// </summary>
-        public TAsset LoadAsset<TAsset>(ModHandle modId, string path) where TAsset : IAssetId
+        public TAsset LoadAsset<TAsset>(ModI modId, string path) where TAsset : IAssetId
         {
             if (string.IsNullOrEmpty(path))
             {
@@ -368,7 +368,7 @@ namespace XMFrame.Implementation
             try
             {
                 // 先创建或获取AssetId
-                var xAssetId = CreateAssetId<XAssetId>(modId, path);
+                var xAssetId = CreateAssetId<AssetI>(modId, path);
                 if (xAssetId.Id == 0)
                 {
                     return default(TAsset);
@@ -410,7 +410,7 @@ namespace XMFrame.Implementation
                 }
 
                 // 转换为Address类型
-                if (typeof(TAsset) == typeof(XAssetId))
+                if (typeof(TAsset) == typeof(AssetI))
                 {
                     return (TAsset)(object)xAssetId;
                 }
@@ -431,7 +431,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 创建资源地址
         /// </summary>
-        public AssetAddress CreateAssetAddress(string resAddress, XAssetId? defaultResId = null)
+        public AssetAddress CreateAssetAddress(string resAddress, AssetI? defaultResId = null)
         {
             if (string.IsNullOrEmpty(resAddress))
             {
@@ -475,7 +475,7 @@ namespace XMFrame.Implementation
             if (addressInfo.CurrentAssetId.HasValue)
             {
                 var assetId = addressInfo.CurrentAssetId.Value;
-                if (typeof(TAsset) == typeof(XAssetId))
+                if (typeof(TAsset) == typeof(AssetI))
                 {
                     return (TAsset)(object)assetId;
                 }
@@ -527,7 +527,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 通过资源地址获取资源ID
         /// </summary>
-        public XAssetId? GetAssetIdByAddress(AssetAddress address)
+        public AssetI? GetAssetIdByAddress(AssetAddress address)
         {
             if (address.AddressId == 0)
             {
@@ -575,7 +575,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 通过AssetId创建XAssetHandle（异步，如果资源未加载会自动加载）
         /// </summary>
-        public async UniTask<XAssetHandle> CreateAssetHandleAsync(XAssetId xAssetId)
+        public async UniTask<XAssetHandle> CreateAssetHandleAsync(AssetI xAssetId)
         {
             if (xAssetId.Id == 0)
             {
@@ -647,7 +647,7 @@ namespace XMFrame.Implementation
                 // 存储资源信息，初始引用计数为0
                 loadedAssetInfo = new LoadedAssetInfo
                 {
-                    XAssetId = xAssetId,
+                    AssetI = xAssetId,
                     YooAssetHandle = assetHandle,
                     Asset = asset,
                     RefCount = 0
@@ -722,7 +722,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 通过AssetId获取资源对象（内部使用，外部应通过XAssetHandle获取）
         /// </summary>
-        public T GetAssetObject<T>(XAssetId xAssetId) where T : UnityEngine.Object
+        public T GetAssetObject<T>(AssetI xAssetId) where T : UnityEngine.Object
         {
             if (xAssetId.Id == 0)
             {
@@ -751,7 +751,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 内部异步加载资源方法（提取公共逻辑）
         /// </summary>
-        private async UniTask<XAssetId> LoadAssetInternalAsync(ResPackageInfo resPackageInfo, ModHandle modId, string path, XAssetId xAssetId)
+        private async UniTask<AssetI> LoadAssetInternalAsync(ResPackageInfo resPackageInfo, ModI modId, string path, AssetI xAssetId)
         {
             // 使用已创建的AssetId
             var assetIdStruct = xAssetId;
@@ -776,20 +776,20 @@ namespace XMFrame.Implementation
                 {
                     XLog.ErrorFormat("加载资源失败，资源句柄无效，ModId: {0}, Path: {1}", modId.ModId, path);
                     assetHandle?.Release();
-                    return new XAssetId(assetIdStruct.ModHandle, 0); // 返回无效的AssetId
+                    return new AssetI(assetIdStruct.Mod, 0); // 返回无效的AssetI
                 }
             }
             catch (Exception ex)
             {
                 XLog.ErrorFormat("YooAsset加载资源异常，ModId: {0}, Path: {1}, 错误: {2}", modId.ModId, path, ex.Message);
                 assetHandle?.Release();
-                return new XAssetId(assetIdStruct.ModHandle, 0); // 返回无效的AssetId
+                return new AssetI(assetIdStruct.Mod, 0); // 返回无效的AssetI
             }
 
             // 存储资源信息，初始引用计数为0
             var loadedAssetInfo = new LoadedAssetInfo
             {
-                XAssetId = assetIdStruct,
+                AssetI = assetIdStruct,
                 YooAssetHandle = assetHandle,
                 Asset = asset,
                 RefCount = 0
@@ -806,7 +806,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 内部同步加载资源方法（提取公共逻辑）
         /// </summary>
-        private XAssetId LoadAssetInternalSync(ResPackageInfo resPackageInfo, ModHandle modId, string path, XAssetId xAssetId)
+        private AssetI LoadAssetInternalSync(ResPackageInfo resPackageInfo, ModI modId, string path, AssetI xAssetId)
         {
             // 使用已创建的AssetId
             var assetIdStruct = xAssetId;
@@ -828,20 +828,20 @@ namespace XMFrame.Implementation
                 {
                     XLog.ErrorFormat("加载资源失败，资源句柄无效，ModId: {0}, Path: {1}", modId.ModId, path);
                     assetHandle?.Release();
-                    return new XAssetId(assetIdStruct.ModHandle, 0); // 返回无效的AssetId
+                    return new AssetI(assetIdStruct.Mod, 0); // 返回无效的AssetI
                 }
             }
             catch (Exception ex)
             {
                 XLog.ErrorFormat("YooAsset加载资源异常，ModId: {0}, Path: {1}, 错误: {2}", modId.ModId, path, ex.Message);
                 assetHandle?.Release();
-                return new XAssetId(assetIdStruct.ModHandle, 0); // 返回无效的AssetId
+                return new AssetI(assetIdStruct.Mod, 0); // 返回无效的AssetI
             }
 
             // 存储资源信息，初始引用计数为0
             var loadedAssetInfo = new LoadedAssetInfo
             {
-                XAssetId = assetIdStruct,
+                AssetI = assetIdStruct,
                 YooAssetHandle = assetHandle,
                 Asset = asset,
                 RefCount = 0
@@ -1067,7 +1067,7 @@ namespace XMFrame.Implementation
                     // 获取路径信息（在删除前）
                     var pathInfo = _assetIdToPathInfo.TryGetValue(assetId, out var pi)
                         ? pi
-                        : (modId: default(ModHandle), path: null);
+                        : (modId: default(ModI), path: null);
 
                     // 清理资源信息
                     _loadedAssets.Remove(assetId);

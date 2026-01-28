@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
-using XMFrame.Interfaces;
+using XM.Contracts;
 
-namespace XMFrame.Implementation
+namespace XM
 {
     /// <summary>
     /// 对象池实现类

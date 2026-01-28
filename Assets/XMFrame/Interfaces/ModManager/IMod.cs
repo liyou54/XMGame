@@ -1,4 +1,4 @@
-namespace XMFrame.Interfaces
+namespace XM.Contracts
 {
     /// <summary>
     /// Mod 基础类

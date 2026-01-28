@@ -7,8 +7,9 @@ using Scriban;
 using Scriban.Runtime;
 using UnityEditor;
 using UnityEngine;
+using XM.Editor;
+using XM.Utils.Attribute;
 using XMFrame.Editor.ConfigEditor;
-using XMFrame.Utils.Attribute;
 
 namespace XMFrame.Editor.ConfigEditor
 {
@@ -35,20 +36,11 @@ namespace XMFrame.Editor.ConfigEditor
 
                 Debug.Log($"找到 {configTypes.Count} 个配置类型");
 
-                // 加载 Scriban 模板
-                var templatePath = "Assets/XMFrame/Editor/ConfigEditor/Templates/ClassHelper.sbncs";
-                if (!File.Exists(templatePath))
+                // 加载 Scriban 模板（带缓存）
+                var templatePath = ScribanCodeGenerator.GetTemplatePath("ClassHelper.sbncs");
+                if (!ScribanCodeGenerator.TryLoadTemplate(templatePath, out var template))
                 {
-                    Debug.LogError($"模板文件不存在: {templatePath}");
-                    return;
-                }
-
-                var templateContent = File.ReadAllText(templatePath);
-                var template = Template.Parse(templateContent);
-
-                if (template.HasErrors)
-                {
-                    Debug.LogError($"模板解析错误: {string.Join(", ", template.Messages)}");
+                    Debug.LogError($"模板加载失败: {templatePath}");
                     return;
                 }
 
@@ -60,11 +52,11 @@ namespace XMFrame.Editor.ConfigEditor
                     var assembly = assemblyGroup.Key;
                     var types = assemblyGroup.ToList();
 
-                    // 查找 asmdef 文件并确定输出目录
+                    // 查找 asmdef 文件并确定输出目录（带缓存）
                     string outputDir = outputBasePath;
                     if (string.IsNullOrEmpty(outputDir))
                     {
-                        outputDir = FindOutputDirectory(assembly);
+                        outputDir = ConfigCodeGenCache.GetOutputDirectory(assembly);
                     }
 
                     if (string.IsNullOrEmpty(outputDir))
@@ -100,27 +92,16 @@ namespace XMFrame.Editor.ConfigEditor
         }
 
         /// <summary>
-        /// 为单个类型生成 ClassHelper 代码（公共方法，供其他生成器调用）
+        /// 为单个类型生成 ClassHelper 代码（公共方法，供其他生成器调用）。模板使用缓存加载。
         /// </summary>
         public static void GenerateClassHelperForType(Type configType, string outputDir)
         {
-            // 加载 Scriban 模板
-            var templatePath = "Assets/XMFrame/Editor/ConfigEditor/Templates/ClassHelper.sbncs";
-            if (!File.Exists(templatePath))
+            var templatePath = ScribanCodeGenerator.GetTemplatePath("ClassHelper.sbncs");
+            if (!ScribanCodeGenerator.TryLoadTemplate(templatePath, out var template))
             {
-                Debug.LogWarning($"ClassHelper 模板文件不存在: {templatePath}");
+                Debug.LogWarning($"ClassHelper 模板加载失败: {templatePath}");
                 return;
             }
-
-            var templateContent = File.ReadAllText(templatePath);
-            var template = Template.Parse(templateContent);
-
-            if (template.HasErrors)
-            {
-                Debug.LogWarning($"ClassHelper 模板解析错误: {string.Join(", ", template.Messages)}");
-                return;
-            }
-
             GenerateClassHelperCodeForType(configType, template, outputDir);
         }
 
@@ -132,12 +113,22 @@ namespace XMFrame.Editor.ConfigEditor
             // 分析类型
             var typeInfo = TypeAnalyzer.AnalyzeConfigType(configType);
 
+            // 必要字段检查：若配置类型有字段但没有任何 [XmlNotNull]，给出警告
+            if (typeInfo.Fields != null && typeInfo.Fields.Count > 0 &&
+                !typeInfo.Fields.Any(f => f.IsNotNull))
+            {
+                UnityEngine.Debug.LogWarning($"[ClassHelperGenerator] 配置类型 {typeInfo.ManagedTypeName} 没有任何 [XmlNotNull] 必要字段，建议至少标记一个关键字段。");
+            }
+
             // 准备模板数据
             var scriptObject = new ScriptObject();
             scriptObject["namespace"] = typeInfo.Namespace;
             scriptObject["managed_type_name"] = typeInfo.ManagedTypeName;
             scriptObject["unmanaged_type_name"] = typeInfo.UnmanagedTypeName;
-            
+            scriptObject["has_base"] = typeInfo.HasBase;
+            scriptObject["base_managed_type_name"] = typeInfo.BaseManagedTypeName ?? "";
+            scriptObject["base_unmanaged_type_name"] = typeInfo.BaseUnmanagedTypeName ?? "";
+
             // 收集所需的 using 语句
             var requiredUsings = new HashSet<string>(typeInfo.RequiredUsings)
             {
@@ -151,38 +142,8 @@ namespace XMFrame.Editor.ConfigEditor
             };
             scriptObject["required_usings"] = requiredUsings.ToList();
 
-            // 收集程序集级别的全局转换器
-            var assemblyGlobalConverters = new Dictionary<Type, XmlGlobalConvertAttribute>();
-            try
-            {
-                var assembly = configType.Assembly;
-                var assemblyAttrs = assembly.GetCustomAttributes(typeof(XmlGlobalConvertAttribute), false)
-                    .Cast<XmlGlobalConvertAttribute>();
-                foreach (var attr in assemblyAttrs)
-                {
-                    if (attr.ConverterType != null)
-                    {
-                        // 获取转换器的目标类型（从 XmlConvertBase<T> 中提取）
-                        var baseType = attr.ConverterType.BaseType;
-                        if (baseType != null && baseType.IsGenericType)
-                        {
-                            var genericArgs = baseType.GetGenericArguments();
-                            if (genericArgs.Length == 1)
-                            {
-                                var targetType = genericArgs[0];
-                                if (targetType.Namespace == "Unity.Mathematics")
-                                {
-                                    assemblyGlobalConverters[targetType] = attr;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // 忽略错误
-            }
+            // 程序集级全局转换器（按程序集缓存，避免重复 GetCustomAttributes）
+            var assemblyGlobalConverters = GetOrBuildAssemblyGlobalConverters(configType.Assembly);
 
             // 准备字段数据
             var fields = new List<ScriptObject>();
@@ -395,7 +356,7 @@ namespace XMFrame.Editor.ConfigEditor
         /// <summary>
         /// 准备字段数据
         /// </summary>
-        private static ScriptObject PrepareFieldData(FieldInfo fieldInfo, Type managedType, Dictionary<Type, XmlGlobalConvertAttribute> assemblyGlobalConverters)
+        private static ScriptObject PrepareFieldData(XM.Editor.FieldInfo fieldInfo, Type managedType, Dictionary<Type, XmlGlobalConvertAttribute> assemblyGlobalConverters)
         {
             var fieldObj = new ScriptObject();
             fieldObj["name"] = fieldInfo.Name;
@@ -668,60 +629,37 @@ namespace XMFrame.Editor.ConfigEditor
             return configTypes;
         }
 
-        /// <summary>
-        /// 查找输出目录（基于 asmdef 文件位置）
-        /// </summary>
-        private static string FindOutputDirectory(Assembly assembly)
+        private static readonly Dictionary<Assembly, Dictionary<Type, XmlGlobalConvertAttribute>> _assemblyGlobalConvertersCache =
+            new Dictionary<Assembly, Dictionary<Type, XmlGlobalConvertAttribute>>();
+
+        private static Dictionary<Type, XmlGlobalConvertAttribute> GetOrBuildAssemblyGlobalConverters(Assembly assembly)
         {
-            var assemblyName = assembly.GetName().Name;
-            var projectPath = Application.dataPath.Replace("/Assets", "").Replace("\\Assets", "");
-
-            // 在 Assets 目录下查找 asmdef 文件
-            var assetsPath = Path.Combine(projectPath, "Assets");
-            var asmdefFiles = Directory.GetFiles(assetsPath, "*.asmdef", SearchOption.AllDirectories);
-
-            foreach (var asmdefFile in asmdefFiles)
+            if (assembly == null) return new Dictionary<Type, XmlGlobalConvertAttribute>();
+            lock (_assemblyGlobalConvertersCache)
             {
-                try
+                if (_assemblyGlobalConvertersCache.TryGetValue(assembly, out var cached))
+                    return cached;
+            }
+            var dict = new Dictionary<Type, XmlGlobalConvertAttribute>();
+            try
+            {
+                var assemblyAttrs = assembly.GetCustomAttributes(typeof(XmlGlobalConvertAttribute), false)
+                    .Cast<XmlGlobalConvertAttribute>();
+                foreach (var attr in assemblyAttrs)
                 {
-                    // 读取 asmdef 文件内容，检查 name 字段
-                    var content = File.ReadAllText(asmdefFile);
-                    if (content.Contains($"\"name\": \"{assemblyName}\""))
-                    {
-                        // 找到匹配的 asmdef 文件，在同级目录创建 Config/Code.Gen
-                        var asmdefDir = Path.GetDirectoryName(asmdefFile);
-                        var configDir = Path.Combine(asmdefDir, "Config", "Code.Gen");
-                        return configDir;
-                    }
-                }
-                catch
-                {
-                    // 忽略读取错误
+                    if (attr.ConverterType == null) continue;
+                    var baseType = attr.ConverterType.BaseType;
+                    if (baseType == null || !baseType.IsGenericType) continue;
+                    var genericArgs = baseType.GetGenericArguments();
+                    if (genericArgs.Length != 1) continue;
+                    var targetType = genericArgs[0];
+                    if (targetType.Namespace == "Unity.Mathematics")
+                        dict[targetType] = attr;
                 }
             }
-
-            // 如果找不到，尝试根据程序集中的类型位置推断
-            var types = assembly.GetTypes().Where(t => !string.IsNullOrEmpty(t.Namespace)).ToList();
-            if (types.Count > 0)
-            {
-                // 使用第一个类型的命名空间来推断路径
-                var firstType = types[0];
-                var namespaceParts = firstType.Namespace.Split('.');
-                
-                // 查找可能的目录
-                var searchDirs = Directory.GetDirectories(assetsPath, namespaceParts[0], SearchOption.AllDirectories);
-                foreach (var dir in searchDirs)
-                {
-                    var asmdefInDir = Directory.GetFiles(dir, "*.asmdef", SearchOption.TopDirectoryOnly);
-                    if (asmdefInDir.Length > 0)
-                    {
-                        var configDir = Path.Combine(dir, "Config", "Code.Gen");
-                        return configDir;
-                    }
-                }
-            }
-
-            return null;
+            catch { /* 忽略 */ }
+            lock (_assemblyGlobalConvertersCache) { _assemblyGlobalConvertersCache[assembly] = dict; }
+            return dict;
         }
 
         /// <summary>
@@ -762,20 +700,11 @@ namespace XMFrame.Editor.ConfigEditor
 
                 Debug.Log($"找到 {configTypes.Count} 个配置类型");
 
-                // 加载 Scriban 模板
-                var templatePath = "Assets/XMFrame/Editor/ConfigEditor/Templates/ClassHelper.sbncs";
-                if (!File.Exists(templatePath))
+                // 加载 Scriban 模板（带缓存）
+                var templatePath = ScribanCodeGenerator.GetTemplatePath("ClassHelper.sbncs");
+                if (!ScribanCodeGenerator.TryLoadTemplate(templatePath, out var template))
                 {
-                    Debug.LogError($"模板文件不存在: {templatePath}");
-                    return;
-                }
-
-                var templateContent = File.ReadAllText(templatePath);
-                var template = Template.Parse(templateContent);
-
-                if (template.HasErrors)
-                {
-                    Debug.LogError($"模板解析错误: {string.Join(", ", template.Messages)}");
+                    Debug.LogError($"模板加载失败: {templatePath}");
                     return;
                 }
 
@@ -787,11 +716,11 @@ namespace XMFrame.Editor.ConfigEditor
                     var assembly = assemblyGroup.Key;
                     var types = assemblyGroup.ToList();
 
-                    // 查找 asmdef 文件并确定输出目录
+                    // 查找 asmdef 文件并确定输出目录（带缓存）
                     string outputDir = outputBasePath;
                     if (string.IsNullOrEmpty(outputDir))
                     {
-                        outputDir = FindOutputDirectory(assembly);
+                        outputDir = ConfigCodeGenCache.GetOutputDirectory(assembly);
                     }
 
                     if (string.IsNullOrEmpty(outputDir))

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 容器嵌套容器边界：空内层列表、单元素列表、多 key 混合 -->
+<!-- TestKeyList1: Dictionary<int, List<List<CfgS>>>> -->
+<Item>
+  <TestKeyList1>
+    <Item Key="0">
+      <Item/>
+    </Item>
+    <Item Key="10">
+      <Item>
+        <Item>M::Only</Item>
+      </Item>
+    </Item>
+    <Item Key="20">
+      <Item>
+        <Item>A::X</Item>
+        <Item>B::Y</Item>
+      </Item>
+      <Item/>
+    </Item>
+  </TestKeyList1>
+</Item>

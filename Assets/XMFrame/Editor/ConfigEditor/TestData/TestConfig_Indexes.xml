@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- XmlIndex 字段：TestIndex1(int), TestIndex2(CfgS), TestIndex3(CfgS) -->
+<Item>
+  <TestIndex1>42</TestIndex1>
+  <TestIndex2>IndexMod::IndexCfg2</TestIndex2>
+  <TestIndex3>IndexMod::IndexCfg3</TestIndex3>
+</Item>

@@ -5,13 +5,14 @@ using System.Linq;
 using System.Reflection;
 using System.Xml;
 using Cysharp.Threading.Tasks;
-using XMFrame.Interfaces;
-using XMFrame.Utils;
+using XM.Contracts;
+using XM.Contracts.Config;
+using XM.Utils;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
 
-namespace XMFrame.Implementation
+namespace XM
 {
     [AutoCreate]
     [ManagerDependency(typeof(ISaveManager))]
@@ -23,10 +24,10 @@ namespace XMFrame.Implementation
         public MultiKeyDictionary<string, int, ModConfig> ModConfigDict =
             new MultiKeyDictionary<string, int, ModConfig>();
 
-        public BidirectionalDictionary<int, ModKey> ModStaticToRuntimeDict = new BidirectionalDictionary<int, ModKey>();
+        public BidirectionalDictionary<int, ModS> ModStaticToRuntimeDict = new BidirectionalDictionary<int, ModS>();
 
-        private Dictionary<ModKey, ModRuntime> _modRuntimeDict = new Dictionary<ModKey, ModRuntime>();
-        private Dictionary<string, ModKey> _modNameToKeyDict = new Dictionary<string, ModKey>();
+        private Dictionary<ModS, ModRuntime> _modRuntimeDict = new Dictionary<ModS, ModRuntime>();
+        private Dictionary<string, ModS> _modNameToKeyDict = new Dictionary<string, ModS>();
         private int _nextStaticModId = 1;
 
         // 排序后的Mod配置列表
@@ -68,8 +69,8 @@ namespace XMFrame.Implementation
                             int versionHash = modConfig.Version?.GetHashCode() ?? 0;
                             ModConfigDict.AddOrUpdate(modConfig, modConfig.ModName, versionHash);
 
-                            // 建立ModName到ModKey的映射
-                            var modKey = new ModKey(modConfig.ModName);
+                            // 建立ModName到ModS的映射
+                            var modKey = new ModS(modConfig.ModName);
                             _modNameToKeyDict[modConfig.ModName] = modKey;
 
                             XLog.InfoFormat("成功加载Mod配置: {0} v{1}", modConfig.ModName, modConfig.Version);
@@ -251,8 +252,8 @@ namespace XMFrame.Implementation
                     XLog.ErrorFormat("创建Mod入口点失败: {0}, 错误: {1}", modName, ex.Message);
                 }
 
-                // 创建ModKey
-                modKey = new ModKey(modName);
+                // 创建ModS
+                modKey = new ModS(modName);
 
                 // 创建ModRuntime
                 var modRuntime = new ModRuntime(modKey, modConfig, assembly, modEntry);
@@ -282,7 +283,7 @@ namespace XMFrame.Implementation
                 if (modRuntime.Assembly == null) continue;
                 var assembly = modRuntime.Assembly;
                 var configDefineTypes = assembly.GetTypes()
-                    .Where(t => typeof(XConfig).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface);
+                    .Where(t => typeof(IXConfig).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface);
                 modRuntime.AddConfigDefine(configDefineTypes);
             }
 
@@ -548,9 +549,9 @@ namespace XMFrame.Implementation
         }
 
         /// <summary>
-        /// 获取Mod运行时信息（通过ModKey）
+        /// 获取Mod运行时信息（通过ModS）
         /// </summary>
-        public ModRuntime GetModRuntime(ModKey modKey)
+        public ModRuntime GetModRuntime(ModS modKey)
         {
             _modRuntimeDict.TryGetValue(modKey, out var modRuntime);
             return modRuntime;
@@ -577,27 +578,27 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 通过Mod名称获取ModId
         /// </summary>
-        public ModHandle GetModId(string modName)
+        public ModI GetModId(string modName)
         {
             if (string.IsNullOrEmpty(modName))
             {
                 return default;
             }
 
-            // 通过ModName获取ModKey
+            // 通过ModName获取ModS
             if (!_modNameToKeyDict.TryGetValue(modName, out var modKey))
             {
                 return default;
             }
 
-            // 通过ModKey从双向字典获取静态ID
+            // 通过ModS从双向字典获取静态ID
             if (!ModStaticToRuntimeDict.TryGetKeyByValue(modKey, out int staticId))
             {
                 return default;
             }
 
-            // 将int转换为ModHandle（short）
-            return new ModHandle((short)staticId);
+            // 将int转换为ModI（short）
+            return new ModI((short)staticId);
         }
 
         public IEnumerable<ModConfig> GetEnabledModConfigs()
@@ -606,23 +607,23 @@ namespace XMFrame.Implementation
         }
 
         /// <summary>
-        /// 通过ModHandle获取Mod的XML文件路径列表
+        /// 通过ModI获取Mod的XML文件路径列表
         /// </summary>
-        public IEnumerable<string> GetModXmlFilePathByModId(ModHandle modId)
+        public IEnumerable<string> GetModXmlFilePathByModId(ModI modId)
         {
             if (!modId.Valid)
             {
                 return Enumerable.Empty<string>();
             }
 
-            // 通过ModHandle的ModId获取ModKey
+            // 通过ModI的ModId获取ModS
             int staticId = modId.ModId;
             if (!ModStaticToRuntimeDict.TryGetValueByKey(staticId, out var modKey))
             {
                 return Enumerable.Empty<string>();
             }
 
-            // 通过ModKey获取ModRuntime
+            // 通过ModS获取ModRuntime
             if (!_modRuntimeDict.TryGetValue(modKey, out var modRuntime))
             {
                 return Enumerable.Empty<string>();

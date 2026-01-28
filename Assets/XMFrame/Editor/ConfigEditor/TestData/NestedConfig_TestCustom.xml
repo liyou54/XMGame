@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Item>
+  <Test>0</Test>
+  <TestCustom>1,2</TestCustom>
+  <TestGlobalConvert>3,4</TestGlobalConvert>
+</Item>

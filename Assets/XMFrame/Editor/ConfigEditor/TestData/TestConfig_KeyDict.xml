@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TestKeyDict: Dictionary<CfgS,CfgS>，Item 上 Key/Value 为 Mod::Config 字符串 -->
+<Item>
+  <TestKeyDict>
+    <Item Key="KMod::KCfg1" Value="VMod::VCfg1"/>
+    <Item Key="KMod::KCfg2" Value="VMod::VCfg2"/>
+  </TestKeyDict>
+</Item>

@@ -1,7 +1,7 @@
 using Cysharp.Threading.Tasks;
-using XMFrame.Implementation;
+using XM;
 
-namespace XMFrame.Interfaces
+namespace XM.Contracts
 {
     /// <summary>
     /// 管理器基础接口

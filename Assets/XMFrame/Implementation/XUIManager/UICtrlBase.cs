@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using XMFrame.Implementation;
-using XMFrame.Interfaces;
+using XM;
+using XM.Contracts;
 
 public abstract class UICtrlBase : MonoBehaviour, IUICtrlBase
 {
@@ -15,7 +15,7 @@ public abstract class UICtrlBase : MonoBehaviour, IUICtrlBase
 
     [field: NonSerialized] public List<XAssetHandle> LoadedAssetIdList { get; set; }
 
-    public UIHandle Id { get; set; }
+    public UII Id { get; set; }
 
     public void AttachLoadBox(UILoadBox uiLoadBox)
     {

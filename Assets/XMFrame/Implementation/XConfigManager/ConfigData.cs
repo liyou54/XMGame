@@ -1,7 +1,7 @@
 using System;
 using Unity.Collections;
 
-namespace XMFrame
+namespace XM
 {
     /// <summary>
     /// 配置数据容器，使用 XBlob 存储配置数据
@@ -16,9 +16,9 @@ namespace XMFrame
 
         /// <summary>
         /// 表类型到 XBlobMap 指针的映射
-        /// 每个表实际上存储的是 XBlobMap&lt;CfgId, ConfigType&gt; 的外观
+        /// 每个表实际上存储的是 XBlobMap&lt;CfgI, ConfigType&gt; 的外观
         /// </summary>
-        private NativeHashMap<TableHandle, XBlobPtr> TypeBlobMap;
+        private NativeHashMap<TblI, XBlobPtr> TypeBlobMap;
 
         /// <summary>
         /// 创建配置数据容器
@@ -29,40 +29,40 @@ namespace XMFrame
         {
             BlobContainer = new XBlobContainer();
             BlobContainer.Create(allocator, capacity);
-            TypeBlobMap = new NativeHashMap<TableHandle, XBlobPtr>(512, allocator);
+            TypeBlobMap = new NativeHashMap<TblI, XBlobPtr>(512, allocator);
         }
 
         /// <summary>
-        /// 为指定表在 unmanaged 中分配 CfgId->TUnmanaged 的 Map（泛型、无反射）。
+        /// 为指定表在 unmanaged 中分配 CfgI->TUnmanaged 的 Map（泛型、无反射）。
         /// </summary>
-        public void AllocTableMap<TUnmanaged>(TableHandle tableHandle, int capacity)
+        public void AllocTableMap<TUnmanaged>(TblI tableHandle, int capacity)
             where TUnmanaged : unmanaged, IConfigUnManaged<TUnmanaged>
         {
             if (capacity <= 0) capacity = 1;
-            TypeBlobMap[tableHandle] = XBlobPtr.AllocMapFrom<CfgId, TUnmanaged>(BlobContainer, capacity);
+            TypeBlobMap[tableHandle] = XBlobPtr.AllocMapFrom<CfgI, TUnmanaged>(BlobContainer, capacity);
         }
 
         /// <summary>
         /// 仅插入主键，值为 default(TUnmanaged)（泛型、无反射）。
         /// </summary>
-        public void AddPrimaryKeyOnly<TUnmanaged>(TableHandle tableHandle, CfgId cfgId)
+        public void AddPrimaryKeyOnly<TUnmanaged>(TblI tableHandle, CfgI cfgId)
             where TUnmanaged : unmanaged, IConfigUnManaged<TUnmanaged>
         {
             if (!TypeBlobMap.TryGetValue(tableHandle, out var blobPtr) || !blobPtr.Valid)
                 return;
-            var map = blobPtr.AsMap<CfgId, TUnmanaged>();
+            var map = blobPtr.AsMap<CfgI, TUnmanaged>();
             map.AddOrUpdate(BlobContainer, cfgId, default);
         }
 
         /// <summary>
         /// 写入整行 TUnmanaged（泛型、无反射）。
         /// </summary>
-        public void AddOrUpdateRow<TUnmanaged>(TableHandle tableHandle, CfgId cfgId, TUnmanaged value)
+        public void AddOrUpdateRow<TUnmanaged>(TblI tableHandle, CfgI cfgId, TUnmanaged value)
             where TUnmanaged : unmanaged, IConfigUnManaged<TUnmanaged>
         {
             if (!TypeBlobMap.TryGetValue(tableHandle, out var blobPtr) || !blobPtr.Valid)
                 return;
-            var map = blobPtr.AsMap<CfgId, TUnmanaged>();
+            var map = blobPtr.AsMap<CfgI, TUnmanaged>();
             map.AddOrUpdate(BlobContainer, cfgId, value);
         }
 
@@ -80,26 +80,26 @@ namespace XMFrame
         /// </summary>
         /// <param name="tableHandle">表句柄</param>
         /// <returns>如果表存在且有效返回 true，否则返回 false</returns>
-        public bool IsTableExist(TableHandle tableHandle)
+        public bool IsTableExist(TblI tableHandle)
         {
            return TypeBlobMap.TryGetValue(tableHandle, out var blobHandle) && blobHandle.Valid;
         }
 
         /// <summary>
         /// 检查指定配置是否存在
-        /// 使用外观模式 AsMapKey&lt;CfgId&gt; 进行键查询，只检查键是否存在，不访问值数据，性能更优
+        /// 使用外观模式 AsMapKey&lt;CfgI&gt; 进行键查询，只检查键是否存在，不访问值数据，性能更优
         /// </summary>
         /// <param name="cfgId">配置ID</param>
         /// <returns>如果配置存在返回 true，否则返回 false</returns>
-        public bool IsConfigExist(CfgId cfgId)
+        public bool IsConfigExist(CfgI cfgId)
         {
             // 首先检查表是否存在
             if (!TypeBlobMap.TryGetValue(cfgId.Table, out var blobHandle) || !blobHandle.Valid)
             {
                 return false;
             }
-            // 使用外观模式 AsMapKey<CfgId> 获取键映射外观，只查询键是否存在
-            var mapKey = blobHandle.AsMapKey<CfgId>();
+            // 使用外观模式 AsMapKey<CfgI> 获取键映射外观，只查询键是否存在
+            var mapKey = blobHandle.AsMapKey<CfgI>();
             return mapKey.HasKey(BlobContainer, cfgId);
         }
     }

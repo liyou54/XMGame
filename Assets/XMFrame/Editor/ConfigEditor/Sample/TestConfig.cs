@@ -3,31 +3,17 @@ using System.Collections.Generic;
 using JetBrains.Annotations;
 using Unity.Collections;
 using Unity.Mathematics;
-using XMFrame;
-using XMFrame.Utils;
-using XMFrame.Utils.Attribute;
-using XMFrame.Interfaces.ConfigMananger;
+using XM;
+using XM.Utils;
+using XM.Utils.Attribute;
+using XM.Contracts.Config;
 
 [assembly: XmlGlobalConvert(typeof(TestGlobalInt2Convert), "global")]
 
 
 
-/// <summary>
-/// Type 到 TypeId 的转换器
-/// </summary>
-public class TypeToTypeIdConverter : XmlUnManagedConvert<Type, TypeId>
-{
-    public override TypeId Convert(Type source)
-    {
-        if (source == null)
-        {
-            return new TypeId(0);
-        }
-        return TypeSystem.RegisterType(source);
-    }
-}
 
-public class TestGlobalInt2Convert : XmlConvertBase<int2,TestInt2Convert>
+public class TestGlobalInt2Convert : XmlConvertBase<int2, TestInt2Convert>
 {
     public override bool TryGetData(string str, out int2 data)
     {
@@ -35,9 +21,8 @@ public class TestGlobalInt2Convert : XmlConvertBase<int2,TestInt2Convert>
     }
 }
 
-public class TestInt2Convert : XmlConvertBase<int2,TestInt2Convert>
+public class TestInt2Convert : XmlConvertBase<int2, TestInt2Convert>
 {
-    
     public override bool TryGetData(string str, out int2 data)
     {
         throw new System.NotImplementedException();
@@ -45,55 +30,65 @@ public class TestInt2Convert : XmlConvertBase<int2,TestInt2Convert>
 }
 
 [XmlDefined()]
-public class NestedConfig : XConfig<NestedConfig, NestedConfigUnManaged>
+public class NestedConfig : IXConfig<NestedConfig, NestedConfigUnManaged>
 {
+    /// <summary>必要字段：XML 缺失时打告警，仍使用默认值 0。</summary>
+    [XmlNotNull]
+    public int RequiredId;
+
+    /// <summary>可选字段：XML 缺失或空时使用 [XmlDefault] 默认值。</summary>
+    [XmlDefault("default")]
+    public string OptionalWithDefault;
+
     public int Test;
 
     [XmlGlobalConvert(typeof(TestInt2Convert))]
     public int2 TestCustom;
 
     public int2 TestGlobalConvert;
-    public List<ConfigKey<TestConfigUnManaged>> TestKeyList;
+    public List<CfgS<TestConfigUnManaged>> TestKeyList;
 
-    [XmlStringMode(EXmlStrMode.EStrHandle)]
+    [XmlStringMode(EXmlStrMode.ELabelI)]
     public string StrIndex;
 
     [XmlStringMode(EXmlStrMode.EFix32)] public string Str32;
     [XmlStringMode(EXmlStrMode.EFix64)] public string Str64;
 
-    [XmlStringMode(EXmlStrMode.EStrHandle)]
+    [XmlStringMode(EXmlStrMode.EStrI)]
     public string Str;
 
-    public StrLabel StrLabel;
+    public LabelS LabelS;
+    public CfgI Data { get; set; }
 }
 
 public partial struct NestedConfigUnManaged : IConfigUnManaged<NestedConfigUnManaged>
 {
-
 }
 
 
 [XmlDefined()]
-public class TestConfig : XConfig<TestConfig, TestConfigUnManaged>
+public class TestConfig : IXConfig<TestConfig, TestConfigUnManaged>
 {
-    public ConfigKey<TestConfigUnManaged> Id;
+    public CfgI Data { get; set; }
+
+    public CfgS<TestConfigUnManaged> Id;
     public int TestInt;
     public List<int> TestSample;
     public Dictionary<int, int> TestDictSample;
-    public List<ConfigKey<TestConfigUnManaged>> TestKeyList;
-    public Dictionary<int, List<List<ConfigKey<TestConfigUnManaged>>>> TestKeyList1;
+    public List<CfgS<TestConfigUnManaged>> TestKeyList;
+    public Dictionary<int, List<List<CfgS<TestConfigUnManaged>>>> TestKeyList1;
     public HashSet<int> TestKeyHashSet;
-    public Dictionary<ConfigKey<TestConfigUnManaged>, ConfigKey<TestConfigUnManaged>> TestKeyDict;
-    public HashSet<ConfigKey<TestConfigUnManaged>> TestSetKey;
+    public Dictionary<CfgS<TestConfigUnManaged>, CfgS<TestConfigUnManaged>> TestKeyDict;
+    public HashSet<CfgS<TestConfigUnManaged>> TestSetKey;
     public HashSet<int> TestSetSample;
     public NestedConfig TestNested;
     public List<NestedConfig> TestNestedConfig;
-    public ConfigKey<TestConfigUnManaged> Foreign;
+    public CfgS<TestConfigUnManaged> Foreign;
     public Type ConfigType;
 
     [XmlIndex("Index1", false, 0)] public int TestIndex1;
-    [XmlIndex("Index1", false, 1)] public ConfigKey<TestConfigUnManaged> TestIndex2;
-    [XmlIndex("Index2", true, 0)] public ConfigKey<TestConfigUnManaged> TestIndex3;
+    [XmlIndex("Index1", false, 1)] public CfgS<TestConfigUnManaged> TestIndex2;
+    [XmlIndex("Index2", true, 0)] public CfgS<TestConfigUnManaged> TestIndex3;
 }
 
 public partial struct TestConfigUnManaged : IConfigUnManaged<TestConfigUnManaged>

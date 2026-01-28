@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace XMFrame.Interfaces
+namespace XM.Contracts
 {
     public interface IUICtrlBase : IAsseLoadedType
     {
-       public UIHandle Id {get; set;}
+       public UII Id {get; set;}
 
         /// <summary>
         /// 子UI控制器列表（用于递归显示/隐藏/关闭）

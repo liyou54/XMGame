@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace XMFrame.Utils
+namespace XM.Utils
 {
     /// <summary>
     /// 拓扑排序工具类，支持依赖关系排序和成环检测

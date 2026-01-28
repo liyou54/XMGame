@@ -9,7 +9,7 @@ using UnityEngine;
 using Unity.Burst;
 #endif
 
-namespace XMFrame.XBlob.Tests
+namespace XM.Utils.Tests
 {
     /// <summary>
     /// XBlob 容器性能测试

@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEngine;
 
-namespace XMFrame.Editor
+namespace XM.Editor
 {
     /// <summary>
     /// XLog控制台增强器，用于增强日志的点击跳转功能
@@ -93,9 +93,9 @@ namespace XMFrame.Editor
 
             // 解析堆栈跟踪，找到实际调用位置
             // 堆栈跟踪格式通常是：
-            // XMFrame.XLog:OutputToUnityConsole (at Assets/XMFrame/Utils/XLog/XLog.cs:952)
-            // XMFrame.XLog:InfoFormat<string> (at Assets/XMFrame/Utils/XLog/XLog.cs:233)
-            // XMFrame.Implementation.GameMain/<CreateManagers>d__8:MoveNext () (at Assets/XMFrame/GameMain.cs:189)
+            // XM.XLog:OutputToUnityConsole (at Assets/XM/Utils/XLog/XLog.cs:952)
+            // XM.XLog:InfoFormat<string> (at Assets/XM/Utils/XLog/XLog.cs:233)
+            // XM.GameMain/<CreateManagers>d__8:MoveNext () (at Assets/XM/GameMain.cs:189)
             // 我们需要找到第一个非XLog的调用位置（跳过XLog内部的方法）
             
             string[] paths = stackTrace.Split('\n');
@@ -106,7 +106,7 @@ namespace XMFrame.Editor
                 if (path.Contains(" (at "))
                 {
                     // 检查是否是XLog内部的方法调用
-                    if (path.Contains("XMFrame.XLog:") || path.Contains("XMFrame.Utils.XLog:"))
+                    if (path.Contains("XM.XLog:") || path.Contains("XM.Utils.XLog:"))
                     {
                         xlogCallCount++;
                         continue;
@@ -127,7 +127,7 @@ namespace XMFrame.Editor
         {
             try
             {
-                // 解析路径格式: "  at Assets/XMFrame/GameMain.cs:189"
+                // 解析路径格式: "  at Assets/XM/GameMain.cs:189"
                 int startIndex = path.IndexOf(" (at ") + 5;
                 if (startIndex < 5) return false;
                 
@@ -234,7 +234,7 @@ namespace XMFrame.Editor
         [MenuItem("Tools/XLog/测试日志跳转")]
         private static void TestLogJump()
         {
-            XMFrame.XLog.InfoFormat("这是一条测试日志，双击此日志应该可以跳转到实际调用位置");
+            XM.XLog.InfoFormat("这是一条测试日志，双击此日志应该可以跳转到实际调用位置");
             Debug.Log("测试日志已输出，请在Console窗口中双击日志查看跳转效果");
         }
     }

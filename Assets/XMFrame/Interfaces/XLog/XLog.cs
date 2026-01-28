@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using UnityEngine;
 
-namespace XMFrame
+namespace XM
 {
     /// <summary>
     /// 日志系统，支持最多8个泛型参数的格式化输出

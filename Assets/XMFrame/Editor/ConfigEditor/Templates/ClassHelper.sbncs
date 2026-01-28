@@ -1,680 +1,77 @@
-{{- # ClassHelper 代码生成模板 -}}
-{{- # 生成 using 语句 -}}
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Reflection;
-using System.Xml;
-using XMFrame;
-using XMFrame.Interfaces;
-using XMFrame.Utils;
-using XMFrame.Utils.Attribute;
-using XMFrame.Interfaces.ConfigMananger;
-{{~ for using in required_usings ~}}
-using {{ using }};
+{{- # ConfigClassHelper<TC, TI> 静态代码生成模板，用于解析 XML（无反射）；using 根据 required_usings 按字段类型生成 -}}
+{{~ for ns in required_usings ~}}
+using {{ ns }};
 {{~ end ~}}
 
-{{- # 生成命名空间 -}}
 {{~ if namespace != "" ~}}
 namespace {{ namespace }}
 {
 {{~ end ~}}
 
 /// <summary>
-/// {{ managed_type_name }} 的 XML 加载辅助类
+/// {{ managed_type_name }} 的配置加载辅助类，用于从 XML 反序列化（静态代码生成，无反射）。
 /// </summary>
-public class {{ managed_type_name }}ClassHelper : IConfigClassHelper<{{ managed_type_name }}>
+public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_name }}, {{ unmanaged_type_name }}>
 {
-    private readonly IConfigDataCenter _dataCenter;
-
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    public {{ managed_type_name }}ClassHelper(IConfigDataCenter dataCenter)
+    static {{ helper_class_name }}()
     {
-        _dataCenter = dataCenter ?? throw new ArgumentNullException(nameof(dataCenter));
+        CfgS<{{ unmanaged_type_name }}>.TableName = "{{ table_name }}";
     }
 
-    /// <summary>
-    /// 从 XML 文件加载配置并注册到管理器
-    /// </summary>
-    public void LoadFromXml(string xmlFilePath)
+    public {{ helper_class_name }}(IConfigDataCenter dataCenter)
+        : base(dataCenter)
     {
-        var xmlDoc = new XmlDocument();
-        xmlDoc.Load(xmlFilePath);
-        
-        var root = xmlDoc.DocumentElement;
-        if (root == null)
-        {
-            throw new InvalidOperationException($"XML文件根节点为空: {xmlFilePath}");
-        }
-
-        // 遍历所有配置项
-        var configItems = root.SelectNodes("ConfigItem");
-        if (configItems != null)
-        {
-            foreach (XmlElement itemElement in configItems)
-            {
-                RegisterToManager(itemElement);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 从 XML 元素加载配置并注册到管理器
-    /// </summary>
-    public void RegisterToManager(XmlElement element)
-    {
-        var config = LoadFromXmlElement(element);
-        if (config != null)
-        {
-            _dataCenter.RegisterData(config);
-        }
-    }
-
-    /// <summary>
-    /// 从 XML 元素加载单个配置项，返回配置对象
-    /// </summary>
-    public {{ managed_type_name }} LoadFromXmlElement(XmlElement element)
-    {
-        if (element == null)
-        {
-            throw new ArgumentNullException(nameof(element));
-        }
-
-        // 创建配置对象
-        var config = new {{ managed_type_name }}();
-
-        // 读取 overwrite 属性
-        var overwriteStr = element.GetAttribute("overwrite");
-        var overwriteMode = EXmlOverwriteMode.Override;
-        if (!string.IsNullOrEmpty(overwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(overwriteStr, true, out var parsedMode))
-            {
-                overwriteMode = parsedMode;
-            }
-            else
-            {
-                throw new InvalidOperationException($"无效的 overwrite 模式: {overwriteStr}");
-            }
-        }
-
-        // 应用 Overwrite 模式
-        if (overwriteMode == EXmlOverwriteMode.ClearAll)
-        {
-            // 清空所有字段（使用默认值）
-            config = new {{ managed_type_name }}();
-        }
-
-        // 解析各个字段
-{{~ for field in fields ~}}
-        Parse{{ field.name }}(element, config, overwriteMode);
-{{~ end ~}}
-
-        return config;
-    }
-
-{{~ for field in fields ~}}
-    /// <summary>
-    /// 解析字段 {{ field.name }}
-    /// </summary>
-    private void Parse{{ field.name }}(XmlElement parent, {{ managed_type_name }} config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("{{ field.name }}") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-{{~ if field.is_list ~}}
-        // List 类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
-        {
-            config.{{ field.name }} = new List<{{ field.element_type }}>();
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
-        {
-            // 删除模式：从现有列表中删除指定元素
-            if (config.{{ field.name }} == null)
-            {
-                config.{{ field.name }} = new List<{{ field.element_type }}>();
-            }
-            var removeItems = fieldElement.SelectNodes("Item");
-            if (removeItems != null)
-            {
-                foreach (XmlElement itemElement in removeItems)
-                {
-                    var itemValue = ParseValue<{{ field.element_type }}>(itemElement);
-                    config.{{ field.name }}.Remove(itemValue);
-                }
-            }
-            return;
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
-        {
-            // 添加模式：添加到现有列表
-            if (config.{{ field.name }} == null)
-            {
-                config.{{ field.name }} = new List<{{ field.element_type }}>();
-            }
-        }
-        else
-        {
-            // Override 模式：覆盖整个列表
-            config.{{ field.name }} = new List<{{ field.element_type }}>();
-        }
-
-        var addItems = fieldElement.SelectNodes("Item");
-        if (addItems != null)
-        {
-            foreach (XmlElement itemElement in addItems)
-            {
-                var itemValue = ParseValue<{{ field.element_type }}>(itemElement);
-                config.{{ field.name }}.Add(itemValue);
-            }
-        }
-{{~ else if field.is_dictionary ~}}
-        // Dictionary 类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
-        {
-            config.{{ field.name }} = new Dictionary<{{ field.key_type }}, {{ field.value_type }}>();
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
-        {
-            // 删除模式：从现有字典中删除指定键
-            if (config.{{ field.name }} == null)
-            {
-                config.{{ field.name }} = new Dictionary<{{ field.key_type }}, {{ field.value_type }}>();
-            }
-            var removeItems = fieldElement.SelectNodes("Item");
-            if (removeItems != null)
-            {
-                foreach (XmlElement itemElement in removeItems)
-                {
-                    var keyValue = ParseValue<{{ field.key_type }}>(itemElement.SelectSingleNode("Key") as XmlElement);
-                    config.{{ field.name }}.Remove(keyValue);
-                }
-            }
-            return;
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
-        {
-            // 添加模式：添加到现有字典
-            if (config.{{ field.name }} == null)
-            {
-                config.{{ field.name }} = new Dictionary<{{ field.key_type }}, {{ field.value_type }}>();
-            }
-        }
-        else
-        {
-            // Override 模式：覆盖整个字典
-            config.{{ field.name }} = new Dictionary<{{ field.key_type }}, {{ field.value_type }}>();
-        }
-
-        var addItems = fieldElement.SelectNodes("Item");
-        if (addItems != null)
-        {
-            foreach (XmlElement itemElement in addItems)
-            {
-                var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
-                var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
-                if (keyElement != null && valueElement != null)
-                {
-                    var keyValue = ParseValue<{{ field.key_type }}>(keyElement);
-                    var valueValue = ParseValue<{{ field.value_type }}>(valueElement);
-                    config.{{ field.name }}[keyValue] = valueValue;
-                }
-            }
-        }
-{{~ else if field.is_hashset ~}}
-        // HashSet 类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
-        {
-            config.{{ field.name }} = new HashSet<{{ field.element_type }}>();
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
-        {
-            // 删除模式：从现有集合中删除指定元素
-            if (config.{{ field.name }} == null)
-            {
-                config.{{ field.name }} = new HashSet<{{ field.element_type }}>();
-            }
-            var removeItems = fieldElement.SelectNodes("Item");
-            if (removeItems != null)
-            {
-                foreach (XmlElement itemElement in removeItems)
-                {
-                    var itemValue = ParseValue<{{ field.element_type }}>(itemElement);
-                    config.{{ field.name }}.Remove(itemValue);
-                }
-            }
-            return;
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
-        {
-            // 添加模式：添加到现有集合
-            if (config.{{ field.name }} == null)
-            {
-                config.{{ field.name }} = new HashSet<{{ field.element_type }}>();
-            }
-        }
-        else
-        {
-            // Override 模式：覆盖整个集合
-            config.{{ field.name }} = new HashSet<{{ field.element_type }}>();
-        }
-
-        var addItems = fieldElement.SelectNodes("Item");
-        if (addItems != null)
-        {
-            foreach (XmlElement itemElement in addItems)
-            {
-                var itemValue = ParseValue<{{ field.element_type }}>(itemElement);
-                config.{{ field.name }}.Add(itemValue);
-            }
-        }
-{{~ else if field.is_nested_config ~}}
-        // 嵌套配置类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ClearAll || fieldOverwriteMode == EXmlOverwriteMode.Override)
-        {
-            config.{{ field.name }} = Parse{{ field.nested_type_name }}(fieldElement);
-        }
-{{~ else if field.is_config_key ~}}
-        // ConfigKey 类型处理
-        var configKeyStr = fieldElement.InnerText.Trim();
-        if (!string.IsNullOrEmpty(configKeyStr))
-        {
-            var parts = configKeyStr.Split(new[] { "::" }, StringSplitOptions.None);
-            if (parts.Length == 2)
-            {
-                var modKey = new ModKey(parts[0]);
-                var configName = parts[1];
-                config.{{ field.name }} = new ConfigKey<{{ field.config_key_type }}>(modKey, configName);
-            }
-            else if (parts.Length == 1)
-            {
-                // ModKey 省略，使用默认或当前 ModKey
-                // TODO: 从上下文获取 ModKey
-                var modKey = new ModKey("DefaultMod"); // 临时实现
-                config.{{ field.name }} = new ConfigKey<{{ field.config_key_type }}>(modKey, parts[0]);
-            }
-        }
-{{~ else if field.is_str_label ~}}
-        // StrLabel 类型处理
-        var strLabelStr = fieldElement.InnerText.Trim();
-        if (!string.IsNullOrEmpty(strLabelStr))
-        {
-            var parts = strLabelStr.Split(new[] { "::" }, StringSplitOptions.None);
-            if (parts.Length == 2)
-            {
-                config.{{ field.name }} = new StrLabel
-                {
-                    ModName = parts[0],
-                    LabelName = parts[1]
-                };
-            }
-            else if (parts.Length == 1)
-            {
-                // ModName 省略
-                config.{{ field.name }} = new StrLabel
-                {
-                    ModName = "DefaultMod", // 临时实现
-                    LabelName = parts[0]
-                };
-            }
-        }
-{{~ else if field.is_string ~}}
-        // String 类型处理（根据字符串模式）
-{{~ if field.str_mode == "EFix32" ~}}
-        // 托管类型中仍然是 string，直接赋值
-        config.{{ field.name }} = ParseStringValue(fieldElement);
-{{~ else if field.str_mode == "EFix64" ~}}
-        // 托管类型中仍然是 string，直接赋值
-        config.{{ field.name }} = ParseStringValue(fieldElement);
-{{~ else if field.str_mode == "EStrHandle" ~}}
-        // 托管类型中仍然是 string，直接赋值
-        config.{{ field.name }} = ParseStringValue(fieldElement);
-{{~ else if field.str_mode == "EStrLabel" ~}}
-        // StrLabel 已在上面处理
-        var strLabelStr = fieldElement.InnerText.Trim();
-        if (!string.IsNullOrEmpty(strLabelStr))
-        {
-            var parts = strLabelStr.Split(new[] { "::" }, StringSplitOptions.None);
-            if (parts.Length == 2)
-            {
-                config.{{ field.name }} = new StrLabel
-                {
-                    ModName = parts[0],
-                    LabelName = parts[1]
-                };
-            }
-            else if (parts.Length == 1)
-            {
-                config.{{ field.name }} = new StrLabel
-                {
-                    ModName = "DefaultMod",
-                    LabelName = parts[0]
-                };
-            }
-        }
-{{~ else ~}}
-        config.{{ field.name }} = ParseStringValue(fieldElement);
-{{~ end ~}}
-{{~ else if field.is_unity_math ~}}
-        // Unity.Mathematics 类型处理（使用全局转换器）
-{{~ if field.has_global_convert ~}}
-        config.{{ field.name }} = Parse{{ field.managed_type }}Value(fieldElement);
-{{~ else ~}}
-        // 没有全局转换器，尝试使用默认解析
-        config.{{ field.name }} = ParseValue<{{ field.managed_type }}>(fieldElement);
-{{~ end ~}}
-{{~ else if field.is_type ~}}
-        // Type 类型处理（需要转换器转换为 TypeId）
-        var typeStr = fieldElement.InnerText?.Trim() ?? string.Empty;
-        if (!string.IsNullOrEmpty(typeStr))
-        {
-            var type = Type.GetType(typeStr);
-            if (type != null && IConfigDataCenter.I != null)
-            {
-                var converter = IConfigDataCenter.I.GetConverter<Type, TypeId>("{{ field.converter_domain }}");
-                if (converter != null)
-                {
-                    config.{{ field.name }} = type;
-                    // 注意：TypeId 的转换会在后续处理中完成
-                }
-            }
-            else
-            {
-                config.{{ field.name }} = type;
-            }
-        }
-{{~ else if field.needs_converter ~}}
-        // 需要类型转换的字段
-        var sourceValue = ParseValue<{{ field.source_type }}>(fieldElement);
-        if (IConfigDataCenter.I != null)
-        {
-            var converter = IConfigDataCenter.I.GetConverter<{{ field.source_type }}, {{ field.target_type }}>("{{ field.converter_domain }}");
-            if (converter != null)
-            {
-                // 转换并赋值（注意：这里赋值的是转换后的目标类型，但字段类型可能不同）
-                // 实际转换会在后续处理中完成，这里先赋值源值
-                config.{{ field.name }} = sourceValue;
-            }
-            else
-            {
-                config.{{ field.name }} = sourceValue;
-            }
-        }
-        else
-        {
-            config.{{ field.name }} = sourceValue;
-        }
-{{~ else ~}}
-        // 基本类型处理
-        config.{{ field.name }} = ParseValue<{{ field.managed_type }}>(fieldElement);
+{{~ for reg in converter_registrations ~}}
+        TypeConverterRegistry.RegisterLocalConverter<{{ reg.source_type }}, {{ reg.target_type }}>("{{ reg.domain_escaped }}", new {{ reg.converter_type_name }}());
 {{~ end ~}}
     }
 
-{{~ end ~}}
-
-    /// <summary>
-    /// 解析基本类型值
-    /// </summary>
-    private T ParsePrimitiveValue<T>(XmlElement element)
+    public override TblS GetTblS()
     {
-        if (element == null)
-        {
-            return default(T);
-        }
-
-        var valueStr = element.InnerText?.Trim() ?? string.Empty;
-        if (string.IsNullOrEmpty(valueStr))
-        {
-            return default(T);
-        }
-
-        var type = typeof(T);
-        
-        // 使用 TypeConverter 进行转换
-        var converter = System.ComponentModel.TypeDescriptor.GetConverter(type);
-        if (converter != null && converter.CanConvertFrom(typeof(string)))
-        {
-            try
-            {
-                return (T)converter.ConvertFromString(valueStr);
-            }
-            catch
-            {
-                return default(T);
-            }
-        }
-
-        return default(T);
+        return new TblS(new ModS("Default"), "{{ table_name }}");
     }
 
-    /// <summary>
-    /// 解析字符串值
-    /// </summary>
-    private string ParseStringValue(XmlElement element)
+    public override void SetTblIDefinedInMod(ModI modHandle)
     {
-        return element?.InnerText?.Trim() ?? string.Empty;
+        _definedInMod = modHandle;
     }
 
-{{~ # 为每个 Unity.Mathematics 类型生成解析方法 -}}
-{{~ for math_converter in unity_math_converters ~}}
-{{~ if math_converter.has_converter ~}}
-    /// <summary>
-    /// 解析 {{ math_converter.math_type }} 类型值（使用全局转换器）
-    /// </summary>
-    private {{ math_converter.math_type }} Parse{{ math_converter.math_type }}Value(XmlElement element)
+    public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
     {
-        if (element == null)
+        try
         {
-            return default({{ math_converter.math_type }});
+            var config = ({{ managed_type_name }})Create();
+            FillFromXml(config, configItem, mod, configName);
+            return config;
         }
-
-        var valueStr = element.InnerText?.Trim() ?? string.Empty;
-        if (string.IsNullOrEmpty(valueStr))
+        catch (Exception ex)
         {
-            return default({{ math_converter.math_type }});
+            ConfigClassHelper.LogParseWarning("(整体)", configName, ex);
+            throw;
         }
-
-        var converter = {{ math_converter.converter_type }}.Instance;
-        if (converter.TryGetData(valueStr, out var result))
-        {
-            return result;
-        }
-
-        return default({{ math_converter.math_type }});
     }
-{{~ end ~}}
-{{~ end ~}}
 
-{{~ # 为每个 ConfigKey<T> 类型生成解析方法 -}}
-{{~ for config_key in config_key_types ~}}
-    /// <summary>
-    /// 解析 ConfigKey&lt;{{ config_key.element_type }}&gt; 类型值
-    /// </summary>
-    private ConfigKey<{{ config_key.element_type }}> ParseConfigKey_{{ config_key.element_type }}(XmlElement element)
+    public override void FillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName)
     {
-        if (element == null)
-        {
-            return default(ConfigKey<{{ config_key.element_type }}>);
-        }
-
-        var valueStr = element.InnerText?.Trim() ?? string.Empty;
-        if (string.IsNullOrEmpty(valueStr))
-        {
-            return default(ConfigKey<{{ config_key.element_type }}>);
-        }
-
-        var parts = valueStr.Split(new[] { "::" }, StringSplitOptions.None);
-        if (parts.Length == 2)
-        {
-            var modKey = new ModKey(parts[0]);
-            var configName = parts[1];
-            return new ConfigKey<{{ config_key.element_type }}>(modKey, configName);
-        }
-        else if (parts.Length == 1)
-        {
-            var modKey = new ModKey("DefaultMod");
-            return new ConfigKey<{{ config_key.element_type }}>(modKey, parts[0]);
-        }
-
-        return default(ConfigKey<{{ config_key.element_type }}>);
-    }
+        var config = ({{ managed_type_name }})target;
+{{~ if has_base ~}}
+        var baseHelper = ConfigDataCenter.GetClassHelper(typeof({{ base_managed_type_name }}));
+        if (baseHelper != null) baseHelper.FillFromXml(target, configItem, mod, configName);
 {{~ end ~}}
-
-{{~ # 为每个嵌套 XConfig 类型生成解析方法 -}}
-{{~ for nested_config in nested_config_types ~}}
-    /// <summary>
-    /// 解析 {{ nested_config.type_name }} 类型值
-    /// </summary>
-    private {{ nested_config.type_name }} Parse{{ nested_config.type_name }}(XmlElement element)
-    {
-        if (element == null)
-        {
-            return null;
-        }
-
-        var configType = typeof({{ nested_config.type_name }});
-        var helper = (IConfigClassHelper<{{ nested_config.type_name }}>)_dataCenter.GetClassHelper(configType);
-        return helper.LoadFromXmlElement(element);
-    }
-{{~ end ~}}
-
-{{~ # 为每个嵌套容器类型生成解析方法 -}}
-{{~ for container_parser in container_parsers ~}}
-    /// <summary>
-    /// 解析 {{ container_parser.type_name }} 类型值
-    /// </summary>
-    private {{ container_parser.type_name }} {{ container_parser.parser_method_name }}(XmlElement element)
-    {
-        if (element == null)
-        {
-            return default({{ container_parser.type_name }});
-        }
-
-{{~ if container_parser.is_list ~}}
-        var result = new List<{{ container_parser.element_type }}>();
-        var itemNodes = element.SelectNodes("Item");
-        if (itemNodes != null)
-        {
-            foreach (XmlElement itemElement in itemNodes)
-            {
-                var itemValue = ParseValue<{{ container_parser.element_type }}>(itemElement);
-                result.Add(itemValue);
-            }
-        }
-        return result;
-{{~ else if container_parser.is_dictionary ~}}
-        var result = new Dictionary<{{ container_parser.key_type }}, {{ container_parser.value_type }}>();
-        var itemNodes = element.SelectNodes("Item");
-        if (itemNodes != null)
-        {
-            foreach (XmlElement itemElement in itemNodes)
-            {
-                var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
-                var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
-                if (keyElement != null && valueElement != null)
-                {
-                    var keyValue = ParseValue<{{ container_parser.key_type }}>(keyElement);
-                    var valueValue = ParseValue<{{ container_parser.value_type }}>(valueElement);
-                    result[keyValue] = valueValue;
-                }
-            }
-        }
-        return result;
-{{~ else if container_parser.is_hashset ~}}
-        var result = new HashSet<{{ container_parser.element_type }}>();
-        var itemNodes = element.SelectNodes("Item");
-        if (itemNodes != null)
-        {
-            foreach (XmlElement itemElement in itemNodes)
-            {
-                var itemValue = ParseValue<{{ container_parser.element_type }}>(itemElement);
-                result.Add(itemValue);
-            }
-        }
-        return result;
+{{~ for assign in field_assigns ~}}
+        {{ assign.call_code }}
 {{~ end ~}}
     }
+
+    #region 字段解析 (ParseXXX)
+
+{{~ for assign in field_assigns ~}}
+    {{ assign.method_code }}
+
 {{~ end ~}}
+    #endregion
 
-    /// <summary>
-    /// 通用值解析方法
-    /// </summary>
-    private T ParseValue<T>(XmlElement element)
-    {
-        if (element == null)
-        {
-            return default(T);
-        }
-
-        var valueStr = element.InnerText?.Trim() ?? string.Empty;
-
-        // 基本类型解析（使用 ParsePrimitiveValue）
-        var type = typeof(T);
-        if (type == typeof(int) || type == typeof(long) || type == typeof(short) || 
-            type == typeof(byte) || type == typeof(float) || type == typeof(double) || 
-            type == typeof(bool) || type == typeof(string))
-        {
-            return ParsePrimitiveValue<T>(element);
-        }
-
-        // ConfigKey 类型解析（使用预生成的解析方法）
-{{~ for config_key in config_key_types ~}}
-        if (typeof(T) == typeof(ConfigKey<{{ config_key.element_type }}>))
-        {
-            return (T)(object)ParseConfigKey_{{ config_key.element_type }}(element);
-        }
-{{~ end ~}}
-
-        // Unity.Mathematics 类型解析（使用预生成的解析方法）
-        if (type.Namespace == "Unity.Mathematics")
-        {
-{{~ for math_converter in unity_math_converters ~}}
-{{~ if math_converter.has_converter ~}}
-            if (type.FullName == "{{ math_converter.math_type_full }}" || type.Name == "{{ math_converter.math_type }}")
-            {
-                return (T)(object)Parse{{ math_converter.math_type }}Value(element);
-            }
-{{~ end ~}}
-{{~ end ~}}
-        }
-
-        // 嵌套 XConfig 类型解析（使用预生成的解析方法）
-{{~ for nested_config in nested_config_types ~}}
-        if (typeof(T) == typeof({{ nested_config.type_name }}))
-        {
-            return (T)(object)Parse{{ nested_config.type_name }}(element);
-        }
-{{~ end ~}}
-
-        // 嵌套容器类型解析（使用预生成的解析方法）
-{{~ for container_parser in container_parsers ~}}
-        if (typeof(T) == typeof({{ container_parser.type_name }}))
-        {
-            return (T)(object){{ container_parser.parser_method_name }}(element);
-        }
-{{~ end ~}}
-
-        // 默认：尝试使用 TypeConverter
-        return ParsePrimitiveValue<T>(element);
-    }
+    private ModI _definedInMod;
 }
 
 {{~ if namespace != "" ~}}

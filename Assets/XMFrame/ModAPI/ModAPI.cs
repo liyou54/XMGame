@@ -3,11 +3,11 @@
 
 // 重新导出 Interfaces 中的关键类型，方便 mod 使用
 
-using XMFrame.Interfaces;
+using XM.Contracts;
 
-namespace XMFrame.ModAPI
+namespace XM.ModAPI
 {
     // 重新导出接口，方便 mod 使用
-    using IManager = XMFrame.Interfaces.IManager;
-    using ModBase = XMFrame.Interfaces.ModBase;
+    using IManager = XM.Contracts.IManager;
+    using ModBase = XM.Contracts.ModBase;
 }

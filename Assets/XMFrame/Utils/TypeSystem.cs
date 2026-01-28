@@ -1,28 +1,28 @@
 using System;
 using System.Collections.Generic;
 
-namespace XMFrame.Utils
+namespace XM.Utils
 {
     /// <summary>
     /// 类型ID结构体，用于类型的唯一标识
     /// </summary>
-    public struct TypeId : IEquatable<TypeId>
+    public struct TypeI : IEquatable<TypeI>
     {
         public int Id;
 
-        public TypeId(int id)
+        public TypeI(int id)
         {
             Id = id;
         }
 
-        public bool Equals(TypeId other)
+        public bool Equals(TypeI other)
         {
             return Id == other.Id;
         }
 
         public override bool Equals(object obj)
         {
-            return obj is TypeId other && Equals(other);
+            return obj is TypeI other && Equals(other);
         }
 
         public override int GetHashCode()
@@ -30,32 +30,32 @@ namespace XMFrame.Utils
             return Id;
         }
 
-        public static bool operator ==(TypeId left, TypeId right)
+        public static bool operator ==(TypeI left, TypeI right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(TypeId left, TypeId right)
+        public static bool operator !=(TypeI left, TypeI right)
         {
             return !left.Equals(right);
         }
 
         public override string ToString()
         {
-            return $"TypeId({Id})";
+            return $"TypeI({Id})";
         }
     }
 
     /// <summary>
-    /// 类型系统，提供 TypeId 与 Type 之间的双向映射
+    /// 类型系统，提供 TypeI 与 Type 之间的双向映射
     /// </summary>
     public static class TypeSystem
     {
-        private static BidirectionalDictionary<TypeId, Type> _typeLookUp;
-        private static Dictionary<Type, TypeId> _typeToId;
+        private static BidirectionalDictionary<TypeI, Type> _typeLookUp;
+        private static Dictionary<Type, TypeI> _typeToId;
         private static int _nextTypeId = 1;
 
-        public static BidirectionalDictionary<TypeId, Type> TypeLookUp
+        public static BidirectionalDictionary<TypeI, Type> TypeLookUp
         {
             get
             {
@@ -72,16 +72,16 @@ namespace XMFrame.Utils
         /// </summary>
         private static void Initialize()
         {
-            _typeLookUp = new BidirectionalDictionary<TypeId, Type>();
-            _typeToId = new Dictionary<Type, TypeId>();
+            _typeLookUp = new BidirectionalDictionary<TypeI, Type>();
+            _typeToId = new Dictionary<Type, TypeI>();
         }
 
         /// <summary>
-        /// 注册一个类型，返回对应的 TypeId
+        /// 注册一个类型，返回对应的 TypeI
         /// </summary>
         /// <param name="type">要注册的类型</param>
-        /// <returns>类型对应的 TypeId</returns>
-        public static TypeId RegisterType(Type type)
+        /// <returns>类型对应的 TypeI</returns>
+        public static TypeI RegisterType(Type type)
         {
             if (_typeLookUp == null)
             {
@@ -93,7 +93,7 @@ namespace XMFrame.Utils
                 return existingId;
             }
 
-            var newId = new TypeId(_nextTypeId++);
+            var newId = new TypeI(_nextTypeId++);
             _typeLookUp.Add(newId, type);
             _typeToId.Add(type, newId);
             return newId;
@@ -103,32 +103,32 @@ namespace XMFrame.Utils
         /// 注册一个类型（泛型版本）
         /// </summary>
         /// <typeparam name="T">要注册的类型</typeparam>
-        /// <returns>类型对应的 TypeId</returns>
-        public static TypeId RegisterType<T>()
+        /// <returns>类型对应的 TypeI</returns>
+        public static TypeI RegisterType<T>()
         {
             return RegisterType(typeof(T));
         }
 
         /// <summary>
-        /// 通过 TypeId 获取对应的 Type
+        /// 通过 TypeI 获取对应的 Type
         /// </summary>
-        /// <param name="typeId">类型ID</param>
+        /// <param name="typeI">类型ID</param>
         /// <returns>对应的类型，如果不存在则返回 null</returns>
-        public static Type GetType(TypeId typeId)
+        public static Type GetType(TypeI typeI)
         {
             if (_typeLookUp == null)
             {
                 Initialize();
             }
-            return _typeLookUp.GetByKey(typeId);
+            return _typeLookUp.GetByKey(typeI);
         }
 
         /// <summary>
-        /// 通过 Type 获取对应的 TypeId
+        /// 通过 Type 获取对应的 TypeI
         /// </summary>
         /// <param name="type">类型</param>
-        /// <returns>对应的 TypeId，如果类型未注册则返回一个 Id 为 0 的 TypeId</returns>
-        public static TypeId GetTypeId(Type type)
+        /// <returns>对应的 TypeI，如果类型未注册则返回一个 Id 为 0 的 TypeI</returns>
+        public static TypeI GetTypeId(Type type)
         {
             if (_typeLookUp == null)
             {
@@ -140,15 +140,15 @@ namespace XMFrame.Utils
                 return typeId;
             }
 
-            return new TypeId(0); // 返回无效的 TypeId
+            return new TypeI(0); // 返回无效的 TypeI
         }
 
         /// <summary>
-        /// 通过 Type 获取对应的 TypeId（泛型版本）
+        /// 通过 Type 获取对应的 TypeI（泛型版本）
         /// </summary>
         /// <typeparam name="T">类型</typeparam>
-        /// <returns>对应的 TypeId，如果类型未注册则返回一个 Id 为 0 的 TypeId</returns>
-        public static TypeId GetTypeId<T>()
+        /// <returns>对应的 TypeI，如果类型未注册则返回一个 Id 为 0 的 TypeI</returns>
+        public static TypeI GetTypeId<T>()
         {
             return GetTypeId(typeof(T));
         }

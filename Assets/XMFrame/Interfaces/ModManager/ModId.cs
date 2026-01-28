@@ -1,34 +1,34 @@
 using System;
 using System.Runtime.InteropServices;
-using XMFrame;
-using XMFrame.Interfaces;
+using XM;
+using XM.Contracts;
 
 /// <summary>
 
 
 /// <summary>
-/// Mod Handle 结构体，满足 unmanaged 约束
+/// Mod 运行时句柄，满足 unmanaged 约束
 /// </summary>
 [StructLayout(LayoutKind.Explicit)]
-public readonly struct ModHandle : IEquatable<ModHandle>
+public readonly struct ModI : IEquatable<ModI>
 {
     [FieldOffset(0)] public readonly short ModId;
 
-    public ModHandle(short modId)
+    public ModI(short modId)
     {
         ModId = modId;
     }
 
     public bool Valid => ModId > 0;
 
-    public bool Equals(ModHandle other)
+    public bool Equals(ModI other)
     {
         return ModId == other.ModId;
     }
 
     public override bool Equals(object obj)
     {
-        return obj is ModHandle other && Equals(other);
+        return obj is ModI other && Equals(other);
     }
 
     public override int GetHashCode()
@@ -36,29 +36,29 @@ public readonly struct ModHandle : IEquatable<ModHandle>
         return ModId.GetHashCode();
     }
 
-    public static bool operator ==(ModHandle left, ModHandle right)
+    public static bool operator ==(ModI left, ModI right)
     {
         return left.Equals(right);
     }
 
-    public static bool operator !=(ModHandle left, ModHandle right)
+    public static bool operator !=(ModI left, ModI right)
     {
         return !(left == right);
     }
 }
 
 /// <summary>
-/// Table Handle 结构体，满足 unmanaged 约束
+/// Table 运行时句柄，满足 unmanaged 约束
 /// </summary>
 [StructLayout(LayoutKind.Explicit)]
-public readonly struct TableHandle : IEquatable<TableHandle>
+public readonly struct TblI : IEquatable<TblI>
 {
     
     [FieldOffset(0)] public readonly short TableId;
 
-    [FieldOffset(2)] public readonly ModHandle Mod;
+    [FieldOffset(2)] public readonly ModI Mod;
 
-    public TableHandle(short tableId, ModHandle mod)
+    public TblI(short tableId, ModI mod)
     {
         TableId = tableId;
         Mod = mod;
@@ -66,19 +66,19 @@ public readonly struct TableHandle : IEquatable<TableHandle>
 
     public bool Valid => Mod.Valid && TableId > 0;
 
-    public TableHandle<T> As<T>() where T : unmanaged
+    public TblI<T> As<T>() where T : unmanaged
     {
-        return new TableHandle<T>(TableId, Mod);
+        return new TblI<T>(TableId, Mod);
     }
 
-    public bool Equals(TableHandle other)
+    public bool Equals(TblI other)
     {
         return TableId == other.TableId && Mod.Equals(other.Mod);
     }
 
     public override bool Equals(object obj)
     {
-        return obj is TableHandle other && Equals(other);
+        return obj is TblI other && Equals(other);
     }
 
     public override int GetHashCode()
@@ -89,12 +89,12 @@ public readonly struct TableHandle : IEquatable<TableHandle>
         }
     }
 
-    public static bool operator ==(TableHandle left, TableHandle right)
+    public static bool operator ==(TblI left, TblI right)
     {
         return left.Equals(right);
     }
 
-    public static bool operator !=(TableHandle left, TableHandle right)
+    public static bool operator !=(TblI left, TblI right)
     {
         return !(left == right);
     }
@@ -102,34 +102,34 @@ public readonly struct TableHandle : IEquatable<TableHandle>
 
 
 /// <summary>
-/// Table Handle 泛型结构体，满足 unmanaged 约束
+/// Table 泛型运行时句柄，满足 unmanaged 约束
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
-public readonly struct TableHandle<T> : IEquatable<TableHandle<T>> where T : unmanaged
+public readonly struct TblI<T> : IEquatable<TblI<T>> where T : unmanaged
 {
-    public static readonly ModHandle DefinedInMod;
+    public static readonly ModI DefinedInMod;
     public readonly short TableId;
-    public readonly ModHandle Mod;
+    public readonly ModI Mod;
 
-    public TableHandle(short tableId, ModHandle mod)
+    public TblI(short tableId, ModI mod)
     {
         TableId = tableId;
         Mod = mod;
     }
 
-    public TableHandle As()
+    public TblI As()
     {
-        return new TableHandle(TableId, Mod);
+        return new TblI(TableId, Mod);
     }
 
-    public bool Equals(TableHandle<T> other)
+    public bool Equals(TblI<T> other)
     {
         return TableId == other.TableId && Mod.Equals(other.Mod);
     }
 
     public override bool Equals(object obj)
     {
-        return obj is TableHandle<T> other && Equals(other);
+        return obj is TblI<T> other && Equals(other);
     }
 
     public override int GetHashCode()
@@ -140,12 +140,12 @@ public readonly struct TableHandle<T> : IEquatable<TableHandle<T>> where T : unm
         }
     }
 
-    public static bool operator ==(TableHandle<T> left, TableHandle<T> right)
+    public static bool operator ==(TblI<T> left, TblI<T> right)
     {
         return left.Equals(right);
     }
 
-    public static bool operator !=(TableHandle<T> left, TableHandle<T> right)
+    public static bool operator !=(TblI<T> left, TblI<T> right)
     {
         return !(left == right);
     }
@@ -153,17 +153,17 @@ public readonly struct TableHandle<T> : IEquatable<TableHandle<T>> where T : unm
 
 
 /// <summary>
-/// Config Handle 结构体，满足 unmanaged 约束
+/// Config 运行时 ID，满足 unmanaged 约束
 /// </summary>
 [StructLayout(LayoutKind.Explicit)]
-public readonly struct CfgId : IEquatable<CfgId>
+public readonly struct CfgI : IEquatable<CfgI>
 {
     [FieldOffset(0)] public readonly short Id;
 
-    [FieldOffset(2)] public readonly ModHandle Mod;
-    [FieldOffset(4)] public readonly TableHandle Table;
+    [FieldOffset(2)] public readonly ModI Mod;
+    [FieldOffset(4)] public readonly TblI Table;
 
-    public CfgId(short id, ModHandle mod, TableHandle table)
+    public CfgI(short id, ModI mod, TblI table)
     {
         Id = id;
         Mod = mod;
@@ -172,19 +172,19 @@ public readonly struct CfgId : IEquatable<CfgId>
 
     public bool Valid => Id > 0 && Mod.Valid && Table.Valid;
 
-    public CfgId<T> As<T>() where T : unmanaged, IConfigUnManaged<T>
+    public CfgI<T> As<T>() where T : unmanaged, IConfigUnManaged<T>
     {
-        return new CfgId<T>(Id, Mod, Table.As<T>());
+        return new CfgI<T>(Id, Mod, Table.As<T>());
     }
 
-    public bool Equals(CfgId other)
+    public bool Equals(CfgI other)
     {
         return Id == other.Id && Mod.Equals(other.Mod) && Table.Equals(other.Table);
     }
 
     public override bool Equals(object obj)
     {
-        return obj is CfgId other && Equals(other);
+        return obj is CfgI other && Equals(other);
     }
 
     public override int GetHashCode()
@@ -198,12 +198,12 @@ public readonly struct CfgId : IEquatable<CfgId>
         }
     }
 
-    public static bool operator ==(CfgId left, CfgId right)
+    public static bool operator ==(CfgI left, CfgI right)
     {
         return left.Equals(right);
     }
 
-    public static bool operator !=(CfgId left, CfgId right)
+    public static bool operator !=(CfgI left, CfgI right)
     {
         return !(left == right);
     }
@@ -215,50 +215,52 @@ public readonly struct CfgId : IEquatable<CfgId>
 }
 
 /// <summary>
-/// Config Handle 泛型结构体，满足 unmanaged 约束
+/// Config 泛型运行时 ID，满足 unmanaged 约束
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
-public readonly struct CfgId<T> : 
-    IEquatable<CfgId<T>> where T : unmanaged, IConfigUnManaged<T>
+public readonly struct CfgI<T> : 
+    IEquatable<CfgI<T>> where T : unmanaged, IConfigUnManaged<T>
 {
-    public readonly short ConfigId;
-    public readonly ModHandle Mod;
-    public readonly TableHandle<T> Table;
+    public static TblI<T> TableStatic;
+    
+    public readonly short Id;
+    public readonly ModI Mod;
+    public readonly TblI<T> Table;
 
-    public CfgId(short configId, ModHandle mod, TableHandle<T> table)
+    public CfgI(short id, ModI mod, TblI<T> table)
     {
-        ConfigId = configId;
+        Id = id;
         Mod = mod;
         Table = table;
     }
 
-    public bool Equals(CfgId<T> other)
+    public bool Equals(CfgI<T> other)
     {
-        return ConfigId == other.ConfigId && Mod.Equals(other.Mod) && Table.Equals(other.Table);
+        return Id == other.Id && Mod.Equals(other.Mod) && Table.Equals(other.Table);
     }
 
     public override bool Equals(object obj)
     {
-        return obj is CfgId<T> other && Equals(other);
+        return obj is CfgI<T> other && Equals(other);
     }
 
     public override int GetHashCode()
     {
         unchecked
         {
-            int hash = ConfigId.GetHashCode();
+            int hash = Id.GetHashCode();
             hash = (hash * 397) ^ Mod.GetHashCode();
             hash = (hash * 397) ^ Table.GetHashCode();
             return hash;
         }
     }
 
-    public static bool operator ==(CfgId<T> left, CfgId<T> right)
+    public static bool operator ==(CfgI<T> left, CfgI<T> right)
     {
         return left.Equals(right);
     }
 
-    public static bool operator !=(CfgId<T> left, CfgId<T> right)
+    public static bool operator !=(CfgI<T> left, CfgI<T> right)
     {
         return !(left == right);
     }

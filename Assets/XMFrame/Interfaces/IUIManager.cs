@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
-using XMFrame.Implementation;
+using XM;
 
-namespace XMFrame.Interfaces
+namespace XM.Contracts
 {
     public enum EUILayer
     {
@@ -51,27 +51,27 @@ namespace XMFrame.Interfaces
     {
     }
 
-    public struct UIHandle : IEquatable<UIHandle>
+    public struct UII : IEquatable<UII>
     {
-        public CfgId TypeId;
+        public CfgI TypeI;
         public short IsWidget;
         public int Id;
 
-        public bool Valid => TypeId.Valid && Id > 0 ;
+        public bool Valid => TypeI.Valid && Id > 0 ;
 
-        public bool Equals(UIHandle other)
+        public bool Equals(UII other)
         {
-            return TypeId.Equals(other.TypeId) && IsWidget == other.IsWidget && Id == other.Id;
+            return TypeI.Equals(other.TypeI) && IsWidget == other.IsWidget && Id == other.Id;
         }
 
         public override bool Equals(object obj)
         {
-            return obj is UIHandle other && Equals(other);
+            return obj is UII other && Equals(other);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(TypeId, IsWidget, Id);
+            return HashCode.Combine(TypeI, IsWidget, Id);
         }
     }
 
@@ -82,32 +82,32 @@ namespace XMFrame.Interfaces
         /// </summary>
         /// <param name="cfgId">UI配置ID</param>
         /// <returns>UI句柄</returns>
-        UniTask<UIHandle> OpenWindow(CfgId cfgId);
+        UniTask<UII> OpenWindow(CfgI cfgId);
 
         /// <summary>
         /// 关闭UI窗口
         /// </summary>
         /// <param name="uiHandle">UI句柄</param>
-        void CloseUI(UIHandle uiHandle);
+        void CloseUI(UII uiHandle);
 
         /// <summary>
         /// 隐藏UI窗口（不销毁，可重新显示）
         /// </summary>
         /// <param name="uiHandle">UI句柄</param>
-        void HideUI(UIHandle uiHandle);
+        void HideUI(UII uiHandle);
 
         /// <summary>
         /// 显示UI窗口（从隐藏状态恢复）
         /// </summary>
         /// <param name="uiHandle">UI句柄</param>
-        void ShowUI(UIHandle uiHandle);
+        void ShowUI(UII uiHandle);
         
         /// <summary>
         /// 注册UI类型
         /// </summary>
         /// <param name="uiConfigId">UI配置ID</param>
         /// <returns>是否注册成功</returns>
-        bool RegisterUI(CfgId uiConfigId);
+        bool RegisterUI(CfgI uiConfigId);
 
         /// <summary>
         /// 释放UI控制器资源
@@ -123,7 +123,7 @@ namespace XMFrame.Interfaces
         /// <param name="count">创建数量</param>
         /// <param name="uiHandles">输出的UI句柄列表</param>
         /// <returns>异步任务</returns>
-        UniTask CreateUICtrlByAssetId(ModHandle mod, string path, int count, List<UIHandle> uiHandles);
+        UniTask CreateUICtrlByAssetId(ModI mod, string path, int count, List<UII> uiHandles);
 
         /// <summary>
         /// 通过资源ID创建UI控制器
@@ -132,7 +132,7 @@ namespace XMFrame.Interfaces
         /// <param name="count">创建数量</param>
         /// <param name="uiHandles"></param>
         /// <returns>异步任务</returns>
-        UniTask CreateUICtrlByConfig(CfgId id, int count,List<UIHandle> uiHandles);
+        UniTask CreateUICtrlByConfig(CfgI id, int count,List<UII> uiHandles);
 
         /// <summary>
         /// 通过资源ID创建UI控制器
@@ -141,8 +141,8 @@ namespace XMFrame.Interfaces
         /// <param name="assetId"></param>
         /// <param name="uiHandles"></param>
         /// <returns>异步任务</returns>
-        UniTask CreateUICtrlByConfig(XAssetId assetId,int count,List<UIHandle> uiHandles);
+        UniTask CreateUICtrlByConfig(AssetI assetId,int count,List<UII> uiHandles);
         
-        IUICtrlBase GetUICtrlByHandle(UIHandle handle);
+        IUICtrlBase GetUICtrlByHandle(UII handle);
     }
 }

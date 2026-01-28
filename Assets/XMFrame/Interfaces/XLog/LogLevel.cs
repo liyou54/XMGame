@@ -1,4 +1,4 @@
-namespace XMFrame
+namespace XM
 {
     /// <summary>
     /// 日志级别

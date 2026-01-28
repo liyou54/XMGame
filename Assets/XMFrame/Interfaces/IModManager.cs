@@ -1,17 +1,17 @@
 using System.Collections.Generic;
-using XMFrame.Implementation;
+using XM;
 
-namespace XMFrame.Interfaces
+namespace XM.Contracts
 {
     public interface IModManager:IManager<IModManager>
     {
         /// <summary>
         /// 通过Mod名称获取ModId
         /// </summary>
-        ModHandle GetModId(string modName);
+        ModI GetModId(string modName);
         
         public IEnumerable<ModConfig> GetEnabledModConfigs();
-        public IEnumerable<string> GetModXmlFilePathByModId(ModHandle modId);
+        public IEnumerable<string> GetModXmlFilePathByModId(ModI modId);
     }
     
 

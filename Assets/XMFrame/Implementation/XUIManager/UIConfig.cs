@@ -1,34 +1,35 @@
 using System;
 using UnityEngine;
-using XMFrame.Interfaces;
-using XMFrame.Utils;
-using XMFrame.Utils.Attribute;
+using XM.Contracts;
+using XM.Contracts.Config;
+using XM.Utils;
+using XM.Utils.Attribute;
 
-namespace XMFrame.Implementation
+namespace XM
 {
-    public class UIConfigClass:XConfig<UIConfigClass,UIConfigUnManaged>
+    public class UIConfigClass : IXConfig<UIConfigClass, UIConfigUnManaged>
     {
-        public ConfigKey<UIConfigClass> Id;
+        public CfgS<UIConfigClass> Id;
         public XAssetPath AssetPath;
-       [XmlIndex("WindowType",false,0)] public Type ConfigType;
+        [XmlIndex("WindowType", false, 0)] public Type ConfigType;
+        public CfgI Data { get; set; }
     }
-    
-    public struct UIConfigUnManaged:IConfigUnManaged<UIConfigUnManaged>
+
+    public struct UIConfigUnManaged : IConfigUnManaged<UIConfigUnManaged>
     {
-        
         public struct PrefabAssetIndex : IConfigIndexGroup<UIConfigUnManaged>
         {
-            public XAssetId PrefabAsset;
+            public AssetI PrefabAsset;
 
-            public PrefabAssetIndex(XAssetId prefabAsset)
+            public PrefabAssetIndex(AssetI prefabAsset)
             {
                 PrefabAsset = prefabAsset;
             }
         }
-        
-        public CfgId<UIConfigUnManaged> Id;
-        public CfgId UIHandle;
-        public XAssetId Prefab;
-        public TypeId TypeId;
+
+        public CfgI<UIConfigUnManaged> Id;
+        public CfgI UIHandle;
+        public AssetI Prefab;
+        public TypeI TypeI;
     }
 }

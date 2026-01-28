@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TestKeyList: List<CfgS<TestConfigUnManaged>>，每个 TestKeyList 子节点 InnerText 为 Mod::ConfigName -->
+<Item>
+  <TestKeyList>ModA::Config1</TestKeyList>
+  <TestKeyList>ModA::Config2</TestKeyList>
+  <TestKeyList>ModB::ConfigX</TestKeyList>
+</Item>

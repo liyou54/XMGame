@@ -6,15 +6,15 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Pool;
 using UnityEngine.UI;
-using XMFrame.Implementation;
-using XMFrame.Interfaces;
-using XMFrame.Utils;
+using XM;
+using XM.Contracts;
+using XM.Utils;
 
-namespace XMFrame.Implementation
+namespace XM
 {
     public class UIStack
     {
-        public UIHandle Handle;
+        public UII Handle;
         public bool IsHideSelf;
 
         public bool IsHideByStack;
@@ -25,7 +25,7 @@ namespace XMFrame.Implementation
 
     public class LoadedUIData
     {
-        public CfgId<UIConfigUnManaged> StaticConfigId;
+        public CfgI<UIConfigUnManaged> StaticConfigId;
         public GameObject UIPrefabTemplate;
         public UIConfig Config;
         public XAssetHandle AssetHandle;
@@ -33,10 +33,10 @@ namespace XMFrame.Implementation
         public IUICtrlBase IUICtrlTemplate;
 
         // 挪到UImnager中去 
-        public readonly Dictionary<UIHandle, UICtrlBase> ActiveUIHandles = new();
+        public readonly Dictionary<UII, UICtrlBase> ActiveUIIs = new();
 
         // 挪到UImnager中去 
-        public readonly Dictionary<UIHandle, (UICtrlBase ctrlBase, float closeTime)> WillReleaseUIHandles = new();
+        public readonly Dictionary<UII, (UICtrlBase ctrlBase, float closeTime)> WillReleaseUIIs = new();
         public EAssetStatus Status;
     }
 
@@ -48,7 +48,7 @@ namespace XMFrame.Implementation
 
     public class UIWindowConfig : UIConfig
     {
-        public CfgId UITypeId;
+        public CfgI UITypeI;
         public EUILayer Layer;
         public EUIInstanceType InstanceType;
         public bool IsShowMask;
@@ -75,7 +75,7 @@ namespace XMFrame.Implementation
     [AutoCreate]
     public class UIManager : ManagerBase<IUIManager>, IUIManager
     {
-        public MultiKeyDictionary<XAssetId, CfgId<UIConfigUnManaged>, LoadedUIData> loadedUIData = new();
+        public MultiKeyDictionary<AssetI, CfgI<UIConfigUnManaged>, LoadedUIData> loadedUIData = new();
 
         public Dictionary<EUILayer, UILayerData> UILayerData = new();
 
@@ -240,12 +240,12 @@ namespace XMFrame.Implementation
 
             foreach (var data in loadedUIData.Values)
             {
-                if (data.WillReleaseUIHandles.Count > 0)
+                if (data.WillReleaseUIIs.Count > 0)
                 {
                     // 收集需要释放的Handle
-                    var toRelease = ListPool<UIHandle>.Get();
+                    var toRelease = ListPool<UII>.Get();
 
-                    foreach (var pair in data.WillReleaseUIHandles)
+                    foreach (var pair in data.WillReleaseUIIs)
                     {
                         if (currentTime >= pair.Value.closeTime)
                         {
@@ -256,7 +256,7 @@ namespace XMFrame.Implementation
                     // 释放超时的UI
                     foreach (var handle in toRelease)
                     {
-                        if (data.WillReleaseUIHandles.TryGetValue(handle, out var releaseData))
+                        if (data.WillReleaseUIIs.TryGetValue(handle, out var releaseData))
                         {
                             UICtrlBase uiCtrl = releaseData.ctrlBase;
 
@@ -270,23 +270,23 @@ namespace XMFrame.Implementation
                                 XLog.DebugFormat("延迟释放UI: Handle={0}", handle.Id);
                             }
 
-                            data.WillReleaseUIHandles.Remove(handle);
+                            data.WillReleaseUIIs.Remove(handle);
                         }
                     }
                     
                     // 释放临时列表
-                    ListPool<UIHandle>.Release(toRelease);
+                    ListPool<UII>.Release(toRelease);
                 }
             }
         }
 
-        public bool TryGetUIConfig(XAssetId asset, out UIConfigUnManaged config)
+        public bool TryGetUIConfig(AssetI asset, out UIConfigUnManaged config)
         {
             return IConfigDataCenter.I.TryGetConfigBySingleIndex(new UIConfigUnManaged.PrefabAssetIndex(asset),
                 out config);
         }
 
-        public async UniTask<UIHandle> OpenWindow(CfgId cfgId)
+        public async UniTask<UII> OpenWindow(CfgI cfgId)
         {
             // 转换为泛型配置ID
             var id = cfgId.As<UIConfigUnManaged>();
@@ -325,16 +325,16 @@ namespace XMFrame.Implementation
 
             // 步骤2：判断对象池中是否有可用实例
             GameObject uiInstance = null;
-            if (data.WillReleaseUIHandles.Count > 0)
+            if (data.WillReleaseUIIs.Count > 0)
             {
-                var firstPair = data.WillReleaseUIHandles.First();
+                var firstPair = data.WillReleaseUIIs.First();
                 UICtrlBase uiCtrl = firstPair.Value.ctrlBase;
                 if (uiCtrl != null)
                 {
                     uiInstance = uiCtrl.gameObject;
                 }
 
-                data.WillReleaseUIHandles.Remove(firstPair.Key);
+                data.WillReleaseUIIs.Remove(firstPair.Key);
 
                 // 重置UI状态
                 if (uiInstance != null)
@@ -351,7 +351,7 @@ namespace XMFrame.Implementation
             }
 
             // 步骤3：根据实例类型处理
-            UIHandle handle = default;
+            UII handle = default;
 
             switch (windowConfig.InstanceType)
             {
@@ -372,7 +372,7 @@ namespace XMFrame.Implementation
                     break;
             }
 
-            if (handle.Equals(default(UIHandle)))
+            if (handle.Equals(default(UII)))
             {
                 XLog.ErrorFormat("打开 UI 失败: {0}", cfgId);
                 return default;
@@ -385,7 +385,7 @@ namespace XMFrame.Implementation
             }
 
             // 步骤5：激活UI并调用生命周期
-            if (data.ActiveUIHandles.TryGetValue(handle, out UICtrlBase activeCtrl))
+            if (data.ActiveUIIs.TryGetValue(handle, out UICtrlBase activeCtrl))
             {
                 activeCtrl.gameObject.SetActive(true);
 
@@ -409,7 +409,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 打开普通实例UI
         /// </summary>
-        private UIHandle OpenNormalUI(LoadedUIData data, UIWindowConfig config, ref GameObject uiInstance)
+        private UII OpenNormalUI(LoadedUIData data, UIWindowConfig config, ref GameObject uiInstance)
         {
             // 如果对象池没有，实例化新对象
             if (uiInstance == null)
@@ -431,13 +431,13 @@ namespace XMFrame.Implementation
             uiInstance.transform.localRotation = Quaternion.identity;
             uiInstance.transform.localScale = Vector3.one;
 
-            // 生成 UIHandle
+            // 生成 UII
             int instanceId = GenerateInstanceId();
-            UIHandle handle = GenerateUIHandle(config.UITypeId, instanceId);
+            UII handle = GenerateUII(config.UITypeI, instanceId);
             uiCtrl.Id = handle;
 
             // 添加到活跃列表
-            data.ActiveUIHandles[handle] = uiCtrl;
+            data.ActiveUIIs[handle] = uiCtrl;
 
             XLog.InfoFormat("打开普通 UI: {0}, InstanceId: {1}", config.Layer, instanceId);
             return handle;
@@ -446,7 +446,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 打开多实例UI
         /// </summary>
-        private UIHandle OpenMultipleUI(LoadedUIData data, UIWindowConfig config)
+        private UII OpenMultipleUI(LoadedUIData data, UIWindowConfig config)
         {
             // Multiple 总是创建新实例
             GameObject uiInstance =
@@ -464,13 +464,13 @@ namespace XMFrame.Implementation
                 return default;
             }
 
-            // 生成唯一 UIHandle
+            // 生成唯一 UII
             int instanceId = GenerateInstanceId();
-            UIHandle handle = GenerateUIHandle(config.UITypeId, instanceId);
+            UII handle = GenerateUII(config.UITypeI, instanceId);
             uiCtrl.Id = handle;
 
             // 添加到活跃列表
-            data.ActiveUIHandles[handle] = uiCtrl;
+            data.ActiveUIIs[handle] = uiCtrl;
 
             XLog.InfoFormat("打开多实例 UI: {0}, InstanceId: {1}", config.Layer, instanceId);
             return handle;
@@ -479,14 +479,14 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 打开单例UI
         /// </summary>
-        private UIHandle OpenStandaloneUI(LoadedUIData data, UIWindowConfig config, ref GameObject uiInstance)
+        private UII OpenStandaloneUI(LoadedUIData data, UIWindowConfig config, ref GameObject uiInstance)
         {
             // 检查是否已有实例
-            if (data.ActiveUIHandles.Count > 0)
+            if (data.ActiveUIIs.Count > 0)
             {
                 // 已有实例，增加栈帧引用
-                var existingPair = data.ActiveUIHandles.First();
-                UIHandle existingHandle = existingPair.Key;
+                var existingPair = data.ActiveUIIs.First();
+                UII existingHandle = existingPair.Key;
                 UICtrlBase existingCtrl = existingPair.Value;
 
                 // 将实例显示到顶部
@@ -520,12 +520,12 @@ namespace XMFrame.Implementation
                 uiInstance.transform.localRotation = Quaternion.identity;
                 uiInstance.transform.localScale = Vector3.one;
 
-                // 生成 UIHandle
-                UIHandle handle = GenerateUIHandle(config.UITypeId, 0);
+                // 生成 UII
+                UII handle = GenerateUII(config.UITypeI, 0);
                 uiCtrl.Id = handle;
 
                 // 添加到活跃列表
-                data.ActiveUIHandles[handle] = uiCtrl;
+                data.ActiveUIIs[handle] = uiCtrl;
 
                 // 添加到独立栈
                 AddUIToStandaloneStack(config.Layer, handle);
@@ -538,15 +538,15 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 打开栈单例UI
         /// </summary>
-        private UIHandle OpenStackStandaloneUI(LoadedUIData data, UIWindowConfig config, ref GameObject uiInstance)
+        private UII OpenStackStandaloneUI(LoadedUIData data, UIWindowConfig config, ref GameObject uiInstance)
         {
             // 检查栈中是否已有该 UI
-            UIHandle? existingHandle = FindUIInStack(config.Layer, config.UITypeId);
+            UII? existingHandle = FindUIInStack(config.Layer, config.UITypeI);
 
             if (existingHandle.HasValue)
             {
                 // 栈中已有，移到栈顶
-                UICtrlBase existingCtrl = data.ActiveUIHandles[existingHandle.Value];
+                UICtrlBase existingCtrl = data.ActiveUIIs[existingHandle.Value];
 
                 // 从当前栈位置移除
                 RemoveUIFromStack(config.Layer, existingHandle.Value);
@@ -582,13 +582,13 @@ namespace XMFrame.Implementation
                 uiInstance.transform.localRotation = Quaternion.identity;
                 uiInstance.transform.localScale = Vector3.one;
 
-                // 生成 UIHandle
+                // 生成 UII
                 int instanceId = GenerateInstanceId();
-                UIHandle handle = GenerateUIHandle(config.UITypeId, instanceId);
+                UII handle = GenerateUII(config.UITypeI, instanceId);
                 uiCtrl.Id = handle;
 
                 // 添加到活跃列表
-                data.ActiveUIHandles[handle] = uiCtrl;
+                data.ActiveUIIs[handle] = uiCtrl;
 
                 // 添加到栈顶
                 AddUIToStack(config.Layer, handle);
@@ -653,13 +653,13 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 根据Handle设置UI的Active状态
         /// </summary>
-        private void SetUIActiveByHandle(UIHandle handle, bool active)
+        private void SetUIActiveByHandle(UII handle, bool active)
         {
             // 通过config索引直接查找，避免遍历所有数据
-            var configId = handle.TypeId.As<UIConfigUnManaged>();
+            var configId = handle.TypeI.As<UIConfigUnManaged>();
             if (loadedUIData.TryGetValueByKey2(configId, out LoadedUIData data))
             {
-                if (data.ActiveUIHandles.TryGetValue(handle, out UICtrlBase uiCtrl))
+                if (data.ActiveUIIs.TryGetValue(handle, out UICtrlBase uiCtrl))
                 {
                     if (uiCtrl != null)
                     {
@@ -723,7 +723,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 添加UI到独立栈（用于Standalone类型）
         /// </summary>
-        private void AddUIToStandaloneStack(EUILayer layer, UIHandle handle)
+        private void AddUIToStandaloneStack(EUILayer layer, UII handle)
         {
             var layerData = UILayerData[layer];
 
@@ -764,7 +764,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 从独立栈中移除UI
         /// </summary>
-        private void RemoveUIFromStandaloneStack(EUILayer layer, UIHandle handle)
+        private void RemoveUIFromStandaloneStack(EUILayer layer, UII handle)
         {
             var layerData = UILayerData[layer];
 
@@ -815,7 +815,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 根据实例类型处理关闭逻辑
         /// </summary>
-        private void CloseUIByInstanceType(LoadedUIData data, UIWindowConfig config, UIHandle handle,
+        private void CloseUIByInstanceType(LoadedUIData data, UIWindowConfig config, UII handle,
             UICtrlBase uiCtrl)
         {
             switch (config.InstanceType)
@@ -848,7 +848,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 移动UI到None层级并加入延迟释放队列
         /// </summary>
-        private void MoveUIToNoneLayer(UICtrlBase uiInstance, LoadedUIData data, UIHandle handle)
+        private void MoveUIToNoneLayer(UICtrlBase uiInstance, LoadedUIData data, UII handle)
         {
             if (uiInstance == null)
             {
@@ -868,7 +868,7 @@ namespace XMFrame.Implementation
 
             // 加入延迟释放队列（默认延迟5秒）
             float delay = 5.0f;
-            data.WillReleaseUIHandles[handle] = (uiInstance, Time.time + delay);
+            data.WillReleaseUIIs[handle] = (uiInstance, Time.time + delay);
 
             XLog.DebugFormat("UI 移动到None层级并加入延迟释放队列: Handle={0}, Delay={1}s", handle.Id, delay);
         }
@@ -895,11 +895,11 @@ namespace XMFrame.Implementation
                     if (!checkNode.Value.IsHideSelf)
                     {
                         // 通过config索引直接查找，避免遍历所有数据
-                        var configId = checkNode.Value.Handle.TypeId.As<UIConfigUnManaged>();
+                        var configId = checkNode.Value.Handle.TypeI.As<UIConfigUnManaged>();
                         if (loadedUIData.TryGetValueByKey2(configId, out LoadedUIData data))
                         {
                             if (data.Config is UIWindowConfig config &&
-                                data.ActiveUIHandles.ContainsKey(checkNode.Value.Handle))
+                                data.ActiveUIIs.ContainsKey(checkNode.Value.Handle))
                             {
                                 if (config.IsShowMask)
                                 {
@@ -979,13 +979,13 @@ namespace XMFrame.Implementation
         }
 
         /// <summary>
-        /// 生成UIHandle
+        /// 生成UII
         /// </summary>
-        private UIHandle GenerateUIHandle(CfgId typeId, int instanceId)
+        private UII GenerateUII(CfgI typeId, int instanceId)
         {
-            return new UIHandle
+            return new UII
             {
-                TypeId = typeId,
+                TypeI = typeId,
                 IsWidget = 0,
                 Id = instanceId
             };
@@ -994,7 +994,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 添加UI到栈
         /// </summary>
-        private void AddUIToStack(EUILayer layer, UIHandle handle)
+        private void AddUIToStack(EUILayer layer, UII handle)
         {
             if (!UILayerData.TryGetValue(layer, out var layerData))
             {
@@ -1032,13 +1032,13 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 更新UI的Canvas sortingOrder
         /// </summary>
-        private void UpdateUICanvasOrder(UIHandle handle, int canvasLayerId)
+        private void UpdateUICanvasOrder(UII handle, int canvasLayerId)
         {
             // 通过config索引直接查找，避免遍历所有数据
-            var configId = handle.TypeId.As<UIConfigUnManaged>();
+            var configId = handle.TypeI.As<UIConfigUnManaged>();
             if (loadedUIData.TryGetValueByKey2(configId, out LoadedUIData data))
             {
-                if (data.ActiveUIHandles.TryGetValue(handle, out UICtrlBase uiCtrl))
+                if (data.ActiveUIIs.TryGetValue(handle, out UICtrlBase uiCtrl))
                 {
                     if (uiCtrl == null)
                     {
@@ -1066,7 +1066,7 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 从栈中移除UI
         /// </summary>
-        private void RemoveUIFromStack(EUILayer layer, UIHandle handle)
+        private void RemoveUIFromStack(EUILayer layer, UII handle)
         {
             if (!UILayerData.TryGetValue(layer, out var layerData))
             {
@@ -1094,14 +1094,14 @@ namespace XMFrame.Implementation
         /// <summary>
         /// 在栈中查找UI
         /// </summary>
-        private UIHandle? FindUIInStack(EUILayer layer, CfgId uiTypeId)
+        private UII? FindUIInStack(EUILayer layer, CfgI uiTypeI)
         {
             var layerData = UILayerData[layer];
             var node = layerData.UIStacks.First;
 
             while (node != null)
             {
-                if (node.Value.Handle.TypeId.Equals(uiTypeId))
+                if (node.Value.Handle.TypeI.Equals(uiTypeI))
                 {
                     return node.Value.Handle;
                 }
@@ -1113,18 +1113,18 @@ namespace XMFrame.Implementation
         }
 
         /// <summary>
-        /// 根据UIHandle查找对应的LoadedUIData
+        /// 根据UII查找对应的LoadedUIData
         /// </summary>
-        private bool TryFindLoadedUIData(UIHandle handle, out LoadedUIData data, out UIWindowConfig config)
+        private bool TryFindLoadedUIData(UII handle, out LoadedUIData data, out UIWindowConfig config)
         {
             data = null;
             config = null;
 
             // 通过config索引直接查找，避免遍历所有数据
-            var configId = handle.TypeId.As<UIConfigUnManaged>();
+            var configId = handle.TypeI.As<UIConfigUnManaged>();
             if (loadedUIData.TryGetValueByKey2(configId, out data))
             {
-                if (data.ActiveUIHandles.ContainsKey(handle))
+                if (data.ActiveUIIs.ContainsKey(handle))
                 {
                     config = data.Config as UIWindowConfig;
                     return config != null;
@@ -1135,7 +1135,7 @@ namespace XMFrame.Implementation
         }
 
 
-        public void CloseUI(UIHandle uiHandle)
+        public void CloseUI(UII uiHandle)
         {
             // 步骤1：查找UI数据
             if (!TryFindLoadedUIData(uiHandle, out LoadedUIData data, out UIWindowConfig config))
@@ -1145,7 +1145,7 @@ namespace XMFrame.Implementation
             }
 
             // 步骤2：验证Handle是否存在
-            if (!data.ActiveUIHandles.TryGetValue(uiHandle, out UICtrlBase uiInstance))
+            if (!data.ActiveUIIs.TryGetValue(uiHandle, out UICtrlBase uiInstance))
             {
                 XLog.WarningFormat("未找到指定Handle的UI实例: Handle={0}", uiHandle.Id);
                 return;
@@ -1165,8 +1165,8 @@ namespace XMFrame.Implementation
             // 步骤4：根据实例类型处理关闭逻辑
             CloseUIByInstanceType(data, config, uiHandle, uiInstance);
 
-            // 步骤5：从ActiveUIHandles移除
-            data.ActiveUIHandles.Remove(uiHandle);
+            // 步骤5：从ActiveUIIs移除
+            data.ActiveUIIs.Remove(uiHandle);
 
             // 步骤6：移动到None层级并延迟释放
             MoveUIToNoneLayer(uiInstance, data, uiHandle);
@@ -1180,7 +1180,7 @@ namespace XMFrame.Implementation
             XLog.InfoFormat("成功关闭 UI: Handle={0}", uiHandle.Id);
         }
 
-        public void HideUI(UIHandle uiHandle)
+        public void HideUI(UII uiHandle)
         {
             // 步骤1：查找UI数据
             if (!TryFindLoadedUIData(uiHandle, out LoadedUIData data, out UIWindowConfig config))
@@ -1190,7 +1190,7 @@ namespace XMFrame.Implementation
             }
 
             // 步骤2：验证Handle是否存在
-            if (!data.ActiveUIHandles.TryGetValue(uiHandle, out UICtrlBase uiCtrl))
+            if (!data.ActiveUIIs.TryGetValue(uiHandle, out UICtrlBase uiCtrl))
             {
                 XLog.WarningFormat("未找到指定Handle的UI实例: Handle={0}", uiHandle.Id);
                 return;
@@ -1227,7 +1227,7 @@ namespace XMFrame.Implementation
             XLog.InfoFormat("成功隐藏 UI: Handle={0}", uiHandle.Id);
         }
 
-        public void ShowUI(UIHandle uiHandle)
+        public void ShowUI(UII uiHandle)
         {
             // 步骤1：查找UI数据
             if (!TryFindLoadedUIData(uiHandle, out LoadedUIData data, out UIWindowConfig config))
@@ -1237,7 +1237,7 @@ namespace XMFrame.Implementation
             }
 
             // 步骤2：验证Handle是否存在
-            if (!data.ActiveUIHandles.TryGetValue(uiHandle, out UICtrlBase uiCtrl))
+            if (!data.ActiveUIIs.TryGetValue(uiHandle, out UICtrlBase uiCtrl))
             {
                 XLog.WarningFormat("未找到指定Handle的UI实例: Handle={0}", uiHandle.Id);
                 return;
@@ -1312,7 +1312,7 @@ namespace XMFrame.Implementation
         /// </summary>
         /// <param name="uiConfigId">UI配置ID</param>
         /// <returns>是否注册成功</returns>
-        public bool RegisterUI(CfgId uiConfigId)
+        public bool RegisterUI(CfgI uiConfigId)
         {
             // 转换为泛型配置ID
             var cfgId = uiConfigId.As<UIConfigUnManaged>();
@@ -1350,8 +1350,8 @@ namespace XMFrame.Implementation
             // 查找并移除对应的UI实例
             foreach (var data in loadedUIData.Values)
             {
-                var handlesToRemove = ListPool<UIHandle>.Get();
-                foreach (var kvp in data.ActiveUIHandles)
+                var handlesToRemove = ListPool<UII>.Get();
+                foreach (var kvp in data.ActiveUIIs)
                 {
                     UICtrlBase ctrl = kvp.Value;
                     if (ctrl != null && ReferenceEquals(ctrl, uiCtrl))
@@ -1362,7 +1362,7 @@ namespace XMFrame.Implementation
 
                 foreach (var handle in handlesToRemove)
                 {
-                    if (data.ActiveUIHandles.TryGetValue(handle, out UICtrlBase uiInstance))
+                    if (data.ActiveUIIs.TryGetValue(handle, out UICtrlBase uiInstance))
                     {
                         // 从栈中移除
                         if (data.Config is UIWindowConfig config)
@@ -1372,13 +1372,13 @@ namespace XMFrame.Implementation
 
                         // 销毁GameObject
                         GameObject.Destroy(uiInstance.gameObject);
-                        data.ActiveUIHandles.Remove(handle);
+                        data.ActiveUIIs.Remove(handle);
                         XLog.InfoFormat("释放UI控制器: Handle={0}", handle.Id);
                     }
                 }
                 
                 // 释放临时列表
-                ListPool<UIHandle>.Release(handlesToRemove);
+                ListPool<UII>.Release(handlesToRemove);
             }
         }
 
@@ -1395,7 +1395,7 @@ namespace XMFrame.Implementation
         private bool CreateUICtrlInstances(
             GameObject prefab, 
             int count,
-            CfgId typeId = default, 
+            CfgI typeId = default, 
             XAssetHandle assetHandle = null,
             List<UICtrlBase> createdInstances = null)
         {
@@ -1405,7 +1405,7 @@ namespace XMFrame.Implementation
                 return false;
             }
 
-            bool hasTypeId = !typeId.Equals(default(CfgId));
+            bool hasTypeI = !typeId.Equals(default(CfgI));
             bool success = false;
 
             for (int i = 0; i < count; i++)
@@ -1419,17 +1419,17 @@ namespace XMFrame.Implementation
                     continue;
                 }
 
-                // 生成UIHandle
-                UIHandle uiHandle;
-                if (hasTypeId)
+                // 生成UII
+                UII uiHandle;
+                if (hasTypeI)
                 {
-                    uiHandle = GenerateUIHandle(typeId, i);
+                    uiHandle = GenerateUII(typeId, i);
                 }
                 else
                 {
-                    uiHandle = new UIHandle
+                    uiHandle = new UII
                     {
-                        TypeId = default,
+                        TypeI = default,
                         Id = i
                     };
                 }
@@ -1457,7 +1457,7 @@ namespace XMFrame.Implementation
             return success;
         }
 
-        public async UniTask CreateUICtrlByAssetId(ModHandle mod, string path, int count, List<UIHandle> uiHandles)
+        public async UniTask CreateUICtrlByAssetId(ModI mod, string path, int count, List<UII> uiHandles)
         {
             if (uiHandles == null)
             {
@@ -1468,7 +1468,7 @@ namespace XMFrame.Implementation
             uiHandles.Clear();
 
             // 创建资源ID
-            var assetId = IAssetManager.I.CreateAssetId<XAssetId>(mod, path);
+            var assetId = IAssetManager.I.CreateAssetId<AssetI>(mod, path);
             if (!assetId.Valid)
             {
                 XLog.ErrorFormat("创建资源ID失败: Mod={0}, Path={1}", mod, path);
@@ -1505,7 +1505,7 @@ namespace XMFrame.Implementation
         /// <param name="count">创建数量</param>
         /// <param name="uiHandles">输出的UI句柄列表</param>
         /// <returns>异步任务</returns>
-        public async UniTask CreateUICtrlByConfig(CfgId id, int count, List<UIHandle> uiHandles)
+        public async UniTask CreateUICtrlByConfig(CfgI id, int count, List<UII> uiHandles)
         {
             if (uiHandles == null)
             {
@@ -1560,7 +1560,7 @@ namespace XMFrame.Implementation
 
             // 创建UI控制器实例
             var createdInstances = ListPool<UICtrlBase>.Get();
-            if (!CreateUICtrlInstances(data.UIPrefabTemplate, count, windowConfig.UITypeId, null,
+            if (!CreateUICtrlInstances(data.UIPrefabTemplate, count, windowConfig.UITypeI, null,
                     createdInstances))
             {
                 XLog.ErrorFormat("创建UI控制器失败: ConfigId={0}", id);
@@ -1582,7 +1582,7 @@ namespace XMFrame.Implementation
         /// <param name="uiHandles">输出的UI句柄列表</param>
         /// <param name="createdInstances">输出的创建的UICtrlBase实例列表</param>
         /// <returns>异步任务</returns>
-        internal async UniTask CreateUICtrlByConfigWithInstances(XAssetId assetId, int count,
+        internal async UniTask CreateUICtrlByConfigWithInstances(AssetI assetId, int count,
             List<UICtrlBase> createdInstances)
         {
             if (createdInstances == null)
@@ -1638,7 +1638,7 @@ namespace XMFrame.Implementation
         /// <param name="count">创建数量</param>
         /// <param name="uiHandles">输出的UI句柄列表</param>
         /// <returns>异步任务</returns>
-        public async UniTask CreateUICtrlByConfig(XAssetId assetId, int count, List<UIHandle> uiHandles)
+        public async UniTask CreateUICtrlByConfig(AssetI assetId, int count, List<UII> uiHandles)
         {
             if (uiHandles == null)
             {
@@ -1691,13 +1691,13 @@ namespace XMFrame.Implementation
             ListPool<UICtrlBase>.Release(createdInstances);
         }
 
-        public IUICtrlBase GetUICtrlByHandle(UIHandle handle)
+        public IUICtrlBase GetUICtrlByHandle(UII handle)
         {
             throw new NotImplementedException();
         }
 
 
-        private async UniTask<LoadedUIData> LoadUI(CfgId<UIConfigUnManaged> cfgId)
+        private async UniTask<LoadedUIData> LoadUI(CfgI<UIConfigUnManaged> cfgId)
         {
             if (!cfgId.TryGetData(out var config))
             {
@@ -1725,7 +1725,7 @@ namespace XMFrame.Implementation
             if (handle == null)
             {
                 loadUI.Status = EAssetStatus.Failed;
-                XLog.ErrorFormat("创建资源句柄失败: {0}", config.TypeId);
+                XLog.ErrorFormat("创建资源句柄失败: {0}", config.TypeI);
                 return loadUI;
             }
 
@@ -1735,7 +1735,7 @@ namespace XMFrame.Implementation
             {
                 loadUI.AssetHandle.Release();
                 loadUI.Status = EAssetStatus.ErrorAndRelease;
-                XLog.ErrorFormat("获取UI预制体失败: {0}", config.TypeId);
+                XLog.ErrorFormat("获取UI预制体失败: {0}", config.TypeI);
                 return loadUI;
             }
 
@@ -1744,7 +1744,7 @@ namespace XMFrame.Implementation
             {
                 loadUI.AssetHandle.Release();
                 loadUI.Status = EAssetStatus.ErrorAndRelease;
-                XLog.ErrorFormat("预制体上未找到UI控制器组件: {0}", config.TypeId);
+                XLog.ErrorFormat("预制体上未找到UI控制器组件: {0}", config.TypeI);
                 return loadUI;
             }
 
@@ -1755,18 +1755,18 @@ namespace XMFrame.Implementation
             if (comp is UIWindowCtrlBase windowCtrl)
             {
                 var windowConfig = new UIWindowConfig();
-                windowConfig.UITypeId = config.UIHandle;
+                windowConfig.UITypeI = config.UIHandle;
                 windowConfig.Layer = windowCtrl.Layer;
                 windowConfig.InstanceType = windowCtrl.UIType;
                 windowConfig.IsShowMask = windowCtrl.IsShowMask;
                 loadUI.Config = windowConfig;
 
                 XLog.InfoFormat("UI配置加载成功: {0}, Layer={1}, Type={2}",
-                    config.TypeId, windowCtrl.Layer, windowCtrl.UIType);
+                    config.TypeI, windowCtrl.Layer, windowCtrl.UIType);
             }
             else
             {
-                XLog.WarningFormat("UI控制器类型未识别，使用默认配置: {0}", config.TypeId);
+                XLog.WarningFormat("UI控制器类型未识别，使用默认配置: {0}", config.TypeI);
                 // TODO: 处理UIWidgetCtrlBase等其他类型
             }
 

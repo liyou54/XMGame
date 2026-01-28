@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Unity.Collections;
-using XMFrame;
-using XMFrame.Utils.Attribute;
+using XM;
+using XM.Utils.Attribute;
 
-namespace XMFrame.Editor.ConfigEditor
+namespace XM.Editor
 {
     /// <summary>
     /// 字段信息，用于代码生成
@@ -26,6 +26,10 @@ namespace XMFrame.Editor.ConfigEditor
         public string ConverterDomain { get; set; } // 转换器域（空字符串表示全局）
         public string SourceType { get; set; } // 源类型（托管类型）
         public string TargetType { get; set; } // 目标类型（非托管类型）
+        /// <summary>是否必要字段（[XmlNotNull]）：缺失时打告警。</summary>
+        public bool IsNotNull { get; set; }
+        /// <summary>默认值字符串（[XmlDefault(str)]）：标量字段在 XML 缺失或空时使用；容器暂不支持。</summary>
+        public string DefaultValueString { get; set; }
     }
 
     /// <summary>
@@ -51,21 +55,43 @@ namespace XMFrame.Editor.ConfigEditor
         public List<FieldInfo> Fields { get; set; } = new List<FieldInfo>();
         public List<IndexGroupInfo> IndexGroups { get; set; } = new List<IndexGroupInfo>();
         public HashSet<string> RequiredUsings { get; set; } = new HashSet<string>();
+        /// <summary>是否有 XConfig 基类（继承）</summary>
+        public bool HasBase { get; set; }
+        /// <summary>基类托管类型名（如 TestConfig）</summary>
+        public string BaseManagedTypeName { get; set; }
+        /// <summary>基类非托管类型名（如 TestConfigUnManaged）</summary>
+        public string BaseUnmanagedTypeName { get; set; }
     }
 
     /// <summary>
-    /// 类型分析器，负责分析托管类型并映射到非托管类型
+    /// 类型分析器，负责分析托管类型并映射到非托管类型。分析结果按类型缓存以加快批量生成。
     /// </summary>
     public static class TypeAnalyzer
     {
+        private static readonly Dictionary<Type, ConfigTypeInfo> _configTypeInfoCache = new Dictionary<Type, ConfigTypeInfo>();
+
         /// <summary>
-        /// 分析配置类型
+        /// 清除类型分析缓存（程序集重载或类型变更后可选调用）。
+        /// </summary>
+        public static void ClearConfigTypeInfoCache()
+        {
+            lock (_configTypeInfoCache) { _configTypeInfoCache.Clear(); }
+        }
+
+        /// <summary>
+        /// 分析配置类型（带缓存，同一类型重复分析直接返回缓存）。
         /// </summary>
         public static ConfigTypeInfo AnalyzeConfigType(Type configType)
         {
+            if (configType == null)
+                throw new ArgumentNullException(nameof(configType));
             if (!IsXConfigType(configType))
-            {
                 throw new ArgumentException($"类型 {configType.Name} 不是 XConfig 类型");
+
+            lock (_configTypeInfoCache)
+            {
+                if (_configTypeInfoCache.TryGetValue(configType, out var cached))
+                    return cached;
             }
 
             var info = new ConfigTypeInfo
@@ -75,7 +101,7 @@ namespace XMFrame.Editor.ConfigEditor
                 ManagedTypeName = configType.Name
             };
 
-            // 获取泛型参数 TUnmanaged
+            // 获取泛型参数 TUnmanaged：优先从基类泛型，否则从实现的 IXConfig<T,TUnmanaged> 接口
             var baseType = configType.BaseType;
             if (baseType != null && baseType.IsGenericType)
             {
@@ -84,18 +110,31 @@ namespace XMFrame.Editor.ConfigEditor
                 {
                     info.UnmanagedType = genericArgs[1];
                     info.UnmanagedTypeName = info.UnmanagedType.Name;
-                    
-                    // 验证命名约定
-                    var expectedUnmanagedName = info.ManagedTypeName + "UnManaged";
-                    var expectedUnmanagedName2 = info.ManagedTypeName + "Unmanaged";
-                    if (info.UnmanagedTypeName != expectedUnmanagedName && 
-                        info.UnmanagedTypeName != expectedUnmanagedName2)
-                    {
-                        throw new ArgumentException(
-                            $"类型 {configType.Name} 的 Unmanaged 类型名称不符合约定。" +
-                            $"期望: {expectedUnmanagedName} 或 {expectedUnmanagedName2}，" +
-                            $"实际: {info.UnmanagedTypeName}");
-                    }
+                    ValidateUnmanagedTypeName(configType, info);
+                }
+            }
+            if (info.UnmanagedType == null)
+            {
+                // 优先取“当前类型自己的” IXConfig<T, TUnmanaged>（第一个泛参为当前类型），避免派生类拿到基类的 TUnmanaged
+                var ixConfig = GetIXConfigInterfaceForType(configType);
+                if (ixConfig != null && ixConfig.IsGenericType && ixConfig.GetGenericArguments().Length >= 2)
+                {
+                    var genericArgs = ixConfig.GetGenericArguments();
+                    info.UnmanagedType = genericArgs[1];
+                    info.UnmanagedTypeName = info.UnmanagedType.Name;
+                    ValidateUnmanagedTypeName(configType, info);
+                }
+            }
+
+            // 继承：若直接基类是 XConfig 类型，则记录基类信息
+            if (baseType != null && baseType != typeof(object) && IsXConfigType(baseType))
+            {
+                info.HasBase = true;
+                info.BaseManagedTypeName = baseType.Name;
+                var baseIx = GetIXConfigInterface(baseType);
+                if (baseIx != null && baseIx.GetGenericArguments().Length >= 2)
+                {
+                    info.BaseUnmanagedTypeName = baseIx.GetGenericArguments()[1].Name;
                 }
             }
 
@@ -108,11 +147,12 @@ namespace XMFrame.Editor.ConfigEditor
             // 收集所需的 using 语句
             CollectRequiredUsings(info);
 
+            lock (_configTypeInfoCache) { _configTypeInfoCache[configType] = info; }
             return info;
         }
 
         /// <summary>
-        /// 检查是否是 XConfig 类型
+        /// 检查是否是 XConfig 类型（基类 XConfig`2 或实现 IXConfig&lt;T,TUnmanaged&gt;）
         /// </summary>
         private static bool IsXConfigType(Type type)
         {
@@ -125,7 +165,53 @@ namespace XMFrame.Editor.ConfigEditor
                 }
                 baseType = baseType.BaseType;
             }
-            return false;
+            return GetIXConfigInterface(type) != null;
+        }
+
+        /// <summary>
+        /// 获取类型实现的 IXConfig&lt;T,TUnmanaged&gt; 接口（含从基类继承）
+        /// </summary>
+        private static Type GetIXConfigInterface(Type type)
+        {
+            foreach (var iface in type.GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition().Name == "IXConfig`2" && iface.GetGenericArguments().Length >= 2)
+                {
+                    return iface;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 获取“当前类型自己的” IXConfig&lt;T,TUnmanaged&gt;，即第一个泛型参数 T 等于 type 的接口（派生类用此得到自己的 TUnmanaged，而非基类的）
+        /// </summary>
+        private static Type GetIXConfigInterfaceForType(Type type)
+        {
+            foreach (var iface in type.GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition().Name == "IXConfig`2" && iface.GetGenericArguments().Length >= 2)
+                {
+                    var args = iface.GetGenericArguments();
+                    if (args[0] == type)
+                        return iface;
+                }
+            }
+            return GetIXConfigInterface(type);
+        }
+
+        private static void ValidateUnmanagedTypeName(Type configType, ConfigTypeInfo info)
+        {
+            var expectedUnmanagedName = info.ManagedTypeName + "UnManaged";
+            var expectedUnmanagedName2 = info.ManagedTypeName + "Unmanaged";
+            if (info.UnmanagedTypeName != expectedUnmanagedName &&
+                info.UnmanagedTypeName != expectedUnmanagedName2)
+            {
+                throw new ArgumentException(
+                    $"类型 {configType.Name} 的 Unmanaged 类型名称不符合约定。" +
+                    $"期望: {expectedUnmanagedName} 或 {expectedUnmanagedName2}，" +
+                    $"实际: {info.UnmanagedTypeName}");
+            }
         }
 
         /// <summary>
@@ -181,6 +267,23 @@ namespace XMFrame.Editor.ConfigEditor
                         }
                     }
                 }
+
+                // 检查 XmlGlobalConvert 属性（未设置时）：从 IConfigDataCenter 按域获取转换器，XML 源类型为 string
+                if (!fieldInfo.NeedsConverter)
+                {
+                    var globalAttr = field.GetCustomAttribute<XmlGlobalConvertAttribute>();
+                    if (globalAttr != null && globalAttr.ConverterType != null)
+                    {
+                        fieldInfo.NeedsConverter = true;
+                        fieldInfo.ConverterTypeName = globalAttr.ConverterType.FullName ?? globalAttr.ConverterType.Name;
+                        fieldInfo.ConverterDomain = globalAttr.Domain ?? "";
+                        fieldInfo.SourceType = GetTypeName(typeof(string));
+                        fieldInfo.TargetType = GetTypeName(field.FieldType);
+                        fieldInfo.UnmanagedType = fieldInfo.TargetType;
+                        if (!string.IsNullOrEmpty(globalAttr.ConverterType.Namespace))
+                            info.RequiredUsings.Add(globalAttr.ConverterType.Namespace);
+                    }
+                }
                 
                 if (!fieldInfo.NeedsConverter)
                 {
@@ -188,11 +291,24 @@ namespace XMFrame.Editor.ConfigEditor
                     fieldInfo.UnmanagedType = MapToUnmanagedType(field.FieldType, field, info);
                 }
 
-                // 检查是否需要生成 _Ref 字段（ConfigKey 类型）
+                // 检查是否需要生成 _Ref 字段（CfgS 类型）
                 if (IsConfigKeyType(field.FieldType))
                 {
                     fieldInfo.NeedsRefField = true;
                     fieldInfo.RefFieldName = field.Name + "_Ref";
+                }
+
+                // 必要字段与默认值（容器暂不参与默认值逻辑）
+                var notNullAttr = field.GetCustomAttribute<XmlNotNullAttribute>();
+                if (notNullAttr != null)
+                    fieldInfo.IsNotNull = true;
+                var defaultAttr = field.GetCustomAttribute<XmlDefaultAttribute>();
+                if (defaultAttr != null)
+                {
+                    if (!IsContainerType(field.FieldType))
+                        fieldInfo.DefaultValueString = defaultAttr.Value ?? "";
+                    else
+                        UnityEngine.Debug.LogWarning($"[XmlDefault] 容器类型暂不支持默认值，已忽略: {configType.Name}.{field.Name}");
                 }
 
                 info.Fields.Add(fieldInfo);
@@ -234,21 +350,21 @@ namespace XMFrame.Editor.ConfigEditor
                                 case EXmlStrMode.EFix64:
                                     targetTypeName = "FixedString64Bytes";
                                     break;
-                                case EXmlStrMode.EStrHandle:
-                                    targetTypeName = "StrHandle";
+                                case EXmlStrMode.EStrI:
+                                    targetTypeName = "StrI";
                                     break;
-                                case EXmlStrMode.EStrLabel:
-                                    targetTypeName = "StrLabelHandle";
+                                case EXmlStrMode.ELabelI:
+                                    targetTypeName = "LabelI";
                                     break;
                             }
                         }
                     }
                 }
                 
-                // 默认使用 StrHandle
+                // 默认使用 StrI
                 if (string.IsNullOrEmpty(targetTypeName))
                 {
-                    targetTypeName = "StrHandle";
+                    targetTypeName = "StrI";
                 }
                 
                 // 通过反射查找目标类型并添加命名空间
@@ -290,72 +406,78 @@ namespace XMFrame.Editor.ConfigEditor
                 return $"XBlobSet<{unmanagedElementType}>";
             }
 
-            // ConfigKey<T> -> CfgId<T>
+            // CfgS<T> -> CfgI<T>
             if (IsConfigKeyType(managedType))
             {
                 var elementType = managedType.GetGenericArguments()[0];
-                // CfgId 在全局命名空间中，不需要添加 using
-                return $"CfgId<{GetTypeName(elementType)}>";
+                // CfgI 在全局命名空间中，不需要添加 using
+                return $"CfgI<{GetTypeName(elementType)}>";
             }
 
-            // StrLabel -> StrLabelHandle
-            if (managedType.Name == "StrLabel")
+            // LabelS -> LabelI
+            if (managedType.Name == "LabelS")
             {
-                var targetType = FindTypeByName("StrLabelHandle");
+                var targetType = FindTypeByName("LabelI");
                 if (targetType != null && !string.IsNullOrEmpty(targetType.Namespace))
                 {
                     configInfo.RequiredUsings.Add(targetType.Namespace);
                 }
-                return "StrLabelHandle";
+                return "LabelI";
             }
 
-            // Type -> TypeId (全局映射)
+            // Type -> TypeI (全局映射)
             if (managedType == typeof(Type))
             {
-                var targetType = FindTypeByName("TypeId");
+                var targetType = FindTypeByName("TypeI");
                 if (targetType != null && !string.IsNullOrEmpty(targetType.Namespace))
                 {
                     configInfo.RequiredUsings.Add(targetType.Namespace);
                 }
-                return "TypeId";
+                return "TypeI";
             }
 
-            // XConfig<T, TUnmanaged> -> 优先查找 {TypeName}UnManaged，否则使用 TUnmanaged
+            // 嵌套 XConfig（NestedConfig 等）-> 对应 UnManaged 结构体（NestedConfigUnManaged）
             if (IsXConfigType(managedType))
             {
+                Type unmanagedTypeFromGeneric = null;
                 var baseType = managedType.BaseType;
                 if (baseType != null && baseType.IsGenericType)
                 {
                     var genericArgs = baseType.GetGenericArguments();
                     if (genericArgs.Length >= 2)
                     {
-                        // 优先尝试查找 {TypeName}UnManaged 类型
-                        var expectedUnmanagedName = managedType.Name + "UnManaged";
-                        var unmanagedTypeFromGeneric = genericArgs[1];
-                        
-                        // 在同一个程序集中查找 {TypeName}UnManaged 类型
-                        var assembly = managedType.Assembly;
-                        try
-                        {
-                            // 尝试在相同命名空间中查找
-                            string fullName = string.IsNullOrEmpty(managedType.Namespace) 
-                                ? expectedUnmanagedName 
-                                : managedType.Namespace + "." + expectedUnmanagedName;
-                            
-                            var expectedUnmanagedType = assembly.GetType(fullName, false, false);
-                            if (expectedUnmanagedType != null)
-                            {
-                                return GetTypeName(expectedUnmanagedType);
-                            }
-                        }
-                        catch
-                        {
-                            // 如果查找失败，使用泛型参数中的类型
-                        }
-                        
-                        // 如果找不到，使用泛型参数中的类型
-                        return GetTypeName(unmanagedTypeFromGeneric);
+                        unmanagedTypeFromGeneric = genericArgs[1];
                     }
+                }
+                if (unmanagedTypeFromGeneric == null)
+                {
+                    var ixConfig = GetIXConfigInterface(managedType);
+                    if (ixConfig != null && ixConfig.GetGenericArguments().Length >= 2)
+                    {
+                        unmanagedTypeFromGeneric = ixConfig.GetGenericArguments()[1];
+                    }
+                }
+                if (unmanagedTypeFromGeneric != null)
+                {
+                    // 优先尝试查找 {TypeName}UnManaged 类型
+                    var expectedUnmanagedName = managedType.Name + "UnManaged";
+                    var assembly = managedType.Assembly;
+                    try
+                    {
+                        string fullName = string.IsNullOrEmpty(managedType.Namespace)
+                            ? expectedUnmanagedName
+                            : managedType.Namespace + "." + expectedUnmanagedName;
+                        var expectedUnmanagedType = assembly.GetType(fullName, false, false);
+                        if (expectedUnmanagedType != null)
+                        {
+                            return GetTypeName(expectedUnmanagedType);
+                        }
+                    }
+                    catch
+                    {
+                        // 如果查找失败，使用泛型参数中的类型
+                    }
+                    return GetTypeName(unmanagedTypeFromGeneric);
                 }
             }
 
@@ -372,11 +494,109 @@ namespace XMFrame.Editor.ConfigEditor
         }
 
         /// <summary>
-        /// 检查是否是 ConfigKey 类型
+        /// 检查是否是 CfgS 类型
         /// </summary>
         private static bool IsConfigKeyType(Type type)
         {
-            return type.IsGenericType && type.GetGenericTypeDefinition().Name == "ConfigKey`1";
+            return type.IsGenericType && type.GetGenericTypeDefinition().Name == "CfgS`1";
+        }
+
+        /// <summary>
+        /// 检查是否是容器类型（List/Dictionary/HashSet），容器暂不参与 [XmlDefault] 默认值逻辑。
+        /// </summary>
+        private static bool IsContainerType(Type type)
+        {
+            if (type == null || !type.IsGenericType) return false;
+            var def = type.GetGenericTypeDefinition();
+            return def == typeof(System.Collections.Generic.List<>) ||
+                   def == typeof(System.Collections.Generic.Dictionary<,>) ||
+                   def == typeof(System.Collections.Generic.HashSet<>);
+        }
+
+        private static readonly Dictionary<Assembly, Dictionary<Type, string>> ConverterTargetCache =
+            new Dictionary<Assembly, Dictionary<Type, string>>();
+
+        /// <summary>
+        /// 从转换器类型（实现 ITypeConverter&lt;string, T&gt;）获取目标类型 T。
+        /// </summary>
+        public static Type GetTargetTypeFromConverterType(Type converterType)
+        {
+            if (converterType == null) return null;
+            foreach (var i in converterType.GetInterfaces())
+            {
+                if (!i.IsGenericType || i.GetGenericArguments().Length < 2) continue;
+                var def = i.GetGenericTypeDefinition();
+                if (def.Name != "ITypeConverter`2") continue;
+                var args = i.GetGenericArguments();
+                if (args[0] == typeof(string))
+                    return args[1];
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 获取程序集内“已注册转换器”的目标类型及其域：容器元素类型若在此表中，则统一使用 IConfigDataCenter.GetConverter 解析。
+        /// </summary>
+        public static string GetConverterDomainForType(Assembly assembly, Type targetType)
+        {
+            if (assembly == null || targetType == null) return null;
+            if (!ConverterTargetCache.TryGetValue(assembly, out var dict))
+            {
+                dict = BuildConverterTargetMap(assembly);
+                ConverterTargetCache[assembly] = dict;
+            }
+            return dict.TryGetValue(targetType, out var domain) ? domain : null;
+        }
+
+        private static Dictionary<Type, string> BuildConverterTargetMap(Assembly asm)
+        {
+            var dict = new Dictionary<Type, string>();
+            try
+            {
+                var attrType = typeof(XmlGlobalConvertAttribute);
+                foreach (var attr in asm.GetCustomAttributes(attrType, false))
+                {
+                    if (!(attr is XmlGlobalConvertAttribute ga) || ga.ConverterType == null) continue;
+                    var targetType = GetTargetTypeFromConverterType(ga.ConverterType);
+                    if (targetType != null && !dict.ContainsKey(targetType))
+                        dict[targetType] = ga.Domain ?? "";
+                }
+            }
+            catch { /* 忽略程序集无该属性 */ }
+
+            try
+            {
+                foreach (var type in asm.GetTypes())
+                {
+                    try
+                    {
+                        if (!IsXConfigType(type)) continue;
+                        foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                        {
+                            var ga = field.GetCustomAttribute<XmlGlobalConvertAttribute>();
+                            var ta = field.GetCustomAttribute<XmlTypeConverterAttribute>();
+                            Type targetType = null;
+                            string domain = null;
+                            if (ga != null && ga.ConverterType != null)
+                            {
+                                targetType = field.FieldType;
+                                domain = ga.Domain ?? "";
+                            }
+                            else if (ta != null && ta.ConverterType != null)
+                            {
+                                targetType = GetTargetTypeFromConverterType(ta.ConverterType) ?? field.FieldType;
+                                domain = ta.Domain ?? "";
+                            }
+                            if (targetType != null && !dict.ContainsKey(targetType))
+                                dict[targetType] = domain ?? "";
+                        }
+                    }
+                    catch { /* 忽略单类型 */ }
+                }
+            }
+            catch (ReflectionTypeLoadException) { }
+
+            return dict;
         }
 
         /// <summary>
@@ -439,33 +659,50 @@ namespace XMFrame.Editor.ConfigEditor
         }
 
         /// <summary>
-        /// 收集所需的 using 语句
+        /// 收集所需的 using 语句（根据字段类型填充 HashSet，供模板生成 using）
         /// </summary>
         private static void CollectRequiredUsings(ConfigTypeInfo info)
         {
             info.RequiredUsings.Add("System");
-            info.RequiredUsings.Add("XMFrame");
-            
-            // 检查是否有需要转换的字段
-            foreach (var field in info.Fields)
+            info.RequiredUsings.Add("System.Collections.Generic");
+            info.RequiredUsings.Add("System.Xml");
+            info.RequiredUsings.Add("XM");
+            info.RequiredUsings.Add("XM.Contracts");
+            info.RequiredUsings.Add("XM.Contracts.Config");
+            foreach (var f in info.Fields)
             {
-                if (field.NeedsConverter)
+                if (f.NeedsConverter) { info.RequiredUsings.Add("XM.Utils"); break; }
+            }
+
+            // 从托管字段类型收集命名空间（ClassHelper 与 Unmanaged 共用）
+            if (info.ManagedType != null)
+            {
+                foreach (var field in info.ManagedType.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
                 {
-                    info.RequiredUsings.Add("XMFrame.Interfaces.ConfigMananger");
-                    break;
+                    if (field.Name == "Data") continue;
+                    CollectUsingsFromType(field.FieldType, info);
                 }
             }
-            
-            // 从字段的实际类型信息中动态提取命名空间
+
+            // 从字段的 UnmanagedType 字符串收集（非托管生成用）
             foreach (var field in info.Fields)
             {
                 CollectUsingsFromTypeString(field.UnmanagedType, info.ManagedType.Assembly, info);
-                
-                // 如果有 _Ref 字段，也需要检查 XBlobPtr 的命名空间
                 if (field.NeedsRefField)
-                {
                     CollectUsingsFromTypeString("XBlobPtr", info.ManagedType.Assembly, info);
-                }
+            }
+        }
+
+        /// <summary>从 Type 及其泛型参数收集命名空间。</summary>
+        private static void CollectUsingsFromType(Type type, ConfigTypeInfo configInfo)
+        {
+            if (type == null) return;
+            if (!string.IsNullOrEmpty(type.Namespace))
+                configInfo.RequiredUsings.Add(type.Namespace);
+            if (type.IsGenericType)
+            {
+                foreach (var arg in type.GetGenericArguments())
+                    CollectUsingsFromType(arg, configInfo);
             }
         }
 

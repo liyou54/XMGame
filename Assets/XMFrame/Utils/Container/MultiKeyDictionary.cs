@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace XMFrame.Utils
+namespace XM.Utils
 {
     /// <summary>
     /// 多键字典基础类，提供公共功能

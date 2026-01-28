@@ -1,1247 +1,328 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Reflection;
 using System.Xml;
-using XMFrame;
-using XMFrame.Interfaces;
-using XMFrame.Utils;
-using XMFrame.Utils.Attribute;
-using XMFrame.Interfaces.ConfigMananger;
-using XMFrame.Utils;
-using System;
-using XMFrame;
-using System.Collections.Generic;
-using System.Xml;
-using XMFrame.Interfaces;
-using XMFrame.Utils.Attribute;
+using XM;
+using XM.Contracts;
+using XM.Contracts.Config;
+using XM.Utils;
+
 
 /// <summary>
-/// TestConfig 的 XML 加载辅助类
+/// TestConfig 的配置加载辅助类，用于从 XML 反序列化（静态代码生成，无反射）。
 /// </summary>
-public class TestConfigClassHelper : IConfigClassHelper<TestConfig>
+public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnManaged>
 {
-    private readonly IConfigDataCenter _dataCenter;
+    static TestConfigClassHelper()
+    {
+        CfgS<TestConfigUnManaged>.TableName = "TestConfig";
+    }
 
-    /// <summary>
-    /// 构造函数
-    /// </summary>
     public TestConfigClassHelper(IConfigDataCenter dataCenter)
+        : base(dataCenter)
     {
-        _dataCenter = dataCenter ?? throw new ArgumentNullException(nameof(dataCenter));
     }
 
-    /// <summary>
-    /// 从 XML 文件加载配置并注册到管理器
-    /// </summary>
-    public void LoadFromXml(string xmlFilePath)
+    public override TblS GetTblS()
     {
-        var xmlDoc = new XmlDocument();
-        xmlDoc.Load(xmlFilePath);
-        
-        var root = xmlDoc.DocumentElement;
-        if (root == null)
-        {
-            throw new InvalidOperationException($"XML文件根节点为空: {xmlFilePath}");
-        }
-
-        // 遍历所有配置项
-        var configItems = root.SelectNodes("ConfigItem");
-        if (configItems != null)
-        {
-            foreach (XmlElement itemElement in configItems)
-            {
-                RegisterToManager(itemElement);
-            }
-        }
+        return new TblS(new ModS("Default"), "TestConfig");
     }
 
-    /// <summary>
-    /// 从 XML 元素加载配置并注册到管理器
-    /// </summary>
-    public void RegisterToManager(XmlElement element)
+    public override void SetTblIDefinedInMod(ModI modHandle)
     {
-        var config = LoadFromXmlElement(element);
-        if (config != null)
+        _definedInMod = modHandle;
+    }
+
+    public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
+    {
+        try
         {
-            _dataCenter.RegisterData(config);
+            var config = (TestConfig)Create();
+            FillFromXml(config, configItem, mod, configName);
+            return config;
+        }
+        catch (Exception ex)
+        {
+            ConfigClassHelper.LogParseWarning("(整体)", configName, ex);
+            throw;
         }
     }
 
-    public TableDefine GetTableDefine()
+    public override void FillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName)
     {
-        return new TableDefine(new ModKey("DefaultMod"), ConfigKey<TestConfigUnManaged>.TableName ?? "TestConfig");
+        var config = (TestConfig)target;
+        config.Id = ParseId(configItem, mod, configName);
+        config.TestInt = ParseTestInt(configItem, mod, configName);
+        config.TestSample = ParseTestSample(configItem, mod, configName);
+        config.TestDictSample = ParseTestDictSample(configItem, mod, configName);
+        config.TestKeyList = ParseTestKeyList(configItem, mod, configName);
+        config.TestKeyList1 = ParseTestKeyList1(configItem, mod, configName);
+        config.TestKeyHashSet = ParseTestKeyHashSet(configItem, mod, configName);
+        config.TestKeyDict = ParseTestKeyDict(configItem, mod, configName);
+        config.TestSetKey = ParseTestSetKey(configItem, mod, configName);
+        config.TestSetSample = ParseTestSetSample(configItem, mod, configName);
+        config.TestNested = ParseTestNested(configItem, mod, configName);
+        config.TestNestedConfig = ParseTestNestedConfig(configItem, mod, configName);
+        config.Foreign = ParseForeign(configItem, mod, configName);
+        config.TestIndex1 = ParseTestIndex1(configItem, mod, configName);
+        config.TestIndex2 = ParseTestIndex2(configItem, mod, configName);
+        config.TestIndex3 = ParseTestIndex3(configItem, mod, configName);
     }
 
-    public (ModKey mod, string configName) GetPrimaryKey(XMFrame.XConfig config)
-    {
-        var c = (TestConfig)config;
-        return (c.Id.ModKey, c.Id.ConfigName);
-    }
+    #region 字段解析 (ParseXXX)
 
-    public void SetCfgId(XMFrame.XConfig config, CfgId cfgId)
-    {
-        ((TestConfig)config).Data = cfgId;
-    }
-
-    public void FillToUnmanaged(IConfigDataWriter writer, TableHandle tableHandle, XMFrame.XConfig config, CfgId cfgId)
-    {
-        var dest = new TestConfigUnManaged();
-        var c = (TestConfig)config;
-        dest.Id = cfgId.As<TestConfigUnManaged>();
-        dest.TestInt = c.TestInt;
-        if (_dataCenter.TryGetCfgId(GetTableDefine(), c.Foreign.ModKey, c.Foreign.ConfigName, out var fc))
-            dest.Foreign = fc.As<TestConfigUnManaged>();
-        writer.AddOrUpdateRow<TestConfigUnManaged>(tableHandle, cfgId, dest);
-    }
-
-    public void AllocTableMap(IConfigDataWriter writer, TableHandle tableHandle, int capacity)
-    {
-        writer.AllocTableMap<TestConfigUnManaged>(tableHandle, capacity);
-    }
-
-    public void AddPrimaryKeyOnly(IConfigDataWriter writer, TableHandle tableHandle, CfgId cfgId)
-    {
-        writer.AddPrimaryKeyOnly<TestConfigUnManaged>(tableHandle, cfgId);
-    }
-
-    /// <summary>
-    /// 从 XML 元素加载单个配置项，返回配置对象
-    /// </summary>
-    public TestConfig LoadFromXmlElement(XmlElement element)
-    {
-        if (element == null)
-        {
-            throw new ArgumentNullException(nameof(element));
-        }
-
-        // 创建配置对象
-        var config = new TestConfig();
-
-        // 读取 overwrite 属性
-        var overwriteStr = element.GetAttribute("overwrite");
-        var overwriteMode = EXmlOverwriteMode.Override;
-        if (!string.IsNullOrEmpty(overwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(overwriteStr, true, out var parsedMode))
-            {
-                overwriteMode = parsedMode;
-            }
-            else
-            {
-                throw new InvalidOperationException($"无效的 overwrite 模式: {overwriteStr}");
-            }
-        }
-
-        // 应用 Overwrite 模式
-        if (overwriteMode == EXmlOverwriteMode.ClearAll)
-        {
-            // 清空所有字段（使用默认值）
-            config = new TestConfig();
-        }
-
-        // 解析各个字段
-        ParseId(element, config, overwriteMode);
-        ParseTestInt(element, config, overwriteMode);
-        ParseTestSample(element, config, overwriteMode);
-        ParseTestDictSample(element, config, overwriteMode);
-        ParseTestKeyList(element, config, overwriteMode);
-        ParseTestKeyList1(element, config, overwriteMode);
-        ParseTestKeyHashSet(element, config, overwriteMode);
-        ParseTestKeyDict(element, config, overwriteMode);
-        ParseTestSetKey(element, config, overwriteMode);
-        ParseTestSetSample(element, config, overwriteMode);
-        ParseTestNested(element, config, overwriteMode);
-        ParseTestNestedConfig(element, config, overwriteMode);
-        ParseForeign(element, config, overwriteMode);
-        ParseConfigType(element, config, overwriteMode);
-        ParseTestIndex1(element, config, overwriteMode);
-        ParseTestIndex2(element, config, overwriteMode);
-        ParseTestIndex3(element, config, overwriteMode);
-
-        return config;
-    }
-
-    /// <summary>
-    /// 解析字段 Id
-    /// </summary>
-    private void ParseId(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("Id") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // ConfigKey 类型处理
-        var configKeyStr = fieldElement.InnerText.Trim();
-        if (!string.IsNullOrEmpty(configKeyStr))
-        {
-            var parts = configKeyStr.Split(new[] { "::" }, StringSplitOptions.None);
-            if (parts.Length == 2)
-            {
-                var modKey = new ModKey(parts[0]);
-                var configName = parts[1];
-                config.Id = new ConfigKey<TestConfigUnManaged>(modKey, configName);
-            }
-            else if (parts.Length == 1)
-            {
-                // ModKey 省略，使用默认或当前 ModKey
-                // TODO: 从上下文获取 ModKey
-                var modKey = new ModKey("DefaultMod"); // 临时实现
-                config.Id = new ConfigKey<TestConfigUnManaged>(modKey, parts[0]);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 TestInt
-    /// </summary>
-    private void ParseTestInt(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestInt") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // 基本类型处理
-        config.TestInt = ParseValue<Int32>(fieldElement);
-    }
-
-    /// <summary>
-    /// 解析字段 TestSample
-    /// </summary>
-    private void ParseTestSample(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestSample") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // List 类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
-        {
-            config.TestSample = new List<Int32>();
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
-        {
-            // 删除模式：从现有列表中删除指定元素
-            if (config.TestSample == null)
-            {
-                config.TestSample = new List<Int32>();
-            }
-            var removeItems = fieldElement.SelectNodes("Item");
-            if (removeItems != null)
-            {
-                foreach (XmlElement itemElement in removeItems)
-                {
-                    var itemValue = ParseValue<Int32>(itemElement);
-                    config.TestSample.Remove(itemValue);
-                }
-            }
-            return;
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
-        {
-            // 添加模式：添加到现有列表
-            if (config.TestSample == null)
-            {
-                config.TestSample = new List<Int32>();
-            }
-        }
-        else
-        {
-            // Override 模式：覆盖整个列表
-            config.TestSample = new List<Int32>();
-        }
-
-        var addItems = fieldElement.SelectNodes("Item");
-        if (addItems != null)
-        {
-            foreach (XmlElement itemElement in addItems)
-            {
-                var itemValue = ParseValue<Int32>(itemElement);
-                config.TestSample.Add(itemValue);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 TestDictSample
-    /// </summary>
-    private void ParseTestDictSample(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestDictSample") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // Dictionary 类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
-        {
-            config.TestDictSample = new Dictionary<Int32, Int32>();
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
-        {
-            // 删除模式：从现有字典中删除指定键
-            if (config.TestDictSample == null)
-            {
-                config.TestDictSample = new Dictionary<Int32, Int32>();
-            }
-            var removeItems = fieldElement.SelectNodes("Item");
-            if (removeItems != null)
-            {
-                foreach (XmlElement itemElement in removeItems)
-                {
-                    var keyValue = ParseValue<Int32>(itemElement.SelectSingleNode("Key") as XmlElement);
-                    config.TestDictSample.Remove(keyValue);
-                }
-            }
-            return;
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
-        {
-            // 添加模式：添加到现有字典
-            if (config.TestDictSample == null)
-            {
-                config.TestDictSample = new Dictionary<Int32, Int32>();
-            }
-        }
-        else
-        {
-            // Override 模式：覆盖整个字典
-            config.TestDictSample = new Dictionary<Int32, Int32>();
-        }
-
-        var addItems = fieldElement.SelectNodes("Item");
-        if (addItems != null)
-        {
-            foreach (XmlElement itemElement in addItems)
-            {
-                var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
-                var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
-                if (keyElement != null && valueElement != null)
-                {
-                    var keyValue = ParseValue<Int32>(keyElement);
-                    var valueValue = ParseValue<Int32>(valueElement);
-                    config.TestDictSample[keyValue] = valueValue;
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 TestKeyList
-    /// </summary>
-    private void ParseTestKeyList(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestKeyList") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // List 类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
-        {
-            config.TestKeyList = new List<ConfigKey<TestConfigUnManaged>>();
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
-        {
-            // 删除模式：从现有列表中删除指定元素
-            if (config.TestKeyList == null)
-            {
-                config.TestKeyList = new List<ConfigKey<TestConfigUnManaged>>();
-            }
-            var removeItems = fieldElement.SelectNodes("Item");
-            if (removeItems != null)
-            {
-                foreach (XmlElement itemElement in removeItems)
-                {
-                    var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
-                    config.TestKeyList.Remove(itemValue);
-                }
-            }
-            return;
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
-        {
-            // 添加模式：添加到现有列表
-            if (config.TestKeyList == null)
-            {
-                config.TestKeyList = new List<ConfigKey<TestConfigUnManaged>>();
-            }
-        }
-        else
-        {
-            // Override 模式：覆盖整个列表
-            config.TestKeyList = new List<ConfigKey<TestConfigUnManaged>>();
-        }
-
-        var addItems = fieldElement.SelectNodes("Item");
-        if (addItems != null)
-        {
-            foreach (XmlElement itemElement in addItems)
-            {
-                var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
-                config.TestKeyList.Add(itemValue);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 TestKeyList1
-    /// </summary>
-    private void ParseTestKeyList1(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestKeyList1") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // Dictionary 类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
-        {
-            config.TestKeyList1 = new Dictionary<Int32, List<List<ConfigKey<TestConfigUnManaged>>>>();
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
-        {
-            // 删除模式：从现有字典中删除指定键
-            if (config.TestKeyList1 == null)
-            {
-                config.TestKeyList1 = new Dictionary<Int32, List<List<ConfigKey<TestConfigUnManaged>>>>();
-            }
-            var removeItems = fieldElement.SelectNodes("Item");
-            if (removeItems != null)
-            {
-                foreach (XmlElement itemElement in removeItems)
-                {
-                    var keyValue = ParseValue<Int32>(itemElement.SelectSingleNode("Key") as XmlElement);
-                    config.TestKeyList1.Remove(keyValue);
-                }
-            }
-            return;
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
-        {
-            // 添加模式：添加到现有字典
-            if (config.TestKeyList1 == null)
-            {
-                config.TestKeyList1 = new Dictionary<Int32, List<List<ConfigKey<TestConfigUnManaged>>>>();
-            }
-        }
-        else
-        {
-            // Override 模式：覆盖整个字典
-            config.TestKeyList1 = new Dictionary<Int32, List<List<ConfigKey<TestConfigUnManaged>>>>();
-        }
-
-        var addItems = fieldElement.SelectNodes("Item");
-        if (addItems != null)
-        {
-            foreach (XmlElement itemElement in addItems)
-            {
-                var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
-                var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
-                if (keyElement != null && valueElement != null)
-                {
-                    var keyValue = ParseValue<Int32>(keyElement);
-                    var valueValue = ParseValue<List<List<ConfigKey<TestConfigUnManaged>>>>(valueElement);
-                    config.TestKeyList1[keyValue] = valueValue;
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 TestKeyHashSet
-    /// </summary>
-    private void ParseTestKeyHashSet(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestKeyHashSet") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // HashSet 类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
-        {
-            config.TestKeyHashSet = new HashSet<Int32>();
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
-        {
-            // 删除模式：从现有集合中删除指定元素
-            if (config.TestKeyHashSet == null)
-            {
-                config.TestKeyHashSet = new HashSet<Int32>();
-            }
-            var removeItems = fieldElement.SelectNodes("Item");
-            if (removeItems != null)
-            {
-                foreach (XmlElement itemElement in removeItems)
-                {
-                    var itemValue = ParseValue<Int32>(itemElement);
-                    config.TestKeyHashSet.Remove(itemValue);
-                }
-            }
-            return;
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
-        {
-            // 添加模式：添加到现有集合
-            if (config.TestKeyHashSet == null)
-            {
-                config.TestKeyHashSet = new HashSet<Int32>();
-            }
-        }
-        else
-        {
-            // Override 模式：覆盖整个集合
-            config.TestKeyHashSet = new HashSet<Int32>();
-        }
-
-        var addItems = fieldElement.SelectNodes("Item");
-        if (addItems != null)
-        {
-            foreach (XmlElement itemElement in addItems)
-            {
-                var itemValue = ParseValue<Int32>(itemElement);
-                config.TestKeyHashSet.Add(itemValue);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 TestKeyDict
-    /// </summary>
-    private void ParseTestKeyDict(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestKeyDict") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // Dictionary 类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
-        {
-            config.TestKeyDict = new Dictionary<ConfigKey<TestConfigUnManaged>, ConfigKey<TestConfigUnManaged>>();
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
-        {
-            // 删除模式：从现有字典中删除指定键
-            if (config.TestKeyDict == null)
-            {
-                config.TestKeyDict = new Dictionary<ConfigKey<TestConfigUnManaged>, ConfigKey<TestConfigUnManaged>>();
-            }
-            var removeItems = fieldElement.SelectNodes("Item");
-            if (removeItems != null)
-            {
-                foreach (XmlElement itemElement in removeItems)
-                {
-                    var keyValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement.SelectSingleNode("Key") as XmlElement);
-                    config.TestKeyDict.Remove(keyValue);
-                }
-            }
-            return;
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
-        {
-            // 添加模式：添加到现有字典
-            if (config.TestKeyDict == null)
-            {
-                config.TestKeyDict = new Dictionary<ConfigKey<TestConfigUnManaged>, ConfigKey<TestConfigUnManaged>>();
-            }
-        }
-        else
-        {
-            // Override 模式：覆盖整个字典
-            config.TestKeyDict = new Dictionary<ConfigKey<TestConfigUnManaged>, ConfigKey<TestConfigUnManaged>>();
-        }
-
-        var addItems = fieldElement.SelectNodes("Item");
-        if (addItems != null)
-        {
-            foreach (XmlElement itemElement in addItems)
-            {
-                var keyElement = itemElement.SelectSingleNode("Key") as XmlElement;
-                var valueElement = itemElement.SelectSingleNode("Value") as XmlElement;
-                if (keyElement != null && valueElement != null)
-                {
-                    var keyValue = ParseValue<ConfigKey<TestConfigUnManaged>>(keyElement);
-                    var valueValue = ParseValue<ConfigKey<TestConfigUnManaged>>(valueElement);
-                    config.TestKeyDict[keyValue] = valueValue;
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 TestSetKey
-    /// </summary>
-    private void ParseTestSetKey(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestSetKey") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // HashSet 类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
-        {
-            config.TestSetKey = new HashSet<ConfigKey<TestConfigUnManaged>>();
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
-        {
-            // 删除模式：从现有集合中删除指定元素
-            if (config.TestSetKey == null)
-            {
-                config.TestSetKey = new HashSet<ConfigKey<TestConfigUnManaged>>();
-            }
-            var removeItems = fieldElement.SelectNodes("Item");
-            if (removeItems != null)
-            {
-                foreach (XmlElement itemElement in removeItems)
-                {
-                    var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
-                    config.TestSetKey.Remove(itemValue);
-                }
-            }
-            return;
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
-        {
-            // 添加模式：添加到现有集合
-            if (config.TestSetKey == null)
-            {
-                config.TestSetKey = new HashSet<ConfigKey<TestConfigUnManaged>>();
-            }
-        }
-        else
-        {
-            // Override 模式：覆盖整个集合
-            config.TestSetKey = new HashSet<ConfigKey<TestConfigUnManaged>>();
-        }
-
-        var addItems = fieldElement.SelectNodes("Item");
-        if (addItems != null)
-        {
-            foreach (XmlElement itemElement in addItems)
-            {
-                var itemValue = ParseValue<ConfigKey<TestConfigUnManaged>>(itemElement);
-                config.TestSetKey.Add(itemValue);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 TestSetSample
-    /// </summary>
-    private void ParseTestSetSample(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestSetSample") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // HashSet 类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
-        {
-            config.TestSetSample = new HashSet<Int32>();
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
-        {
-            // 删除模式：从现有集合中删除指定元素
-            if (config.TestSetSample == null)
-            {
-                config.TestSetSample = new HashSet<Int32>();
-            }
-            var removeItems = fieldElement.SelectNodes("Item");
-            if (removeItems != null)
-            {
-                foreach (XmlElement itemElement in removeItems)
-                {
-                    var itemValue = ParseValue<Int32>(itemElement);
-                    config.TestSetSample.Remove(itemValue);
-                }
-            }
-            return;
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
-        {
-            // 添加模式：添加到现有集合
-            if (config.TestSetSample == null)
-            {
-                config.TestSetSample = new HashSet<Int32>();
-            }
-        }
-        else
-        {
-            // Override 模式：覆盖整个集合
-            config.TestSetSample = new HashSet<Int32>();
-        }
-
-        var addItems = fieldElement.SelectNodes("Item");
-        if (addItems != null)
-        {
-            foreach (XmlElement itemElement in addItems)
-            {
-                var itemValue = ParseValue<Int32>(itemElement);
-                config.TestSetSample.Add(itemValue);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 TestNested
-    /// </summary>
-    private void ParseTestNested(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestNested") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // 嵌套配置类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ClearAll || fieldOverwriteMode == EXmlOverwriteMode.Override)
-        {
-            config.TestNested = ParseNestedConfig(fieldElement);
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 TestNestedConfig
-    /// </summary>
-    private void ParseTestNestedConfig(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestNestedConfig") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // List 类型处理
-        if (fieldOverwriteMode == EXmlOverwriteMode.ContainerClearAdd || fieldOverwriteMode == EXmlOverwriteMode.ContainerOverride)
-        {
-            config.TestNestedConfig = new List<NestedConfig>();
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerRemove)
-        {
-            // 删除模式：从现有列表中删除指定元素
-            if (config.TestNestedConfig == null)
-            {
-                config.TestNestedConfig = new List<NestedConfig>();
-            }
-            var removeItems = fieldElement.SelectNodes("Item");
-            if (removeItems != null)
-            {
-                foreach (XmlElement itemElement in removeItems)
-                {
-                    var itemValue = ParseValue<NestedConfig>(itemElement);
-                    config.TestNestedConfig.Remove(itemValue);
-                }
-            }
-            return;
-        }
-        else if (fieldOverwriteMode == EXmlOverwriteMode.ContainerAdd)
-        {
-            // 添加模式：添加到现有列表
-            if (config.TestNestedConfig == null)
-            {
-                config.TestNestedConfig = new List<NestedConfig>();
-            }
-        }
-        else
-        {
-            // Override 模式：覆盖整个列表
-            config.TestNestedConfig = new List<NestedConfig>();
-        }
-
-        var addItems = fieldElement.SelectNodes("Item");
-        if (addItems != null)
-        {
-            foreach (XmlElement itemElement in addItems)
-            {
-                var itemValue = ParseValue<NestedConfig>(itemElement);
-                config.TestNestedConfig.Add(itemValue);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 Foreign
-    /// </summary>
-    private void ParseForeign(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("Foreign") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // ConfigKey 类型处理
-        var configKeyStr = fieldElement.InnerText.Trim();
-        if (!string.IsNullOrEmpty(configKeyStr))
-        {
-            var parts = configKeyStr.Split(new[] { "::" }, StringSplitOptions.None);
-            if (parts.Length == 2)
-            {
-                var modKey = new ModKey(parts[0]);
-                var configName = parts[1];
-                config.Foreign = new ConfigKey<TestConfigUnManaged>(modKey, configName);
-            }
-            else if (parts.Length == 1)
-            {
-                // ModKey 省略，使用默认或当前 ModKey
-                // TODO: 从上下文获取 ModKey
-                var modKey = new ModKey("DefaultMod"); // 临时实现
-                config.Foreign = new ConfigKey<TestConfigUnManaged>(modKey, parts[0]);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 ConfigType
-    /// </summary>
-    private void ParseConfigType(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("ConfigType") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // Type 类型处理（需要转换器转换为 TypeId）
-        var typeStr = fieldElement.InnerText?.Trim() ?? string.Empty;
-        if (!string.IsNullOrEmpty(typeStr))
-        {
-            var type = Type.GetType(typeStr);
-            if (type != null && IConfigDataCenter.I != null)
-            {
-                var converter = IConfigDataCenter.I.GetConverter<Type, TypeId>("");
-                if (converter != null)
-                {
-                    config.ConfigType = type;
-                    // 注意：TypeId 的转换会在后续处理中完成
-                }
-            }
-            else
-            {
-                config.ConfigType = type;
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 TestIndex1
-    /// </summary>
-    private void ParseTestIndex1(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestIndex1") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // 基本类型处理
-        config.TestIndex1 = ParseValue<Int32>(fieldElement);
-    }
-
-    /// <summary>
-    /// 解析字段 TestIndex2
-    /// </summary>
-    private void ParseTestIndex2(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestIndex2") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // ConfigKey 类型处理
-        var configKeyStr = fieldElement.InnerText.Trim();
-        if (!string.IsNullOrEmpty(configKeyStr))
-        {
-            var parts = configKeyStr.Split(new[] { "::" }, StringSplitOptions.None);
-            if (parts.Length == 2)
-            {
-                var modKey = new ModKey(parts[0]);
-                var configName = parts[1];
-                config.TestIndex2 = new ConfigKey<TestConfigUnManaged>(modKey, configName);
-            }
-            else if (parts.Length == 1)
-            {
-                // ModKey 省略，使用默认或当前 ModKey
-                // TODO: 从上下文获取 ModKey
-                var modKey = new ModKey("DefaultMod"); // 临时实现
-                config.TestIndex2 = new ConfigKey<TestConfigUnManaged>(modKey, parts[0]);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 解析字段 TestIndex3
-    /// </summary>
-    private void ParseTestIndex3(XmlElement parent, TestConfig config, EXmlOverwriteMode rootOverwriteMode)
-    {
-        var fieldElement = parent.SelectSingleNode("TestIndex3") as XmlElement;
-        if (fieldElement == null)
-        {
-            return; // 字段不存在，跳过
-        }
-
-        // 读取字段级别的 overwrite 属性
-        var fieldOverwriteStr = fieldElement.GetAttribute("overwrite");
-        var fieldOverwriteMode = rootOverwriteMode;
-        if (!string.IsNullOrEmpty(fieldOverwriteStr))
-        {
-            if (Enum.TryParse<EXmlOverwriteMode>(fieldOverwriteStr, true, out var parsedMode))
-            {
-                fieldOverwriteMode = parsedMode;
-            }
-        }
-
-        // ConfigKey 类型处理
-        var configKeyStr = fieldElement.InnerText.Trim();
-        if (!string.IsNullOrEmpty(configKeyStr))
-        {
-            var parts = configKeyStr.Split(new[] { "::" }, StringSplitOptions.None);
-            if (parts.Length == 2)
-            {
-                var modKey = new ModKey(parts[0]);
-                var configName = parts[1];
-                config.TestIndex3 = new ConfigKey<TestConfigUnManaged>(modKey, configName);
-            }
-            else if (parts.Length == 1)
-            {
-                // ModKey 省略，使用默认或当前 ModKey
-                // TODO: 从上下文获取 ModKey
-                var modKey = new ModKey("DefaultMod"); // 临时实现
-                config.TestIndex3 = new ConfigKey<TestConfigUnManaged>(modKey, parts[0]);
-            }
-        }
-    }
-
-
-    /// <summary>
-    /// 解析基本类型值
-    /// </summary>
-    private T ParsePrimitiveValue<T>(XmlElement element)
-    {
-        if (element == null)
-        {
-            return default(T);
-        }
-
-        var valueStr = element.InnerText?.Trim() ?? string.Empty;
-        if (string.IsNullOrEmpty(valueStr))
-        {
-            return default(T);
-        }
-
-        var type = typeof(T);
-        
-        // 使用 TypeConverter 进行转换
-        var converter = System.ComponentModel.TypeDescriptor.GetConverter(type);
-        if (converter != null && converter.CanConvertFrom(typeof(string)))
+    private static CfgS<TestConfigUnManaged> ParseId(XmlElement configItem, ModS mod, string configName)
         {
             try
             {
-                return (T)converter.ConvertFromString(valueStr);
+                var s = ConfigClassHelper.GetXmlFieldValue(configItem, "Id");
+            if (string.IsNullOrEmpty(s)) return default;
+            if (!ConfigClassHelper.TryParseCfgSString(s, "Id", out var modName, out var cfgName)) return default;
+            return new CfgS<TestConfigUnManaged>(new ModS(modName), cfgName);
             }
-            catch
+            catch (Exception ex)
             {
-                return default(T);
+                ConfigClassHelper.LogParseWarning("Id", ConfigClassHelper.GetXmlFieldValue(configItem, "Id"), ex);
+                return default;
             }
         }
 
-        return default(T);
-    }
-
-    /// <summary>
-    /// 解析字符串值
-    /// </summary>
-    private string ParseStringValue(XmlElement element)
-    {
-        return element?.InnerText?.Trim() ?? string.Empty;
-    }
-
-
-    /// <summary>
-    /// 解析 ConfigKey&lt;TestConfigUnManaged&gt; 类型值
-    /// </summary>
-    private ConfigKey<TestConfigUnManaged> ParseConfigKey_TestConfigUnManaged(XmlElement element)
-    {
-        if (element == null)
+    private static int ParseTestInt(XmlElement configItem, ModS mod, string configName)
         {
-            return default(ConfigKey<TestConfigUnManaged>);
+            var s = ConfigClassHelper.GetXmlFieldValue(configItem, "TestInt");
+            if (string.IsNullOrEmpty(s)) return default;
+            return ConfigClassHelper.TryParseInt(s, "TestInt", out var v) ? v : default;
         }
 
-        var valueStr = element.InnerText?.Trim() ?? string.Empty;
-        if (string.IsNullOrEmpty(valueStr))
+    private static List<int> ParseTestSample(XmlElement configItem, ModS mod, string configName)
         {
-            return default(ConfigKey<TestConfigUnManaged>);
+            try
+            {
+                var list = new List<int>();
+            var nodes = configItem.SelectNodes("TestSample");
+            if (nodes != null)
+            foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigClassHelper.TryParseInt(t, "TestSample", out var vi)) list.Add(vi); }
+            if (list.Count == 0) { var csv = ConfigClassHelper.GetXmlFieldValue(configItem, "TestSample"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigClassHelper.TryParseInt(p.Trim(), "TestSample", out var vi)) list.Add(vi); }
+            return list;
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("TestSample", null, ex);
+                return new List<int>();
+            }
         }
 
-        var parts = valueStr.Split(new[] { "::" }, StringSplitOptions.None);
-        if (parts.Length == 2)
+    private static Dictionary<int, int> ParseTestDictSample(XmlElement configItem, ModS mod, string configName)
         {
-            var modKey = new ModKey(parts[0]);
-            var configName = parts[1];
-            return new ConfigKey<TestConfigUnManaged>(modKey, configName);
-        }
-        else if (parts.Length == 1)
-        {
-            var modKey = new ModKey("DefaultMod");
-            return new ConfigKey<TestConfigUnManaged>(modKey, parts[0]);
-        }
-
-        return default(ConfigKey<TestConfigUnManaged>);
-    }
-
-    /// <summary>
-    /// 解析 NestedConfig 类型值
-    /// </summary>
-    private NestedConfig ParseNestedConfig(XmlElement element)
-    {
-        if (element == null)
-        {
-            return null;
+            try
+            {
+                var dict = new Dictionary<int, int>();
+            var dictNodes = configItem.SelectNodes("TestDictSample/Item");
+            if (dictNodes != null)
+            foreach (System.Xml.XmlNode n in dictNodes) { var el = n as System.Xml.XmlElement; if (el == null) continue; var k = el.GetAttribute("Key"); var v = el.InnerText?.Trim(); if (!string.IsNullOrEmpty(k) && !string.IsNullOrEmpty(v) && ConfigClassHelper.TryParseInt(k, "TestDictSample.Key", out var kv) && ConfigClassHelper.TryParseInt(v, "TestDictSample.Value", out var vv)) dict[kv] = vv; }
+            return dict;
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("TestDictSample", null, ex);
+                return new Dictionary<int, int>();
+            }
         }
 
-        var configType = typeof(NestedConfig);
-        var helper = (IConfigClassHelper<NestedConfig>)_dataCenter.GetClassHelper(configType);
-        return helper.LoadFromXmlElement(element);
-    }
-
-
-    /// <summary>
-    /// 通用值解析方法
-    /// </summary>
-    private T ParseValue<T>(XmlElement element)
-    {
-        if (element == null)
+    private static List<CfgS<TestConfigUnManaged>> ParseTestKeyList(XmlElement configItem, ModS mod, string configName)
         {
-            return default(T);
+            try
+            {
+                var list = new List<CfgS<TestConfigUnManaged>>();
+            var nodes = configItem.SelectNodes("TestKeyList");
+            if (nodes != null)
+            foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigClassHelper.TryParseCfgSString(t, "TestKeyList", out var mn, out var cn)) list.Add(new CfgS<TestConfigUnManaged>(new ModS(mn), cn)); }
+            return list;
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("TestKeyList", null, ex);
+                return new List<CfgS<TestConfigUnManaged>>();
+            }
         }
 
-        var valueStr = element.InnerText?.Trim() ?? string.Empty;
-
-        // 基本类型解析（使用 ParsePrimitiveValue）
-        var type = typeof(T);
-        if (type == typeof(int) || type == typeof(long) || type == typeof(short) || 
-            type == typeof(byte) || type == typeof(float) || type == typeof(double) || 
-            type == typeof(bool) || type == typeof(string))
+    private static Dictionary<int, List<List<CfgS<TestConfigUnManaged>>>> ParseTestKeyList1(XmlElement configItem, ModS mod, string configName)
         {
-            return ParsePrimitiveValue<T>(element);
+            try
+            {
+                var dict = new Dictionary<int, List<List<CfgS<TestConfigUnManaged>>>>();
+            var dictNodes = configItem.SelectNodes("TestKeyList1/Item");
+            if (dictNodes != null)
+            foreach (System.Xml.XmlNode keyNode in dictNodes) { var keyEl = keyNode as System.Xml.XmlElement; if (keyEl == null) continue; var kStr = keyEl.GetAttribute("Key"); if (!string.IsNullOrEmpty(kStr) && ConfigClassHelper.TryParseInt(kStr, "TestKeyList1.Key", out var key)) { var outerList = new List<List<CfgS<TestConfigUnManaged>>>(); var midNodes = keyEl.SelectNodes("Item"); if (midNodes != null) foreach (System.Xml.XmlNode midNode in midNodes) { var midEl = midNode as System.Xml.XmlElement; if (midEl == null) continue; var innerList = new List<CfgS<TestConfigUnManaged>>(); var leafNodes = midEl.SelectNodes("Item"); if (leafNodes != null) foreach (System.Xml.XmlNode leafNode in leafNodes) { var leafText = (leafNode as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(leafText) && ConfigClassHelper.TryParseCfgSString(leafText, "TestKeyList1", out var lm, out var lc)) innerList.Add(new CfgS<TestConfigUnManaged>(new ModS(lm), lc)); } outerList.Add(innerList); } dict[key] = outerList; } }
+            return dict;
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("TestKeyList1", null, ex);
+                return new Dictionary<int, List<List<CfgS<TestConfigUnManaged>>>>();
+            }
         }
 
-        // ConfigKey 类型解析（使用预生成的解析方法）
-        if (typeof(T) == typeof(ConfigKey<TestConfigUnManaged>))
+    private static HashSet<int> ParseTestKeyHashSet(XmlElement configItem, ModS mod, string configName)
         {
-            return (T)(object)ParseConfigKey_TestConfigUnManaged(element);
+            try
+            {
+                var set = new HashSet<int>();
+            var nodes = configItem.SelectNodes("TestKeyHashSet");
+            if (nodes != null)
+            foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigClassHelper.TryParseInt(t, "TestKeyHashSet", out var vi)) set.Add(vi); }
+            if (set.Count == 0) { var csv = ConfigClassHelper.GetXmlFieldValue(configItem, "TestKeyHashSet"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigClassHelper.TryParseInt(p.Trim(), "TestKeyHashSet", out var vi)) set.Add(vi); }
+            return set;
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("TestKeyHashSet", ConfigClassHelper.GetXmlFieldValue(configItem, "TestKeyHashSet"), ex);
+                return new HashSet<int>();
+            }
         }
 
-        // Unity.Mathematics 类型解析（使用预生成的解析方法）
-        if (type.Namespace == "Unity.Mathematics")
+    private static Dictionary<CfgS<TestConfigUnManaged>, CfgS<TestConfigUnManaged>> ParseTestKeyDict(XmlElement configItem, ModS mod, string configName)
         {
+            try
+            {
+                var dict = new Dictionary<CfgS<TestConfigUnManaged>, CfgS<TestConfigUnManaged>>();
+            var dictNodes = configItem.SelectNodes("TestKeyDict/Item");
+            if (dictNodes != null)
+            foreach (System.Xml.XmlNode n in dictNodes) { var el = n as System.Xml.XmlElement; if (el == null) continue; var kStr = el.GetAttribute("Key") ?? (el.SelectSingleNode("Key") as System.Xml.XmlElement)?.InnerText?.Trim(); var vStr = el.GetAttribute("Value") ?? (el.SelectSingleNode("Value") as System.Xml.XmlElement)?.InnerText?.Trim() ?? el.InnerText?.Trim(); if (!string.IsNullOrEmpty(kStr) && ConfigClassHelper.TryParseCfgSString(kStr, "TestKeyDict.Key", out var km, out var kc) && !string.IsNullOrEmpty(vStr) && ConfigClassHelper.TryParseCfgSString(vStr, "TestKeyDict.Value", out var vm, out var vc)) dict[new CfgS<TestConfigUnManaged>(new ModS(km), kc)] = new CfgS<TestConfigUnManaged>(new ModS(vm), vc); }
+            return dict;
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("TestKeyDict", null, ex);
+                return new Dictionary<CfgS<TestConfigUnManaged>, CfgS<TestConfigUnManaged>>();
+            }
         }
 
-        // 嵌套 XConfig 类型解析（使用预生成的解析方法）
-        if (typeof(T) == typeof(NestedConfig))
+    private static HashSet<CfgS<TestConfigUnManaged>> ParseTestSetKey(XmlElement configItem, ModS mod, string configName)
         {
-            return (T)(object)ParseNestedConfig(element);
+            try
+            {
+                var set = new HashSet<CfgS<TestConfigUnManaged>>();
+            var nodes = configItem.SelectNodes("TestSetKey");
+            if (nodes != null)
+            foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigClassHelper.TryParseCfgSString(t, "TestSetKey", out var mn, out var cn)) set.Add(new CfgS<TestConfigUnManaged>(new ModS(mn), cn)); }
+            return set;
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("TestSetKey", ConfigClassHelper.GetXmlFieldValue(configItem, "TestSetKey"), ex);
+                return new HashSet<CfgS<TestConfigUnManaged>>();
+            }
         }
 
-        // 嵌套容器类型解析（使用预生成的解析方法）
+    private static HashSet<int> ParseTestSetSample(XmlElement configItem, ModS mod, string configName)
+        {
+            try
+            {
+                var set = new HashSet<int>();
+            var nodes = configItem.SelectNodes("TestSetSample");
+            if (nodes != null)
+            foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigClassHelper.TryParseInt(t, "TestSetSample", out var vi)) set.Add(vi); }
+            if (set.Count == 0) { var csv = ConfigClassHelper.GetXmlFieldValue(configItem, "TestSetSample"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigClassHelper.TryParseInt(p.Trim(), "TestSetSample", out var vi)) set.Add(vi); }
+            return set;
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("TestSetSample", ConfigClassHelper.GetXmlFieldValue(configItem, "TestSetSample"), ex);
+                return new HashSet<int>();
+            }
+        }
 
-        // 默认：尝试使用 TypeConverter
-        return ParsePrimitiveValue<T>(element);
-    }
+    private static NestedConfig ParseTestNested(XmlElement configItem, ModS mod, string configName)
+        {
+            try
+            {
+                var el = configItem.SelectSingleNode("TestNested") as System.Xml.XmlElement;
+            if (el == null) return null;
+            var helper = XM.Contracts.IConfigDataCenter.I?.GetClassHelper(typeof(NestedConfig));
+            return helper != null ? (NestedConfig)helper.DeserializeConfigFromXml(el, mod, configName + "_TestNested") : null;
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("TestNested", null, ex);
+                return null;
+            }
+        }
+
+    private static List<NestedConfig> ParseTestNestedConfig(XmlElement configItem, ModS mod, string configName)
+        {
+            try
+            {
+                var list = new List<NestedConfig>();
+            var dc = XM.Contracts.IConfigDataCenter.I; if (dc == null) return list;
+            var nodes = configItem.SelectNodes("TestNestedConfig");
+            if (nodes != null)
+            foreach (System.Xml.XmlNode n in nodes) { var el = n as System.Xml.XmlElement; if (el == null) continue; var helper = dc.GetClassHelper(typeof(NestedConfig)); if (helper != null) { var item = (NestedConfig)helper.DeserializeConfigFromXml(el, mod, configName + "_TestNestedConfig_" + list.Count); if (item != null) list.Add(item); } }
+            return list;
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("TestNestedConfig", null, ex);
+                return new List<NestedConfig>();
+            }
+        }
+
+    private static CfgS<TestConfigUnManaged> ParseForeign(XmlElement configItem, ModS mod, string configName)
+        {
+            try
+            {
+                var s = ConfigClassHelper.GetXmlFieldValue(configItem, "Foreign");
+            if (string.IsNullOrEmpty(s)) return default;
+            if (!ConfigClassHelper.TryParseCfgSString(s, "Foreign", out var modName, out var cfgName)) return default;
+            return new CfgS<TestConfigUnManaged>(new ModS(modName), cfgName);
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("Foreign", ConfigClassHelper.GetXmlFieldValue(configItem, "Foreign"), ex);
+                return default;
+            }
+        }
+
+    private static int ParseTestIndex1(XmlElement configItem, ModS mod, string configName)
+        {
+            var s = ConfigClassHelper.GetXmlFieldValue(configItem, "TestIndex1");
+            if (string.IsNullOrEmpty(s)) return default;
+            return ConfigClassHelper.TryParseInt(s, "TestIndex1", out var v) ? v : default;
+        }
+
+    private static CfgS<TestConfigUnManaged> ParseTestIndex2(XmlElement configItem, ModS mod, string configName)
+        {
+            try
+            {
+                var s = ConfigClassHelper.GetXmlFieldValue(configItem, "TestIndex2");
+            if (string.IsNullOrEmpty(s)) return default;
+            if (!ConfigClassHelper.TryParseCfgSString(s, "TestIndex2", out var modName, out var cfgName)) return default;
+            return new CfgS<TestConfigUnManaged>(new ModS(modName), cfgName);
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("TestIndex2", ConfigClassHelper.GetXmlFieldValue(configItem, "TestIndex2"), ex);
+                return default;
+            }
+        }
+
+    private static CfgS<TestConfigUnManaged> ParseTestIndex3(XmlElement configItem, ModS mod, string configName)
+        {
+            try
+            {
+                var s = ConfigClassHelper.GetXmlFieldValue(configItem, "TestIndex3");
+            if (string.IsNullOrEmpty(s)) return default;
+            if (!ConfigClassHelper.TryParseCfgSString(s, "TestIndex3", out var modName, out var cfgName)) return default;
+            return new CfgS<TestConfigUnManaged>(new ModS(modName), cfgName);
+            }
+            catch (Exception ex)
+            {
+                ConfigClassHelper.LogParseWarning("TestIndex3", ConfigClassHelper.GetXmlFieldValue(configItem, "TestIndex3"), ex);
+                return default;
+            }
+        }
+
+    #endregion
+
+    private ModI _definedInMod;
 }
 

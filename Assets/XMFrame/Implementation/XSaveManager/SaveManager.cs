@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
-using XMFrame.Implementation;
-using XMFrame.Interfaces;
+using XM;
+using XM.Contracts;
 
-namespace XMFrame.Implementation
+namespace XM
 {
     /// <summary>
     /// 存档管理器

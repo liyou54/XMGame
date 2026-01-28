@@ -7,9 +7,9 @@ using Scriban;
 using Scriban.Runtime;
 using UnityEditor;
 using UnityEngine;
-using XMFrame.Editor.ConfigEditor;
+using XM.Editor;
 
-namespace XMFrame.Editor.ConfigEditor
+namespace XM.Editor
 {
     /// <summary>
     /// 非托管代码生成器
@@ -34,20 +34,11 @@ namespace XMFrame.Editor.ConfigEditor
 
                 Debug.Log($"找到 {configTypes.Count} 个配置类型");
 
-                // 加载 Scriban 模板
-                var templatePath = "Assets/XMFrame/Editor/ConfigEditor/Templates/UnmanagedStruct.sbncs";
-                if (!File.Exists(templatePath))
+                // 使用 Scriban 代码生成器加载模板
+                var templatePath = ScribanCodeGenerator.GetTemplatePath("UnmanagedStruct.sbncs");
+                if (!ScribanCodeGenerator.TryLoadTemplate(templatePath, out var template))
                 {
-                    Debug.LogError($"模板文件不存在: {templatePath}");
-                    return;
-                }
-
-                var templateContent = File.ReadAllText(templatePath);
-                var template = Template.Parse(templateContent);
-
-                if (template.HasErrors)
-                {
-                    Debug.LogError($"模板解析错误: {string.Join(", ", template.Messages)}");
+                    Debug.LogError($"模板加载失败: {templatePath}");
                     return;
                 }
 
@@ -63,7 +54,7 @@ namespace XMFrame.Editor.ConfigEditor
                     string outputDir = outputBasePath;
                     if (string.IsNullOrEmpty(outputDir))
                     {
-                        outputDir = FindOutputDirectory(assembly);
+                        outputDir = XM.Editor.ConfigCodeGenCache.GetOutputDirectory(assembly);
                     }
 
                     if (string.IsNullOrEmpty(outputDir))
@@ -111,10 +102,43 @@ namespace XMFrame.Editor.ConfigEditor
             scriptObject["namespace"] = typeInfo.Namespace;
             scriptObject["unmanaged_type_name"] = typeInfo.UnmanagedTypeName;
             scriptObject["managed_type_name"] = typeInfo.ManagedTypeName;
-            scriptObject["required_usings"] = typeInfo.RequiredUsings.ToList();
+            scriptObject["has_base"] = typeInfo.HasBase;
+            scriptObject["base_unmanaged_type_name"] = typeInfo.BaseUnmanagedTypeName ?? "";
+            scriptObject["required_usings"] = typeInfo.RequiredUsings.OrderBy(x => x).ToList();
 
             // 准备字段数据
             var fields = new List<ScriptObject>();
+            // 继承时：派生 Unmanaged 前置 Id_Base、IdBase_Ref
+            if (typeInfo.HasBase && !string.IsNullOrEmpty(typeInfo.BaseUnmanagedTypeName))
+            {
+                var baseName = typeInfo.BaseUnmanagedTypeName;
+                fields.Add(new ScriptObject
+                {
+                    ["name"] = "Id_Base",
+                    ["unmanaged_type"] = $"CfgI<{baseName}>",
+                    ["managed_type"] = "",
+                    ["needs_ref_field"] = false,
+                    ["ref_field_name"] = "",
+                    ["needs_converter"] = false,
+                    ["converter_type_name"] = "",
+                    ["converter_domain"] = "",
+                    ["source_type"] = "",
+                    ["target_type"] = ""
+                });
+                fields.Add(new ScriptObject
+                {
+                    ["name"] = "IdBase_Ref",
+                    ["unmanaged_type"] = $"XBlobPtr<{baseName}>",
+                    ["managed_type"] = "",
+                    ["needs_ref_field"] = false,
+                    ["ref_field_name"] = "",
+                    ["needs_converter"] = false,
+                    ["converter_type_name"] = "",
+                    ["converter_domain"] = "",
+                    ["source_type"] = "",
+                    ["target_type"] = ""
+                });
+            }
             foreach (var field in typeInfo.Fields)
             {
                 var fieldObj = new ScriptObject();
@@ -126,6 +150,7 @@ namespace XMFrame.Editor.ConfigEditor
                 fieldObj["needs_converter"] = field.NeedsConverter;
                 fieldObj["converter_type_name"] = field.ConverterTypeName ?? "";
                 fieldObj["converter_domain"] = field.ConverterDomain ?? "";
+                fieldObj["converter_domain_escaped"] = (field.ConverterDomain ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
                 fieldObj["source_type"] = field.SourceType ?? "";
                 fieldObj["target_type"] = field.TargetType ?? "";
                 fields.Add(fieldObj);
@@ -156,34 +181,17 @@ namespace XMFrame.Editor.ConfigEditor
             }
             scriptObject["index_groups"] = indexGroups;
 
-            // 渲染模板
-            var context = new TemplateContext();
-            context.PushGlobal(scriptObject);
-            var result = template.Render(context);
-
-            // 检查模板渲染错误（通过 template.Messages 检查）
-            if (template.HasErrors)
-            {
-                Debug.LogError($"渲染模板时出错: {string.Join(", ", template.Messages.Select(m => m.Message))}");
-                return;
-            }
-
-            // 保存生成的文件
+            // 使用 Scriban 代码生成器渲染并写入文件
             var fileName = $"{typeInfo.UnmanagedTypeName}.Gen.cs";
             var filePath = Path.Combine(outputDir, fileName);
+            if (!ScribanCodeGenerator.TryRender(template, scriptObject, out var result))
+            {
+                Debug.LogError($"渲染模板时出错: {typeInfo.ManagedTypeName}");
+                return;
+            }
             File.WriteAllText(filePath, result);
 
             Debug.Log($"已生成: {filePath}");
-
-            // 同时生成 ClassHelper 代码
-            try
-            {
-                ClassHelperGenerator.GenerateClassHelperForType(configType, outputDir);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"生成 {configType.Name} 的 ClassHelper 代码时出错: {ex.Message}");
-            }
         }
 
         /// <summary>
@@ -254,20 +262,11 @@ namespace XMFrame.Editor.ConfigEditor
 
                 Debug.Log($"找到 {configTypes.Count} 个配置类型");
 
-                // 加载 Scriban 模板
-                var templatePath = "Assets/XMFrame/Editor/ConfigEditor/Templates/UnmanagedStruct.sbncs";
-                if (!File.Exists(templatePath))
+                // 使用 Scriban 代码生成器加载模板
+                var templatePath = ScribanCodeGenerator.GetTemplatePath("UnmanagedStruct.sbncs");
+                if (!ScribanCodeGenerator.TryLoadTemplate(templatePath, out var template))
                 {
-                    Debug.LogError($"模板文件不存在: {templatePath}");
-                    return;
-                }
-
-                var templateContent = File.ReadAllText(templatePath);
-                var template = Template.Parse(templateContent);
-
-                if (template.HasErrors)
-                {
-                    Debug.LogError($"模板解析错误: {string.Join(", ", template.Messages)}");
+                    Debug.LogError($"模板加载失败: {templatePath}");
                     return;
                 }
 
@@ -283,7 +282,7 @@ namespace XMFrame.Editor.ConfigEditor
                     string outputDir = outputBasePath;
                     if (string.IsNullOrEmpty(outputDir))
                     {
-                        outputDir = FindOutputDirectory(assembly);
+                        outputDir = XM.Editor.ConfigCodeGenCache.GetOutputDirectory(assembly);
                     }
 
                     if (string.IsNullOrEmpty(outputDir))
@@ -320,7 +319,7 @@ namespace XMFrame.Editor.ConfigEditor
         }
 
         /// <summary>
-        /// 检查是否是 XConfig 类型
+        /// 检查是否是 XConfig 类型（基类 XConfig`2 或实现 IXConfig&lt;T,TUnmanaged&gt;）
         /// </summary>
         public static bool IsXConfigType(Type type)
         {
@@ -333,63 +332,15 @@ namespace XMFrame.Editor.ConfigEditor
                 }
                 baseType = baseType.BaseType;
             }
+            foreach (var iface in type.GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition().Name == "IXConfig`2" && iface.GetGenericArguments().Length >= 2)
+                {
+                    return true;
+                }
+            }
             return false;
         }
 
-        /// <summary>
-        /// 查找输出目录（基于 asmdef 文件位置）
-        /// </summary>
-        private static string FindOutputDirectory(Assembly assembly)
-        {
-            var assemblyName = assembly.GetName().Name;
-            var projectPath = Application.dataPath.Replace("/Assets", "").Replace("\\Assets", "");
-
-            // 在 Assets 目录下查找 asmdef 文件
-            var assetsPath = Path.Combine(projectPath, "Assets");
-            var asmdefFiles = Directory.GetFiles(assetsPath, "*.asmdef", SearchOption.AllDirectories);
-
-            foreach (var asmdefFile in asmdefFiles)
-            {
-                try
-                {
-                    // 读取 asmdef 文件内容，检查 name 字段
-                    var content = File.ReadAllText(asmdefFile);
-                    if (content.Contains($"\"name\": \"{assemblyName}\""))
-                    {
-                        // 找到匹配的 asmdef 文件，在同级目录创建 Config/Code.Gen
-                        var asmdefDir = Path.GetDirectoryName(asmdefFile);
-                        var configDir = Path.Combine(asmdefDir, "Config", "Code.Gen");
-                        return configDir;
-                    }
-                }
-                catch
-                {
-                    // 忽略读取错误
-                }
-            }
-
-            // 如果找不到，尝试根据程序集中的类型位置推断
-            var types = assembly.GetTypes().Where(t => !string.IsNullOrEmpty(t.Namespace)).ToList();
-            if (types.Count > 0)
-            {
-                // 使用第一个类型的命名空间来推断路径
-                var firstType = types[0];
-                var namespaceParts = firstType.Namespace.Split('.');
-                
-                // 查找可能的目录
-                var searchDirs = Directory.GetDirectories(assetsPath, namespaceParts[0], SearchOption.AllDirectories);
-                foreach (var dir in searchDirs)
-                {
-                    var asmdefInDir = Directory.GetFiles(dir, "*.asmdef", SearchOption.TopDirectoryOnly);
-                    if (asmdefInDir.Length > 0)
-                    {
-                        var configDir = Path.Combine(dir, "Config", "Code.Gen");
-                        return configDir;
-                    }
-                }
-            }
-
-            return null;
-        }
     }
 }

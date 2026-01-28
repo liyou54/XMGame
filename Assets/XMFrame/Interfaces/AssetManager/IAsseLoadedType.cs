@@ -1,14 +1,14 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine.Pool;
 
-namespace XMFrame.Interfaces
+namespace XM.Contracts
 {
     public interface IAsseLoadedType
     {
         public List<XAssetHandle> LoadedAssetIdList { get; set; }
 
-        public  async UniTask<XAssetHandle>  LoadAsset(XAssetId xAsset)
+        public  async UniTask<XAssetHandle>  LoadAsset(AssetI xAsset)
         {
             if (LoadedAssetIdList == null)
             {

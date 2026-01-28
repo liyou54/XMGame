@@ -1,8 +1,8 @@
-using XMFrame;
+using XM;
 using System.IO;
 using UnityEngine;
 
-namespace XMFrame.Example
+namespace XM.Example
 {
     /// <summary>
     /// 日志系统使用示例

@@ -1,6 +1,6 @@
 using System;
 
-namespace XMFrame.Utils.Attribute
+namespace XM.Utils.Attribute
 {
     public class XmlIndexAttribute : System.Attribute
     {
@@ -26,6 +26,26 @@ namespace XMFrame.Utils.Attribute
         }
     }
 
+    /// <summary>
+    /// 标记字段为必要：XML 中缺失时打告警（LogParseWarning），仍使用默认值或 [XmlDefault]。
+    /// 容器类型暂不参与默认值逻辑，仅支持缺失告警。
+    /// </summary>
+    public class XmlNotNullAttribute : System.Attribute { }
+
+    /// <summary>
+    /// 标量字段的默认值（XML 缺失或空时使用）。值为字符串，解析方式与从 XML 读取时一致。
+    /// 容器类型暂不支持默认值。
+    /// </summary>
+    public class XmlDefaultAttribute : System.Attribute
+    {
+        public string Value { get; }
+
+        public XmlDefaultAttribute(string value)
+        {
+            Value = value ?? "";
+        }
+    }
+
     public class XmlGlobalConvertAttribute : System.Attribute
     {
         public Type ConverterType;
@@ -42,8 +62,8 @@ namespace XMFrame.Utils.Attribute
     {
         EFix32,
         EFix64,
-        EStrHandle,
-        EStrLabel,
+        EStrI,
+        ELabelI,
     }
 
     public class XmlStringModeAttribute : System.Attribute

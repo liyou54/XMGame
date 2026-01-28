@@ -1,6 +1,6 @@
 using System;
 
-namespace XMFrame.Interfaces
+namespace XM.Contracts
 {
     /// <summary>
     /// 标记管理器是否自动创建

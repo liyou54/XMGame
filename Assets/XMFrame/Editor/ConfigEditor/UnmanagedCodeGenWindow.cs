@@ -5,7 +5,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
-namespace XMFrame.Editor.ConfigEditor
+namespace XM.Editor
 {
     /// <summary>
     /// 非托管代码生成编辑器窗口
@@ -34,7 +34,7 @@ namespace XMFrame.Editor.ConfigEditor
             }
         }
 
-        [MenuItem("XMFrame/Config/Generate Code (Select Assemblies)")]
+        [MenuItem("XM/Config/Generate Code (Select Assemblies)")]
         public static void ShowWindow()
         {
             var window = GetWindow<UnmanagedCodeGenWindow>("代码生成器");
@@ -79,8 +79,9 @@ namespace XMFrame.Editor.ConfigEditor
         {
             EditorGUILayout.Space(10);
 
-            // 标题
+            // 标题：共用下方 toggle 同时生成 Unmanaged + 配置（ConfigClassHelper 静态代码）
             EditorGUILayout.LabelField("选择要生成代码的程序集", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("勾选程序集后点击生成：将生成 Unmanaged 结构体 + ConfigClassHelper（配置解析，静态代码生成，无反射）", MessageType.None);
             EditorGUILayout.Space(5);
 
             // 全选/取消全选按钮
@@ -179,7 +180,8 @@ namespace XMFrame.Editor.ConfigEditor
             try
             {
                 UnmanagedCodeGenerator.GenerateUnmanagedCodeForAssemblies(selectedAssemblies, outputPath);
-                EditorUtility.DisplayDialog("成功", $"已成功为 {selectedAssemblies.Count} 个程序集生成代码", "确定");
+                ClassHelperCodeGenerator.GenerateClassHelperForAssemblies(selectedAssemblies, outputPath);
+                EditorUtility.DisplayDialog("成功", $"已成功为 {selectedAssemblies.Count} 个程序集生成 Unmanaged 结构体与 ConfigClassHelper（配置解析静态代码）", "确定");
             }
             catch (Exception ex)
             {

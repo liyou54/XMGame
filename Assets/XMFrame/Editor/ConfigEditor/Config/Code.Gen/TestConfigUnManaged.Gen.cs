@@ -1,39 +1,43 @@
-using XMFrame.Utils;
 using System;
-using XMFrame;
-public partial struct TestConfigUnManaged : IConfigUnManaged<TestConfigUnManaged>
+using System.Collections.Generic;
+using System.Xml;
+using XM;
+using XM.Contracts;
+using XM.Contracts.Config;
+using XM.Utils;
+public partial struct TestConfigUnManaged : global::XM.IConfigUnManaged<TestConfigUnManaged>
 {
 }public partial struct TestConfigUnManaged
 {
-    public CfgId<TestConfigUnManaged> Id;
-    public XBlobPtr<TestConfigUnManaged> Id_Ref;
+    public CfgI<TestConfigUnManaged> Id;
+    public global::XBlobPtr<TestConfigUnManaged> Id_Ref;
     public Int32 TestInt;
     public XBlobArray<Int32> TestSample;
     public XBlobMap<Int32, Int32> TestDictSample;
-    public XBlobArray<CfgId<TestConfigUnManaged>> TestKeyList;
-    public XBlobMap<Int32, XBlobArray<XBlobArray<CfgId<TestConfigUnManaged>>>> TestKeyList1;
+    public XBlobArray<CfgI<TestConfigUnManaged>> TestKeyList;
+    public XBlobMap<Int32, XBlobArray<XBlobArray<CfgI<TestConfigUnManaged>>>> TestKeyList1;
     public XBlobSet<Int32> TestKeyHashSet;
-    public XBlobMap<CfgId<TestConfigUnManaged>, CfgId<TestConfigUnManaged>> TestKeyDict;
-    public XBlobSet<CfgId<TestConfigUnManaged>> TestSetKey;
+    public XBlobMap<CfgI<TestConfigUnManaged>, CfgI<TestConfigUnManaged>> TestKeyDict;
+    public XBlobSet<CfgI<TestConfigUnManaged>> TestSetKey;
     public XBlobSet<Int32> TestSetSample;
     public NestedConfigUnManaged TestNested;
     public XBlobArray<NestedConfigUnManaged> TestNestedConfig;
-    public CfgId<TestConfigUnManaged> Foreign;
-    public XBlobPtr<TestConfigUnManaged> Foreign_Ref;
-    public TypeId ConfigType;
+    public CfgI<TestConfigUnManaged> Foreign;
+    public global::XBlobPtr<TestConfigUnManaged> Foreign_Ref;
+    public TypeI ConfigType;
     public Int32 TestIndex1;
-    public CfgId<TestConfigUnManaged> TestIndex2;
-    public XBlobPtr<TestConfigUnManaged> TestIndex2_Ref;
-    public CfgId<TestConfigUnManaged> TestIndex3;
-    public XBlobPtr<TestConfigUnManaged> TestIndex3_Ref;
+    public CfgI<TestConfigUnManaged> TestIndex2;
+    public global::XBlobPtr<TestConfigUnManaged> TestIndex2_Ref;
+    public CfgI<TestConfigUnManaged> TestIndex3;
+    public global::XBlobPtr<TestConfigUnManaged> TestIndex3_Ref;
 }public partial struct TestConfigUnManaged
 {
-    public struct Index1Index : IConfigIndexGroup<TestConfigUnManaged>, IEquatable<Index1Index>
+    public struct Index1Index : global::XM.IConfigIndexGroup<TestConfigUnManaged>, global::System.IEquatable<Index1Index>
     {
         public Int32 TestIndex1;
-        public CfgId<TestConfigUnManaged> TestIndex2;
+        public CfgI<TestConfigUnManaged> TestIndex2;
 
-        public Index1Index(Int32 testIndex1,CfgId<TestConfigUnManaged> testIndex2)
+        public Index1Index(Int32 testIndex1,CfgI<TestConfigUnManaged> testIndex2)
         {
             TestIndex1 = testIndex1;
             TestIndex2 = testIndex2;
@@ -44,24 +48,24 @@ public partial struct TestConfigUnManaged : IConfigUnManaged<TestConfigUnManaged
             return TestIndex1.Equals(other.TestIndex1) && TestIndex2.Equals(other.TestIndex2);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(global::System.Object obj)
         {
             return obj is Index1Index other && Equals(other);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(TestIndex1,TestIndex2);
+            return global::System.HashCode.Combine(TestIndex1,TestIndex2);
         }
     }
 }
 public partial struct TestConfigUnManaged
 {
-    public struct Index2Index : IConfigIndexGroup<TestConfigUnManaged>, IEquatable<Index2Index>
+    public struct Index2Index : global::XM.IConfigIndexGroup<TestConfigUnManaged>, global::System.IEquatable<Index2Index>
     {
-        public CfgId<TestConfigUnManaged> TestIndex3;
+        public CfgI<TestConfigUnManaged> TestIndex3;
 
-        public Index2Index(CfgId<TestConfigUnManaged> testIndex3)
+        public Index2Index(CfgI<TestConfigUnManaged> testIndex3)
         {
             TestIndex3 = testIndex3;
         }
@@ -71,14 +75,14 @@ public partial struct TestConfigUnManaged
             return TestIndex3.Equals(other.TestIndex3);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(global::System.Object obj)
         {
             return obj is Index2Index other && Equals(other);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(TestIndex3);
+            return global::System.HashCode.Combine(TestIndex3);
         }
     }
 }

@@ -112,7 +112,7 @@ public unsafe struct XBlobContainer : IDisposable
     }
 
     /// <summary>
-    /// 按运行时类型分配 Map，用于建立 CfgId->TUnmanaged 等映射。
+    /// 按运行时类型分配 Map，用于建立 CfgI->TUnmanaged 等映射。
     /// 返回 Map 在容器内的偏移（可用 XBlobPtr.FromOffset 转成指针）。
     /// </summary>
     public int AllocMapByTypes(Type keyType, Type valueType, int capacity)

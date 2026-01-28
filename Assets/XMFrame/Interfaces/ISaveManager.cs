@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using XMFrame.Implementation;
+using XM;
 
-namespace XMFrame.Interfaces
+namespace XM.Contracts
 {
     /// <summary>
     /// Mod存档信息

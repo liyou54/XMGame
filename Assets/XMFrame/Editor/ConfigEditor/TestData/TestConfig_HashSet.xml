@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TestKeyHashSet / TestSetSample：多子节点或逗号分隔 -->
+<Item>
+  <TestKeyHashSet>5</TestKeyHashSet>
+  <TestKeyHashSet>10</TestKeyHashSet>
+  <TestKeyHashSet>15</TestKeyHashSet>
+  <TestSetSample>1</TestSetSample>
+  <TestSetSample>2</TestSetSample>
+  <TestSetSample>3</TestSetSample>
+</Item>

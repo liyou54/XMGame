@@ -1,6 +1,6 @@
-using XMFrame.Interfaces.ConfigMananger;
+using XM.Contracts.Config;
 
-namespace XMFrame.Interfaces
+namespace XM.Contracts
 {
     /// <summary>
     /// 类型转换器接口
@@ -15,22 +15,11 @@ namespace XMFrame.Interfaces
 
     public interface IConfigDataCenter : IManager<IConfigDataCenter>
     {
-        /// <summary>
-        /// 注册配置表
-        /// </summary>
-        void RegisterConfigTable();
-
-        
         bool TryGetConfigBySingleIndex<TData ,TIndex>(in TIndex index, out TData data)
             where TIndex : IConfigIndexGroup<TData>
             where TData : unmanaged, IConfigUnManaged<TData>;
 
         bool TryGetConfig<T>(out T data) where T : unmanaged, IConfigUnManaged<T>;
-
-        /// <summary>
-        /// 注册配置表（泛型版本）
-        /// </summary>
-        void RegisterConfigTable<T>() where T : XMFrame.XConfig;
 
         /// <summary>
         /// 从配置中心获取转换器
@@ -45,25 +34,35 @@ namespace XMFrame.Interfaces
         /// <summary>
         /// 获取指定类型的 ClassHelper 实例（泛型版本）
         /// </summary>
-        IConfigClassHelper<T> GetClassHelper<T>() where T : XMFrame.XConfig;
+        ConfigClassHelper GetClassHelper<T>() where T : XM.IXConfig, new();
 
         /// <summary>
         /// 通过 Type 获取 ClassHelper 实例（非泛型版本）
         /// </summary>
-        IConfigClassHelper GetClassHelper(System.Type configType);
+        ConfigClassHelper GetClassHelper(System.Type configType);
 
         /// <summary>
-        /// 通过 TableDefine 获取 ClassHelper 实例
+        /// 通过 TblS 获取 ClassHelper 实例
         /// </summary>
-        IConfigClassHelper GetClassHelperByTable(TableDefine tableDefine);
+        ConfigClassHelper GetClassHelperByTable(TblS tableDefine);
 
-        public void RegisterData<T>(T data) where T : XConfig;
+        public void RegisterData<T>(T data) where T : IXConfig;
 
-        public void UpdateData<T>(T data) where T : XConfig;
+        public void UpdateData<T>(T data) where T : IXConfig;
 
         /// <summary>
-        /// 根据 (TableDefine, ModKey, ConfigName) 解析已分配的 CfgId，供 FillToUnmanaged 外键解析。
+        /// 根据 (TblS, ModS, ConfigName) 解析已分配的 CfgI，供 FillToUnmanaged 外键解析。
         /// </summary>
-        bool TryGetCfgId(TableDefine tableDefine, ModKey mod, string configName, out CfgId cfgId);
+        bool TryGetCfgI(TblS tableDefine, ModS mod, string configName, out CfgI cfgI);
+
+        /// <summary>
+        /// 检查指定表中是否存在指定配置（供 Helper 的递归判断父类是否存在使用）
+        /// </summary>
+        bool TryExistsConfig(TblI table, ModS mod, string configName);
+
+        /// <summary>
+        /// 从 TblS 获取 TblI
+        /// </summary>
+        TblI GetTblI(TblS tableDefine);
     }
 }

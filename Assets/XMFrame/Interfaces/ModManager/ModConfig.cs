@@ -2,7 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using XMFrame.Interfaces;
+using XM.Contracts;
+using XM.Contracts.Config;
 
 public class SortedModConfig
 {
@@ -45,7 +46,7 @@ public class ModConfig
 
 public class ModRuntime
 {
-    public ModKey ModKey { get; set; }
+    public ModS ModS { get; set; }
     public ModConfig Config { get; set; }
 
     public ModBase? ModEntry { get; set; }
@@ -54,9 +55,9 @@ public class ModRuntime
     public List<Type> ConfigDefineTypes { get; set; }  = new List<Type>();
 
 
-    public  ModRuntime(ModKey modKey,  ModConfig config,Assembly? assembly, ModBase? modEntry)
+    public  ModRuntime(ModS modKey,  ModConfig config,Assembly? assembly, ModBase? modEntry)
     {
-        ModKey = modKey;
+        ModS = modKey;
         Assembly = assembly;
         Config = config;
         ModEntry = modEntry;

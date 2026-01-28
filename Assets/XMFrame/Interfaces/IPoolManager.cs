@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using XMFrame.Implementation;
+using XM;
 
-namespace XMFrame.Interfaces
+namespace XM.Contracts
 {
     /// <summary>
     /// 对象池配置

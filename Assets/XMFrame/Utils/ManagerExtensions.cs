@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using XMFrame.Interfaces;
+using XM.Contracts;
 
-namespace XMFrame.Utils
+namespace XM.Utils
 {
     /// <summary>
     /// 管理器扩展方法

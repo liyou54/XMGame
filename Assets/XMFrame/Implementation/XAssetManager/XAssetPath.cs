@@ -1,7 +1,7 @@
 using System;
-using XMFrame.Interfaces;
+using XM.Contracts;
 
-namespace XMFrame.Implementation
+namespace XM
 {
     [Serializable]
     public struct XAssetPath
@@ -15,7 +15,7 @@ namespace XMFrame.Implementation
             Path = path;
         }
 
-        public XAssetId GetAssetId()
+        public AssetI GetAssetId()
         {
             var modId = IModManager.I.GetModId(ModName);
             var assetId = IAssetManager.I.GetAsstIdByModIdAndPath(modId, Path);
