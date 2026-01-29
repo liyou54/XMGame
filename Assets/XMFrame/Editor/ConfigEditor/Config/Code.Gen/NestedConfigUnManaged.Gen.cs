@@ -33,4 +33,15 @@ public partial struct NestedConfigUnManaged : global::XM.IConfigUnManaged<Nested
         return c != null ? c.Convert(source) : default;
     }
 }
+public partial struct NestedConfigUnManaged
+{
+    /// <summary>
+    /// 将 TestGlobalConvert 从 String 转换为 int2，转换器从 IConfigDataCenter 按域获取。
+    /// </summary>
+    public static int2 ConvertTestGlobalConvert(String source)
+    {
+        var c = global::XM.Contracts.IConfigDataCenter.I?.GetConverter<String, int2>("global");
+        return c != null ? c.Convert(source) : default;
+    }
+}
 

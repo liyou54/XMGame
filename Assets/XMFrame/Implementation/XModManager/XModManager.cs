@@ -222,9 +222,9 @@ namespace XM
                         .Where(t => typeof(ModBase).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface)
                         .ToList();
 
-                    // 如果没有找到ModBase实现类也允许正常继续，不视为错误，只做调试提示
+                    // 如果没有找到ModBase实现类也允许正常继续，不视为错误，只做调试提示 
                     if (modBaseTypes.Count == 0)
-                    {
+                    { 
                         XLog.DebugFormat("Mod程序集中未找到ModBase实现类（可正常继续）: {0}", modName);
                     }
                     else if (modBaseTypes.Count > 1)

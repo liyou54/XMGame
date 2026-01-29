@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using UnityToolkit;
 
 namespace XM.Editor
 {
@@ -35,6 +36,7 @@ namespace XM.Editor
         }
 
         [MenuItem("XM/Config/Generate Code (Select Assemblies)")]
+        [MenuItem("UnityToolkit/Config/Generate Code (Select Assemblies)")]
         public static void ShowWindow()
         {
             var window = GetWindow<UnmanagedCodeGenWindow>("代码生成器");
@@ -57,7 +59,7 @@ namespace XM.Editor
                 try
                 {
                     var configTypes = assembly.GetTypes()
-                        .Where(t => UnmanagedCodeGenerator.IsXConfigType(t) && !t.IsAbstract)
+                        .Where(t => UnityToolkit.UnmanagedCodeGenerator.IsXConfigType(t) && !t.IsAbstract)
                         .ToList();
 
                     if (configTypes.Count > 0)
@@ -179,8 +181,8 @@ namespace XM.Editor
             
             try
             {
-                UnmanagedCodeGenerator.GenerateUnmanagedCodeForAssemblies(selectedAssemblies, outputPath);
-                ClassHelperCodeGenerator.GenerateClassHelperForAssemblies(selectedAssemblies, outputPath);
+                UnityToolkit.UnmanagedCodeGenerator.GenerateUnmanagedCodeForAssemblies(selectedAssemblies, outputPath);
+                UnityToolkit.ClassHelperCodeGenerator.GenerateClassHelperForAssemblies(selectedAssemblies, outputPath);
                 EditorUtility.DisplayDialog("成功", $"已成功为 {selectedAssemblies.Count} 个程序集生成 Unmanaged 结构体与 ConfigClassHelper（配置解析静态代码）", "确定");
             }
             catch (Exception ex)

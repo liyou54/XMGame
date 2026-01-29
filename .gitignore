@@ -80,3 +80,17 @@ Desktop.ini
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# XModTest 子工程 Unity 生成目录
+XModTest/[Ll]ibrary/
+XModTest/[Tt]emp/
+XModTest/[Oo]bj/
+XModTest/[Bb]uild/
+XModTest/[Bb]uilds/
+XModTest/[Ll]ogs/
+XModTest/[Uu]ser[Ss]ettings/
+XModTest/[Mm]emoryCaptures/
+XModTest/.vs/
+XModTest/.gradle/
+XModTest/ExportedObj/
+XModTest/.consulo/

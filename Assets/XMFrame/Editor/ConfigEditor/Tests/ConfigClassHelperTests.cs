@@ -665,6 +665,90 @@ namespace XM.Editor
         }
 
         #endregion
+
+        #region OverrideMode 严格/宽松异常处理
+
+        [Test]
+        public void DeserializeConfigFromXml_StrictMode_ParseError_LogsErrorWithFileLineField_StillReturnsConfig()
+        {
+            var prevContext = ConfigClassHelper.CurrentParseContext;
+            string errorReceived = null;
+            ConfigClassHelper.OnParseError = msg => errorReceived = msg;
+            try
+            {
+                ConfigClassHelper.CurrentParseContext = new ConfigParseContext
+                { FilePath = "C:/Mods/Test/test.xml", Line = 10, Mode = OverrideMode.None };
+                var helper = new NestedConfigClassHelper(_mockDataCenter);
+                // 传入 null 触发 FillFromXml 内异常，严格模式应打 Error（含文件、行、字段）并仍返回已创建实例
+                var config = (NestedConfig)helper.DeserializeConfigFromXml(null, new ModS("Default"), "test", OverrideMode.None);
+                Assert.IsNotNull(config, "严格模式：解析失败仍应正常序列化返回 obj");
+                Assert.IsNotNull(errorReceived, "应触发 OnParseError");
+                Assert.IsTrue(errorReceived.Contains("文件"), "Error 应包含文件");
+                Assert.IsTrue(errorReceived.Contains("行"), "Error 应包含行");
+                Assert.IsTrue(errorReceived.Contains("字段"), "Error 应包含字段");
+            }
+            finally
+            {
+                ConfigClassHelper.CurrentParseContext = prevContext;
+                ConfigClassHelper.OnParseError = null;
+            }
+        }
+
+        [Test]
+        public void DeserializeConfigFromXml_ReWriteMode_ParseError_LogsError_StillReturnsConfig()
+        {
+            var prevContext = ConfigClassHelper.CurrentParseContext;
+            string errorReceived = null;
+            ConfigClassHelper.OnParseError = msg => errorReceived = msg;
+            try
+            {
+                ConfigClassHelper.CurrentParseContext = new ConfigParseContext
+                { FilePath = "D:/rewrite.xml", Line = 5, Mode = OverrideMode.ReWrite };
+                var helper = new NestedConfigClassHelper(_mockDataCenter);
+                var config = (NestedConfig)helper.DeserializeConfigFromXml(null, new ModS("Default"), "rewrite_test", OverrideMode.ReWrite);
+                Assert.IsNotNull(config);
+                Assert.IsNotNull(errorReceived);
+                Assert.IsTrue(errorReceived.Contains("文件") && errorReceived.Contains("行") && errorReceived.Contains("字段"));
+            }
+            finally
+            {
+                ConfigClassHelper.CurrentParseContext = prevContext;
+                ConfigClassHelper.OnParseError = null;
+            }
+        }
+
+        [Test]
+        public void DeserializeConfigFromXml_RelaxedMode_ParseError_LogsWarning_StillReturnsConfig()
+        {
+            var prevContext = ConfigClassHelper.CurrentParseContext;
+            string warningReceived = null;
+            ConfigClassHelper.OnParseWarning = msg => warningReceived = msg;
+            try
+            {
+                ConfigClassHelper.CurrentParseContext = new ConfigParseContext { FilePath = "", Line = 0, Mode = OverrideMode.Modify };
+                var helper = new NestedConfigClassHelper(_mockDataCenter);
+                var config = (NestedConfig)helper.DeserializeConfigFromXml(null, new ModS("Default"), "modify_test", OverrideMode.Modify);
+                Assert.IsNotNull(config, "宽松模式：仍应返回已创建实例");
+                Assert.IsNotNull(warningReceived, "宽松模式应打 Warning");
+            }
+            finally
+            {
+                ConfigClassHelper.CurrentParseContext = prevContext;
+                ConfigClassHelper.OnParseWarning = null;
+            }
+        }
+
+        [Test]
+        public void DeserializeConfigFromXml_ThreeParam_CallsFourParamWithNone()
+        {
+            var el = LoadXmlRootFromTestData("NestedConfig_NotNullAndDefault.xml");
+            var helper = new NestedConfigClassHelper(_mockDataCenter);
+            var config = (NestedConfig)helper.DeserializeConfigFromXml(el, new ModS("Default"), "test");
+            Assert.IsNotNull(config, "三参应委托四参 OverrideMode.None，行为一致");
+            Assert.AreEqual(200, config.RequiredId);
+        }
+
+        #endregion
     }
 
     /// <summary>用于单元测试的 IConfigDataCenter 占位实现；GetClassHelper 对 NestedConfig 返回 NestedConfigClassHelper，其余返回 null；GetConverter 对 string->int2 返回 MockInt2Converter。</summary>
@@ -698,7 +782,14 @@ namespace XM.Editor
                 return (ITypeConverter<TSource, TTarget>)(object)MockInt2Converter.Instance;
             return null;
         }
+        public ITypeConverter<TSource, TTarget> GetConverterByType<TSource, TTarget>()
+        {
+            if (typeof(TSource) == typeof(string) && typeof(TTarget) == typeof(int2))
+                return (ITypeConverter<TSource, TTarget>)(object)MockInt2Converter.Instance;
+            return null;
+        }
         public bool HasConverter<TSource, TTarget>(string domain = "") => typeof(TSource) == typeof(string) && typeof(TTarget) == typeof(int2);
+        public bool HasConverterByType<TSource, TTarget>() => typeof(TSource) == typeof(string) && typeof(TTarget) == typeof(int2);
         public void RegisterData<T>(T data) where T : IXConfig { }
         public void UpdateData<T>(T data) where T : IXConfig { }
         public UniTask OnCreate() => UniTask.CompletedTask;

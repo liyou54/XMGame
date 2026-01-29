@@ -7,7 +7,7 @@ using Scriban;
 using Scriban.Runtime;
 using UnityEditor;
 using UnityEngine;
-using XM.Editor;
+using UnityToolkit;
 using XM.Utils.Attribute;
 using XMFrame.Editor.ConfigEditor;
 
@@ -356,7 +356,7 @@ namespace XMFrame.Editor.ConfigEditor
         /// <summary>
         /// 准备字段数据
         /// </summary>
-        private static ScriptObject PrepareFieldData(XM.Editor.FieldInfo fieldInfo, Type managedType, Dictionary<Type, XmlGlobalConvertAttribute> assemblyGlobalConverters)
+        private static ScriptObject PrepareFieldData(UnityToolkit.FieldInfo fieldInfo, Type managedType, Dictionary<Type, XmlGlobalConvertAttribute> assemblyGlobalConverters)
         {
             var fieldObj = new ScriptObject();
             fieldObj["name"] = fieldInfo.Name;

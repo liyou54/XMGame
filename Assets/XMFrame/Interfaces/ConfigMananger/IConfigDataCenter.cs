@@ -22,14 +22,24 @@ namespace XM.Contracts
         bool TryGetConfig<T>(out T data) where T : unmanaged, IConfigUnManaged<T>;
 
         /// <summary>
-        /// 从配置中心获取转换器
+        /// 从配置中心获取转换器（按域）
         /// </summary>
         ITypeConverter<TSource, TTarget> GetConverter<TSource, TTarget>(string domain = "");
+
+        /// <summary>
+        /// 仅按类型获取转换器：先全局再任意域，返回第一个匹配。供生成代码直接通过类型获取正确转换器，无需传 domain。
+        /// </summary>
+        ITypeConverter<TSource, TTarget> GetConverterByType<TSource, TTarget>();
 
         /// <summary>
         /// 检查是否存在转换器
         /// </summary>
         bool HasConverter<TSource, TTarget>(string domain = "");
+
+        /// <summary>
+        /// 检查是否存在转换器（按类型，任意域）
+        /// </summary>
+        bool HasConverterByType<TSource, TTarget>();
 
         /// <summary>
         /// 获取指定类型的 ClassHelper 实例（泛型版本）

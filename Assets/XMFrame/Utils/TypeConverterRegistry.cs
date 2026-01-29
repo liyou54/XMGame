@@ -84,6 +84,23 @@ namespace XM.Utils
         }
 
         /// <summary>
+        /// 仅按类型获取转换器：先查全局，再按任意域查找 (TSource, TTarget)，返回第一个匹配。供生成代码直接通过类型获取正确转换器，无需传 domain。
+        /// </summary>
+        public static ITypeConverter<TSource, TTarget> GetConverterByType<TSource, TTarget>()
+        {
+            var src = typeof(TSource);
+            var tgt = typeof(TTarget);
+            if (_globalConverters.TryGetValue(src, out var globalTargetDict) && globalTargetDict.TryGetValue(tgt, out var globalConverter))
+                return (ITypeConverter<TSource, TTarget>)globalConverter;
+            foreach (var domainConverters in _localConverters.Values)
+            {
+                if (domainConverters.TryGetValue(src, out var targetDict) && targetDict.TryGetValue(tgt, out var converter))
+                    return (ITypeConverter<TSource, TTarget>)converter;
+            }
+            return null;
+        }
+
+        /// <summary>
         /// 执行转换
         /// </summary>
         public static TTarget Convert<TSource, TTarget>(TSource source, string domain = "")

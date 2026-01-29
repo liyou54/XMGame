@@ -37,17 +37,24 @@ public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, Ne
 
     public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
     {
+        return DeserializeConfigFromXml(configItem, mod, configName, OverrideMode.None);
+    }
+
+    public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName, OverrideMode overrideMode)
+    {
+        var config = (NestedConfig)Create();
         try
         {
-            var config = (NestedConfig)Create();
             FillFromXml(config, configItem, mod, configName);
-            return config;
         }
         catch (Exception ex)
         {
-            ConfigClassHelper.LogParseWarning("(整体)", configName, ex);
-            throw;
+            if (overrideMode == OverrideMode.None || overrideMode == OverrideMode.ReWrite)
+                ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "(整体)", ex);
+            else
+                ConfigClassHelper.LogParseWarning("(整体)", configName, ex);
         }
+        return config;
     }
 
     public override void FillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName)
@@ -57,6 +64,7 @@ public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, Ne
         config.OptionalWithDefault = ParseOptionalWithDefault(configItem, mod, configName);
         config.Test = ParseTest(configItem, mod, configName);
         config.TestCustom = ParseTestCustom(configItem, mod, configName);
+        config.TestGlobalConvert = ParseTestGlobalConvert(configItem, mod, configName);
         config.TestKeyList = ParseTestKeyList(configItem, mod, configName);
         config.StrIndex = ParseStrIndex(configItem, mod, configName);
         config.Str32 = ParseStr32(configItem, mod, configName);
@@ -95,12 +103,28 @@ public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, Ne
             {
                 var s = ConfigClassHelper.GetXmlFieldValue(configItem, "TestCustom");
             if (string.IsNullOrEmpty(s)) return default;
-            var converter = XM.Contracts.IConfigDataCenter.I?.GetConverter<string, int2>("");
+            var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, int2>();
             return converter != null ? converter.Convert(s) : default;
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestCustom", ConfigClassHelper.GetXmlFieldValue(configItem, "TestCustom"), ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestCustom", ex); else ConfigClassHelper.LogParseWarning("TestCustom", ConfigClassHelper.GetXmlFieldValue(configItem, "TestCustom"), ex);
+                return default;
+            }
+        }
+
+    private static int2 ParseTestGlobalConvert(XmlElement configItem, ModS mod, string configName)
+        {
+            try
+            {
+                var s = ConfigClassHelper.GetXmlFieldValue(configItem, "TestGlobalConvert");
+            if (string.IsNullOrEmpty(s)) return default;
+            var converter = XM.Contracts.IConfigDataCenter.I?.GetConverter<string, int2>("global");
+            return converter != null ? converter.Convert(s) : default;
+            }
+            catch (Exception ex)
+            {
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestGlobalConvert", ex); else ConfigClassHelper.LogParseWarning("TestGlobalConvert", ConfigClassHelper.GetXmlFieldValue(configItem, "TestGlobalConvert"), ex);
                 return default;
             }
         }
@@ -117,7 +141,7 @@ public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, Ne
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestKeyList", null, ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestKeyList", ex); else ConfigClassHelper.LogParseWarning("TestKeyList", null, ex);
                 return new List<CfgS<TestConfigUnManaged>>();
             }
         }
@@ -157,7 +181,7 @@ public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, Ne
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("LabelS", ConfigClassHelper.GetXmlFieldValue(configItem, "LabelS"), ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "LabelS", ex); else ConfigClassHelper.LogParseWarning("LabelS", ConfigClassHelper.GetXmlFieldValue(configItem, "LabelS"), ex);
                 return default;
             }
         }

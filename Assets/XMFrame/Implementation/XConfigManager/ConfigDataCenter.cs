@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -8,6 +9,7 @@ using UnityEngine;
 using XM;
 using XM.Contracts;
 using Unity.Collections;
+using UnityEngine.Pool;
 using XM.Contracts.Config;
 using XM.Utils;
 
@@ -49,6 +51,13 @@ namespace XM
 
         /// <summary>(TblI, ModI) 自增 Id，用于分配 CfgI</summary>
         private readonly Dictionary<(TblI table, ModI mod), short> _nextCfgIByTableMod = new();
+
+        /// <summary>待添加项：CfgS -> (TblS + XmlElement)，用于 Apply 时反序列化并注册</summary>
+        private struct PendingAddItem
+        {
+            public TblS TableDefine;
+            public XmlElement XmlElement;
+        }
 
         public override UniTask OnCreate()
         {
@@ -188,102 +197,97 @@ namespace XM
             InitUnManagedData();
         }
 
-        /// <summary>
-        /// 待处理配置项
-        /// </summary>
-        private class PendingConfigItem
-        {
-            public ConfigClassHelper Helper;
-            public ModS ModS;
-            public string ConfigName;
-            public XmlElement Node;
-            public OverrideMode Mode;
-        }
 
+        /// <summary>从 XML 读取配置。待处理列表使用并发安全容器，便于后续多线程填充。</summary>
         private void ReadConfigFromXml()
         {
-            // 待处理列表
-            var pendingAdds = new List<PendingConfigItem>();
-            var pendingModifies = new List<PendingConfigItem>();
-            var pendingDeletes = new List<PendingConfigItem>();
+            // 并发安全版本：CfgS 为键以区分同一 Mod 下不同配置；Modify 存 XmlElement 便于 Apply 时 FillFromXml
+            var pendingAdds = new ConcurrentDictionary<CfgS, PendingAddItem>();
+            var pendingModifies = new ConcurrentDictionary<CfgS, XmlElement>();
+            var pendingDeletes = new ConcurrentDictionary<CfgS, byte>(); // CfgS 集合（value 占位）
 
             var enableMods = IModManager.I.GetEnabledModConfigs();
             foreach (var modConfig in enableMods)
             {
                 var modName = modConfig.ModName;
                 var modId = IModManager.I.GetModId(modConfig.ModName);
-                foreach (var file in IModManager.I.GetModXmlFilePathByModId(modId))
+                var files = ListPool<string>.Get();
+                try
                 {
-                    try
-                    {
-                        ProcessXmlFile(file, modName, modId, pendingAdds, pendingModifies, pendingDeletes);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError($"处理 XML 文件失败: {file}, 错误: {ex.Message}\n{ex.StackTrace}");
-                    }
+                    files.AddRange(IModManager.I.GetModXmlFilePathByModId(modId));
+                    ProcessXmlFile(files, modName, modId, pendingAdds, pendingModifies, pendingDeletes);
+                }
+                catch (XmlException xmlEx)
+                {
+                    XLog.ErrorFormat("处理 XML 文件失败: {0} 行 {1}:{2} - {3}",
+                        xmlEx.SourceUri ?? "(unknown)", xmlEx.LineNumber, xmlEx.LinePosition, xmlEx.Message);
+                }
+                catch (Exception ex)
+                {
+                    XLog.ErrorFormat("处理 Mod XML 失败: {0}, 错误: {1}", modName, ex.Message);
+                }
+                finally
+                {
+                    ListPool<string>.Release(files);
                 }
             }
 
-            // 应用待处理列表
             ApplyPendingConfigs(pendingAdds, pendingModifies, pendingDeletes);
         }
 
         /// <summary>
-        /// 处理单个 XML 文件
+        /// 处理多个 XML 文件；使用并发安全容器，便于后续 UniTask 多线程后台加载。
         /// </summary>
         private void ProcessXmlFile(
-            string xmlFilePath,
+            List<string> xmlFilePaths,
             string modName,
             ModI modId,
-            List<PendingConfigItem> pendingAdds,
-            List<PendingConfigItem> pendingModifies,
-            List<PendingConfigItem> pendingDeletes)
+            ConcurrentDictionary<CfgS, PendingAddItem> pendingAdds,
+            ConcurrentDictionary<CfgS, XmlElement> pendingModifies,
+            ConcurrentDictionary<CfgS, byte> pendingDeletes)
         {
-            // 加载 XML 文档
-            var xmlDoc = new XmlDocument();
-            xmlDoc.Load(xmlFilePath);
-
-            var root = xmlDoc.DocumentElement;
-            if (root == null)
+            foreach (var xmlFilePath in xmlFilePaths)
             {
-                Debug.LogWarning($"XML 文件根节点为空: {xmlFilePath}");
-                return;
-            }
+                var xmlDoc = new XmlDocument();
+                xmlDoc.Load(xmlFilePath);
 
-            // 获取 Root 下所有 ConfigItem
-            var configItems = root.SelectNodes("ConfigItem");
-            if (configItems == null || configItems.Count == 0)
-            {
-                // 没有 ConfigItem，可能不是配置文件或格式不同
-                return;
-            }
-
-            foreach (XmlElement configItem in configItems)
-            {
-                try
+                var root = xmlDoc.DocumentElement;
+                if (root == null)
                 {
-                    ProcessConfigItem(configItem, modName, modId, pendingAdds, pendingModifies, pendingDeletes);
+                    Debug.LogWarning($"XML 文件根节点为空: {xmlFilePath}");
+                    continue;
                 }
-                catch (Exception ex)
+
+                var configItems = root.SelectNodes("ConfigItem");
+                if (configItems == null || configItems.Count == 0)
+                    continue;
+
+                foreach (XmlElement configItem in configItems)
                 {
-                    Debug.LogError($"处理 ConfigItem 失败: {xmlFilePath}, 错误: {ex.Message}");
+                    try
+                    {
+                        ProcessConfigItem(configItem, xmlFilePath, modName, modId, pendingAdds, pendingModifies, pendingDeletes);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"处理 ConfigItem 失败: {xmlFilePath}, 错误: {ex.Message}");
+                    }
                 }
             }
         }
 
         /// <summary>
-        /// 处理单个 ConfigItem
+        /// 处理单个 ConfigItem；将 OverrideMode 传入 Helper，不同 override 可有不同错误处理。调用 Helper 前设置 CurrentParseContext（文件、行、模式）。
         /// </summary>
         private void ProcessConfigItem(
             XmlElement configItem,
+            string xmlFilePath,
             string modName,
             ModI modId,
-            List<PendingConfigItem> pendingAdds,
-            List<PendingConfigItem> pendingModifies,
-            List<PendingConfigItem> pendingDeletes)
+            ConcurrentDictionary<CfgS, PendingAddItem> pendingAdds,
+            ConcurrentDictionary<CfgS, XmlElement> pendingModifies,
+            ConcurrentDictionary<CfgS, byte> pendingDeletes)
         {
-            // 读取 cls、id、override 属性
             var cls = configItem.GetAttribute("cls");
             var id = configItem.GetAttribute("id");
             var overrideAttr = configItem.GetAttribute("override");
@@ -300,21 +304,34 @@ namespace XM
                 return;
             }
 
-            // 解析 id 为 modName 和 configName（格式：modName::configName）
             var idParts = id.Split(new[] { "::" }, StringSplitOptions.None);
-            if (idParts.Length != 2)
+            string idModName;
+            string configName;
+            if (idParts.Length == 1)
             {
-                Debug.LogError($"id 格式错误（应为 modName::configName）: {id}");
+                idModName = modName;
+                configName = idParts[0];
+            }
+            else if (idParts.Length == 2)
+            {
+                idModName = idParts[0];
+                configName = idParts[1];
+            }
+            else
+            {
+                Debug.LogError($"ConfigItem id 格式错误，应为 modName::configName 或 configName: {id}");
                 return;
             }
 
-            var idModName = idParts[0];
-            var configName = idParts[1];
+            // 非当前模组且无 override 时不允许定义其他模组内容
+            if (!string.Equals(idModName, modName, StringComparison.Ordinal) && string.IsNullOrEmpty(overrideAttr))
+            {
+                Debug.LogError($"非当前模组不允许定义其他模组配置: 当前 mod={modName}, id 指定 mod={idModName}, id={id}");
+                return;
+            }
 
-            // 解析 override 属性
             var overrideMode = ParseOverrideMode(overrideAttr);
 
-            // cls → Type
             var configType = ResolveTypeFromCls(cls);
             if (configType == null)
             {
@@ -322,10 +339,7 @@ namespace XM
                 return;
             }
 
-            // Type + modName → TblS
             var tableDefine = GetTblSFromType(configType, idModName);
-
-            // TblS → Helper
             var helper = GetClassHelperByTable(tableDefine);
             if (helper == null)
             {
@@ -334,58 +348,47 @@ namespace XM
             }
 
             var modKey = new ModS(idModName);
+            var cfgKey = new CfgS(modKey, tableDefine.TableName, configName);
 
-            // 根据 override 模式分支处理
             if (overrideMode == OverrideMode.None)
             {
-                // 新增配置：检查是否存在（递归检查父类）
-                if (helper.TryExistsInHierarchy(modKey, configName, out var key))
+                if (helper.TryExistsInHierarchy(modKey, configName, out _))
                 {
                     Debug.LogError($"配置已存在（或在父类中存在），不能重复添加: {id}");
                     return;
                 }
 
-                // 获取 TblI
                 if (!_typeLookUp.TryGetValueByKey(tableDefine, out var tableHandle))
                 {
                     Debug.LogError($"找不到 TblS 对应的 TblI: {tableDefine}");
                     return;
                 }
 
-                // TODO: 从 XML 节点反序列化出 IXConfig 实例
-                var config = helper.DeserializeConfigFromXml(configItem,modKey, configName);
-
-                // TODO: 继承类时设置 BaseClass+Id 的 CfgS（由 Helper 或生成代码填充）
-                // 例如：config.Id_Base = new CfgS<BaseUnmanaged>(modKey, baseConfigName);
-
-                // 注册配置（不分配 CfgI，CfgI 在 InitUnManagedData 时分配）
-                // RegisterConfigInternal(config, tableHandle, modKey, configName);
-
-                Debug.Log($"[TODO] 新增配置: {id}，注册到 _registeredConfigs 和 _configsByTable");
-                throw new NotImplementedException($"从 XML 反序列化配置、设置 BaseClass 的 CfgS、注册配置 等逻辑待实现");
+                var prev = ConfigClassHelper.CurrentParseContext;
+                try
+                {
+                    ConfigClassHelper.CurrentParseContext = new ConfigParseContext { FilePath = xmlFilePath ?? "", Line = 0, Mode = overrideMode };
+                    var config = helper.DeserializeConfigFromXml(configItem, modKey, configName, overrideMode);
+                    if (config != null)
+                        RegisterConfigInternal(config, tableHandle, modKey, configName);
+                }
+                finally
+                {
+                    ConfigClassHelper.CurrentParseContext = prev;
+                }
             }
             else
             {
-                // 加入待处理列表
-                var pendingItem = new PendingConfigItem
-                {
-                    Helper = helper,
-                    ModS = modKey,
-                    ConfigName = configName,
-                    Node = configItem,
-                    Mode = overrideMode
-                };
-
                 switch (overrideMode)
                 {
-                    case OverrideMode.Add:
-                        pendingAdds.Add(pendingItem);
+                    case OverrideMode.ReWrite:
+                        pendingAdds[cfgKey] = new PendingAddItem { TableDefine = tableDefine, XmlElement = configItem };
                         break;
                     case OverrideMode.Modify:
-                        pendingModifies.Add(pendingItem);
+                        pendingModifies[cfgKey] = configItem;
                         break;
                     case OverrideMode.Delete:
-                        pendingDeletes.Add(pendingItem);
+                        pendingDeletes[cfgKey] = 0;
                         break;
                 }
             }
@@ -401,8 +404,9 @@ namespace XM
 
             switch (overrideAttr.ToLowerInvariant())
             {
+                case "rewrite":
                 case "add":
-                    return OverrideMode.Add;
+                    return OverrideMode.ReWrite;
                 case "delete":
                 case "del":
                     return OverrideMode.Delete;
@@ -436,33 +440,61 @@ namespace XM
         }
 
         /// <summary>
-        /// 应用待处理列表
+        /// 应用并发安全待处理列表（ReWrite → 注册，Modify → FillFromXml，Delete → 移除）
         /// </summary>
         private void ApplyPendingConfigs(
-            List<PendingConfigItem> pendingAdds,
-            List<PendingConfigItem> pendingModifies,
-            List<PendingConfigItem> pendingDeletes)
+            ConcurrentDictionary<CfgS, PendingAddItem> pendingAdds,
+            ConcurrentDictionary<CfgS, XmlElement> pendingModifies,
+            ConcurrentDictionary<CfgS, byte> pendingDeletes)
         {
-            // TODO: 实现应用增加
-            if (pendingAdds.Count > 0)
+            foreach (var kv in pendingAdds)
             {
-                Debug.Log($"[TODO] 应用 {pendingAdds.Count} 个 Add 操作");
-                // throw new NotImplementedException("应用 Add 操作待实现");
+                var cfgKey = kv.Key;
+                var item = kv.Value;
+                if (item.XmlElement == null) continue;
+                var helper = GetClassHelperByTable(item.TableDefine);
+                if (helper == null) { Debug.LogError($"应用 ReWrite 时找不到 Helper: {item.TableDefine}"); continue; }
+                if (!_typeLookUp.TryGetValueByKey(item.TableDefine, out var tableHandle))
+                { Debug.LogError($"应用 ReWrite 时找不到 TblI: {item.TableDefine}"); continue; }
+                if (helper.TryExistsInHierarchy(cfgKey.Mod, cfgKey.ConfigName, out _))
+                { Debug.LogError($"应用 ReWrite 时配置已存在: {cfgKey}"); continue; }
+                var config = helper.DeserializeConfigFromXml(item.XmlElement, cfgKey.Mod, cfgKey.ConfigName, OverrideMode.ReWrite);
+                if (config != null)
+                    RegisterConfigInternal(config, tableHandle, cfgKey.Mod, cfgKey.ConfigName);
             }
 
-            // TODO: 实现应用修改
-            if (pendingModifies.Count > 0)
+            foreach (var kv in pendingModifies)
             {
-                Debug.Log($"[TODO] 应用 {pendingModifies.Count} 个 Modify 操作");
-                // throw new NotImplementedException("应用 Modify 操作待实现");
+                var cfgKey = kv.Key;
+                var modifyXml = kv.Value;
+                if (modifyXml == null) continue;
+                if (!_typeLookUp.TryGetValueByKey(GetTblSFromCfgS(cfgKey), out var tableHandle))
+                { Debug.LogError($"应用 Modify 时找不到 TblI: {cfgKey}"); continue; }
+                var key = (tableHandle, cfgKey.Mod, cfgKey.ConfigName);
+                if (!_registeredConfigs.TryGetValue(key, out var existing))
+                { Debug.LogError($"应用 Modify 时配置不存在: {cfgKey}"); continue; }
+                var helper = GetClassHelperByTable(GetTblSFromCfgS(cfgKey));
+                if (helper == null) { Debug.LogError($"应用 Modify 时找不到 Helper: {cfgKey}"); continue; }
+                helper.FillFromXml(existing, modifyXml, cfgKey.Mod, cfgKey.ConfigName);
             }
 
-            // TODO: 实现应用删除
-            if (pendingDeletes.Count > 0)
+            foreach (var cfgKey in pendingDeletes.Keys)
             {
-                Debug.Log($"[TODO] 应用 {pendingDeletes.Count} 个 Delete 操作");
-                // throw new NotImplementedException("应用 Delete 操作待实现");
+                var tableDefine = new TblS(cfgKey.Mod, cfgKey.TableName);
+                if (!_typeLookUp.TryGetValueByKey(tableDefine, out var tableHandle))
+                { Debug.LogError($"应用 Delete 时找不到 TblI: {cfgKey}"); continue; }
+                var key = (tableHandle, cfgKey.Mod, cfgKey.ConfigName);
+                if (!_registeredConfigs.Remove(key, out var removed))
+                { Debug.LogWarning($"应用 Delete 时配置不存在: {cfgKey}"); continue; }
+                if (_configsByTable.TryGetValue(tableHandle, out var list))
+                    list.Remove(removed);
+                _configKeyToCfgI.Remove(key);
             }
+        }
+
+        private static TblS GetTblSFromCfgS(CfgS cfg)
+        {
+            return new TblS(cfg.Mod, cfg.TableName);
         }
 
         private void InitUnManagedData()
@@ -552,9 +584,19 @@ namespace XM
             return TypeConverterRegistry.GetConverter<TSource, TTarget>(domain);
         }
 
+        public ITypeConverter<TSource, TTarget> GetConverterByType<TSource, TTarget>()
+        {
+            return TypeConverterRegistry.GetConverterByType<TSource, TTarget>();
+        }
+
         public bool HasConverter<TSource, TTarget>(string domain = "")
         {
             return TypeConverterRegistry.HasConverter<TSource, TTarget>(domain);
+        }
+
+        public bool HasConverterByType<TSource, TTarget>()
+        {
+            return TypeConverterRegistry.GetConverterByType<TSource, TTarget>() != null;
         }
 
         public bool TryGetCfgI(TblS tableDefine, ModS mod, string configName, out CfgI cfgI)

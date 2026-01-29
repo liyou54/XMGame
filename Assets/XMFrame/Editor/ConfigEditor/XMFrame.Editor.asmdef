@@ -2,6 +2,8 @@
     "name": "XM.Editor",
     "rootNamespace": "XM.Editor",
     "references": [
+        "GUID:a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3",
+        "GUID:c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4",
         "GUID:b2f1fc1aca9012145bfe9a26035d1fea",
         "GUID:2ea90825a47fdb949a437c7c17b6b27c",
         "GUID:e3ffc3f8b4244cd4a90e2d8dbd117214",

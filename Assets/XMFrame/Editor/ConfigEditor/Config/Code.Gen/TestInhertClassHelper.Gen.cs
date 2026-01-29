@@ -35,17 +35,24 @@ public sealed class TestInhertClassHelper : ConfigClassHelper<TestInhert, TestIn
 
     public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
     {
+        return DeserializeConfigFromXml(configItem, mod, configName, OverrideMode.None);
+    }
+
+    public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName, OverrideMode overrideMode)
+    {
+        var config = (TestInhert)Create();
         try
         {
-            var config = (TestInhert)Create();
             FillFromXml(config, configItem, mod, configName);
-            return config;
         }
         catch (Exception ex)
         {
-            ConfigClassHelper.LogParseWarning("(整体)", configName, ex);
-            throw;
+            if (overrideMode == OverrideMode.None || overrideMode == OverrideMode.ReWrite)
+                ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "(整体)", ex);
+            else
+                ConfigClassHelper.LogParseWarning("(整体)", configName, ex);
         }
+        return config;
     }
 
     public override void FillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName)

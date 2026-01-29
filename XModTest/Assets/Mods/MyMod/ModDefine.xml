@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModDefine>
+  <Name>MyMod</Name>
+  <Version>1.0.0</Version>
+  <Author></Author>
+  <Description></Description>
+  <DllPath>MyMod.dll</DllPath>
+  <IconPath></IconPath>
+  <HomePageLink></HomePageLink>
+  <ImagePath></ImagePath>
+</ModDefine>

@@ -15,6 +15,23 @@ namespace XM.Contracts.Config
         /// </summary>
         public static Action<string> OnParseWarning;
 
+        /// <summary>
+        /// 解析错误回调（严格模式下解析失败时调用，含 文件、行、字段）。
+        /// </summary>
+        public static Action<string> OnParseError;
+
+        [ThreadStatic]
+        private static ConfigParseContext _currentParseContext;
+
+        /// <summary>
+        /// 当前解析上下文（文件路径、行号、OverrideMode），由 ConfigDataCenter 在调用 DeserializeConfigFromXml 前设置，供生成代码在 ParseXXX 内打 Error/Warning 时使用。线程局部，避免多线程竞争。
+        /// </summary>
+        public static ConfigParseContext CurrentParseContext
+        {
+            get => _currentParseContext;
+            set => _currentParseContext = value;
+        }
+
         public abstract TblS GetTblS();
         public abstract IXConfig Create();
 
@@ -29,6 +46,15 @@ namespace XM.Contracts.Config
         /// 从 XML 反序列化配置。由生成的 *ClassHelper 实现：先 Create，再 FillFromXml，无反射。
         /// </summary>
         public abstract IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName);
+
+        /// <summary>
+        /// 从 XML 反序列化配置，并传入 OverrideMode；不同 override 可有不同错误处理（如 ReWrite 严格校验、Modify 允许部分缺失）。
+        /// 默认调用三参重载；子类可重写以按 mode 做差异化处理。
+        /// </summary>
+        public virtual IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName, OverrideMode overrideMode)
+        {
+            return DeserializeConfigFromXml(configItem, mod, configName);
+        }
 
         /// <summary>
         /// 将 XML 节点解析并填入已有配置实例（构造与解析拆开）。子类先调基类 FillFromXml 再填本类字段；由生成的 *ClassHelper 实现。
@@ -57,6 +83,29 @@ namespace XM.Contracts.Config
         {
             OnParseWarning?.Invoke($"[Config] 解析字段 {fieldName} 失败 value='{value ?? ""}' {ex?.Message ?? ""}");
         }
+
+        /// <summary>
+        /// 严格模式下解析失败时打 Error，格式：文件、行、字段、错误。供生成代码调用。
+        /// </summary>
+        protected static void LogParseError(string file, int line, string field, Exception ex)
+        {
+            var msg = $"文件: {file ?? ""}, 行: {line}, 字段: {field ?? ""}, 错误: {ex?.Message ?? ""}";
+            OnParseError?.Invoke(msg);
+        }
+
+        /// <summary>
+        /// 严格模式下解析失败时打 Error，格式：文件、行、字段、错误。供生成代码调用。
+        /// </summary>
+        protected static void LogParseError(string file, int line, string field, string message)
+        {
+            var msg = $"文件: {file ?? ""}, 行: {line}, 字段: {field ?? ""}, 错误: {message ?? ""}";
+            OnParseError?.Invoke(msg);
+        }
+
+        /// <summary>
+        /// 判断当前上下文是否为严格模式（None 或 ReWrite）。
+        /// </summary>
+        protected static bool IsStrictMode => CurrentParseContext.Mode == OverrideMode.None || CurrentParseContext.Mode == OverrideMode.ReWrite;
 
         #region 通用解析方法（异常处理 + 日志）
 
@@ -302,5 +351,15 @@ namespace XM.Contracts.Config
             key = default;
             return false;
         }
+    }
+
+    /// <summary>
+    /// 配置解析上下文（文件路径、行号、覆盖模式），用于严格/宽松错误处理。
+    /// </summary>
+    public struct ConfigParseContext
+    {
+        public string FilePath;
+        public int Line;
+        public OverrideMode Mode;
     }
 }

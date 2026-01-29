@@ -1,0 +1,23 @@
+{
+    "name": "XM.Utils.Tests",
+    "rootNamespace": "XM.Utils",
+    "references": [
+        "GUID:1c65caa36780d5c4796b606a965a7a4e",
+        "GUID:e0cd26848372d4e5c891c569017e11f1",
+        "GUID:f51ebe6a0ceec4240a699833d6309b23",
+        "GUID:b2f1fc1aca9012145bfe9a26035d1fea"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

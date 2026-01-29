@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<YooAssetPackage>
+  <PackageName>MyMod</PackageName>
+  <AssetPath>Asset</AssetPath>
+  <Description>Mod 资源包，资源路径固定为 Asset 目录。</Description>
+</YooAssetPackage>

@@ -1,0 +1,22 @@
+{
+    "name": "UnityToolkit",
+    "rootNamespace": "UnityToolkit",
+    "references": [
+        "GUID:c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4",
+        "GUID:1c65caa36780d5c4796b606a965a7a4e",
+        "GUID:b2f1fc1aca9012145bfe9a26035d1fea"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Scriban.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

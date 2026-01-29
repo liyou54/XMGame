@@ -284,7 +284,21 @@ namespace XM.Editor
                             info.RequiredUsings.Add(globalAttr.ConverterType.Namespace);
                     }
                 }
-                
+
+                // 无字段级转换器时：若字段类型在程序集级注册了转换器（如 [assembly: XmlGlobalConvert(..., "global")]），则按域使用
+                if (!fieldInfo.NeedsConverter)
+                {
+                    var assemblyDomain = GetConverterDomainForType(info.ManagedType.Assembly, field.FieldType);
+                    if (!string.IsNullOrEmpty(assemblyDomain))
+                    {
+                        fieldInfo.NeedsConverter = true;
+                        fieldInfo.ConverterDomain = assemblyDomain;
+                        fieldInfo.SourceType = GetTypeName(typeof(string));
+                        fieldInfo.TargetType = GetTypeName(field.FieldType);
+                        fieldInfo.UnmanagedType = fieldInfo.TargetType;
+                    }
+                }
+
                 if (!fieldInfo.NeedsConverter)
                 {
                     // 映射到非托管类型

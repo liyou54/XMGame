@@ -1,0 +1,34 @@
+﻿2026-01-30 02:16:54.617 [INFO] Begin to build package : MyMod by BuiltinBuildPipeline
+2026-01-30 02:16:54.618 [INFO] --------------------------------------------->TaskPrepare<--------------------------------------------
+2026-01-30 02:16:54.624 [WARN] [ErrorCode130] Starting with UnityEngine2021, recommend use script build pipeline (SBP) !
+2026-01-30 02:16:54.624 [INFO] TaskPrepare It takes 0 seconds in total
+2026-01-30 02:16:54.624 [INFO] --------------------------------------------->TaskGetBuildMap<--------------------------------------------
+2026-01-30 02:16:54.877 [INFO] TaskGetBuildMap It takes 0 seconds in total
+2026-01-30 02:16:54.878 [INFO] --------------------------------------------->TaskBuilding<--------------------------------------------
+2026-01-30 02:16:54.977 [INFO] UnityEngine build success !
+2026-01-30 02:16:54.977 [INFO] TaskBuilding It takes 0 seconds in total
+2026-01-30 02:16:54.977 [INFO] --------------------------------------------->TaskVerifyBuildResult<--------------------------------------------
+2026-01-30 02:16:54.979 [INFO] Build results verify success!
+2026-01-30 02:16:54.979 [INFO] TaskVerifyBuildResult It takes 0 seconds in total
+2026-01-30 02:16:54.979 [INFO] --------------------------------------------->TaskEncryption<--------------------------------------------
+2026-01-30 02:16:54.979 [INFO] TaskEncryption It takes 0 seconds in total
+2026-01-30 02:16:54.979 [INFO] --------------------------------------------->TaskUpdateBundleInfo<--------------------------------------------
+2026-01-30 02:16:54.983 [INFO] TaskUpdateBundleInfo It takes 0 seconds in total
+2026-01-30 02:16:54.983 [INFO] --------------------------------------------->TaskCreateManifest<--------------------------------------------
+2026-01-30 02:16:54.989 [INFO] Create package manifest file: D:/Project/unity/XMGame/XModTest/Bundles/StandaloneWindows64/MyMod/20260130021654/MyMod_20260130021654.json
+2026-01-30 02:16:55.002 [INFO] Create package manifest file: D:/Project/unity/XMGame/XModTest/Bundles/StandaloneWindows64/MyMod/20260130021654/MyMod_20260130021654.bytes
+2026-01-30 02:16:55.003 [INFO] Create package manifest hash file: D:/Project/unity/XMGame/XModTest/Bundles/StandaloneWindows64/MyMod/20260130021654/MyMod_20260130021654.hash
+2026-01-30 02:16:55.004 [INFO] Create package manifest version file: D:/Project/unity/XMGame/XModTest/Bundles/StandaloneWindows64/MyMod/20260130021654/MyMod.version
+2026-01-30 02:16:55.010 [INFO] TaskCreateManifest It takes 0 seconds in total
+2026-01-30 02:16:55.010 [INFO] --------------------------------------------->TaskCreateReport<--------------------------------------------
+2026-01-30 02:16:55.013 [INFO] Create build report file: D:/Project/unity/XMGame/XModTest/Bundles/StandaloneWindows64/MyMod/20260130021654/MyMod_20260130021654.report
+2026-01-30 02:16:55.014 [INFO] TaskCreateReport It takes 0 seconds in total
+2026-01-30 02:16:55.014 [INFO] --------------------------------------------->TaskCreatePackage<--------------------------------------------
+2026-01-30 02:16:55.014 [INFO] Start making patch package: D:/Project/unity/XMGame/XModTest/Bundles/StandaloneWindows64/MyMod/20260130021654
+2026-01-30 02:16:55.020 [INFO] TaskCreatePackage It takes 0 seconds in total
+2026-01-30 02:16:55.022 [INFO] --------------------------------------------->TaskCopyBuildinFiles<--------------------------------------------
+2026-01-30 02:16:55.023 [INFO] TaskCopyBuildinFiles It takes 0 seconds in total
+2026-01-30 02:16:55.023 [INFO] --------------------------------------------->TaskCreateCatalog<--------------------------------------------
+2026-01-30 02:16:55.024 [INFO] TaskCreateCatalog It takes 0 seconds in total
+2026-01-30 02:16:55.024 [INFO] Total build process time: 0 seconds
+2026-01-30 02:16:55.025 [INFO] Resource pipeline build success

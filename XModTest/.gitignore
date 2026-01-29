@@ -1,0 +1,21 @@
+# Unity 生成目录
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+
+# IDE / 工具
+.vs/
+.consulo/
+.idea/
+*.sln.iml
+
+# 系统
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini

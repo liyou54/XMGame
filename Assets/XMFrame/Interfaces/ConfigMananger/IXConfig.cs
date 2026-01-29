@@ -1,17 +1,17 @@
 namespace XM
 {
     /// <summary>
-    /// 配置覆盖模式
+    /// 配置覆盖模式。异常策略：None/ReWrite 严格（解析失败打 Error 含文件/行/字段，仍正常序列化返回 obj）；Modify 宽松（仅 Warning）；Delete 不反序列化。
     /// </summary>
     public enum OverrideMode
     {
-        /// <summary>无覆盖，新增配置</summary>
+        /// <summary>无覆盖，新增配置。严格：Error(文件,行,字段) 仍返回 config</summary>
         None,
-        /// <summary>追加</summary>
-        Add,
-        /// <summary>删除</summary>
+        /// <summary>追加。严格：Error(文件,行,字段) 仍返回 config</summary>
+        ReWrite,
+        /// <summary>删除。不反序列化</summary>
         Delete,
-        /// <summary>修改</summary>
+        /// <summary>修改。宽松：仅 Warning</summary>
         Modify
     }
 

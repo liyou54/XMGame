@@ -34,17 +34,24 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
 
     public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
     {
+        return DeserializeConfigFromXml(configItem, mod, configName, OverrideMode.None);
+    }
+
+    public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName, OverrideMode overrideMode)
+    {
+        var config = (TestConfig)Create();
         try
         {
-            var config = (TestConfig)Create();
             FillFromXml(config, configItem, mod, configName);
-            return config;
         }
         catch (Exception ex)
         {
-            ConfigClassHelper.LogParseWarning("(整体)", configName, ex);
-            throw;
+            if (overrideMode == OverrideMode.None || overrideMode == OverrideMode.ReWrite)
+                ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "(整体)", ex);
+            else
+                ConfigClassHelper.LogParseWarning("(整体)", configName, ex);
         }
+        return config;
     }
 
     public override void FillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName)
@@ -81,7 +88,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("Id", ConfigClassHelper.GetXmlFieldValue(configItem, "Id"), ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "Id", ex); else ConfigClassHelper.LogParseWarning("Id", ConfigClassHelper.GetXmlFieldValue(configItem, "Id"), ex);
                 return default;
             }
         }
@@ -106,7 +113,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestSample", null, ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestSample", ex); else ConfigClassHelper.LogParseWarning("TestSample", null, ex);
                 return new List<int>();
             }
         }
@@ -123,7 +130,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestDictSample", null, ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestDictSample", ex); else ConfigClassHelper.LogParseWarning("TestDictSample", null, ex);
                 return new Dictionary<int, int>();
             }
         }
@@ -140,7 +147,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestKeyList", null, ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestKeyList", ex); else ConfigClassHelper.LogParseWarning("TestKeyList", null, ex);
                 return new List<CfgS<TestConfigUnManaged>>();
             }
         }
@@ -157,7 +164,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestKeyList1", null, ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestKeyList1", ex); else ConfigClassHelper.LogParseWarning("TestKeyList1", null, ex);
                 return new Dictionary<int, List<List<CfgS<TestConfigUnManaged>>>>();
             }
         }
@@ -175,7 +182,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestKeyHashSet", ConfigClassHelper.GetXmlFieldValue(configItem, "TestKeyHashSet"), ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestKeyHashSet", ex); else ConfigClassHelper.LogParseWarning("TestKeyHashSet", ConfigClassHelper.GetXmlFieldValue(configItem, "TestKeyHashSet"), ex);
                 return new HashSet<int>();
             }
         }
@@ -192,7 +199,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestKeyDict", null, ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestKeyDict", ex); else ConfigClassHelper.LogParseWarning("TestKeyDict", null, ex);
                 return new Dictionary<CfgS<TestConfigUnManaged>, CfgS<TestConfigUnManaged>>();
             }
         }
@@ -209,7 +216,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestSetKey", ConfigClassHelper.GetXmlFieldValue(configItem, "TestSetKey"), ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestSetKey", ex); else ConfigClassHelper.LogParseWarning("TestSetKey", ConfigClassHelper.GetXmlFieldValue(configItem, "TestSetKey"), ex);
                 return new HashSet<CfgS<TestConfigUnManaged>>();
             }
         }
@@ -227,7 +234,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestSetSample", ConfigClassHelper.GetXmlFieldValue(configItem, "TestSetSample"), ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestSetSample", ex); else ConfigClassHelper.LogParseWarning("TestSetSample", ConfigClassHelper.GetXmlFieldValue(configItem, "TestSetSample"), ex);
                 return new HashSet<int>();
             }
         }
@@ -243,7 +250,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestNested", null, ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestNested", ex); else ConfigClassHelper.LogParseWarning("TestNested", null, ex);
                 return null;
             }
         }
@@ -261,7 +268,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestNestedConfig", null, ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestNestedConfig", ex); else ConfigClassHelper.LogParseWarning("TestNestedConfig", null, ex);
                 return new List<NestedConfig>();
             }
         }
@@ -277,7 +284,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("Foreign", ConfigClassHelper.GetXmlFieldValue(configItem, "Foreign"), ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "Foreign", ex); else ConfigClassHelper.LogParseWarning("Foreign", ConfigClassHelper.GetXmlFieldValue(configItem, "Foreign"), ex);
                 return default;
             }
         }
@@ -300,7 +307,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestIndex2", ConfigClassHelper.GetXmlFieldValue(configItem, "TestIndex2"), ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestIndex2", ex); else ConfigClassHelper.LogParseWarning("TestIndex2", ConfigClassHelper.GetXmlFieldValue(configItem, "TestIndex2"), ex);
                 return default;
             }
         }
@@ -316,7 +323,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             }
             catch (Exception ex)
             {
-                ConfigClassHelper.LogParseWarning("TestIndex3", ConfigClassHelper.GetXmlFieldValue(configItem, "TestIndex3"), ex);
+                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "TestIndex3", ex); else ConfigClassHelper.LogParseWarning("TestIndex3", ConfigClassHelper.GetXmlFieldValue(configItem, "TestIndex3"), ex);
                 return default;
             }
         }
