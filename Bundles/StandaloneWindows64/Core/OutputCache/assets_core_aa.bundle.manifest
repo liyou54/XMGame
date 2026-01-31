@@ -1,0 +1,24 @@
+ManifestFileVersion: 0
+UnityVersion: 6000.0.29f1
+CRC: 242051484
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: 2b833f663ad2cc3bae02588e9f1b54da
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 4afb0d898c1c22a5e88248733bd69457
+  IncrementalBuildHash:
+    serializedVersion: 2
+    Hash: c21f642ffaf844ab843a4d81b6142968
+HashAppended: 0
+ClassTypes:
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/Core/AA/New Material.mat
+Dependencies:
+- D:/Project/unity/XMGame/Bundles/StandaloneWindows64/Core/OutputCache/unityshaders.bundle

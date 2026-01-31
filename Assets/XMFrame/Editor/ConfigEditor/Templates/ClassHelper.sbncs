@@ -13,9 +13,22 @@ namespace {{ namespace }}
 /// </summary>
 public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_name }}, {{ unmanaged_type_name }}>
 {
+    public static TblI TblI { get; private set; }
+    public static TblS TblS { get; private set; }
+
     static {{ helper_class_name }}()
     {
-        CfgS<{{ unmanaged_type_name }}>.TableName = "{{ table_name }}";
+        const string __tableName = "{{ table_name }}";
+        CfgS<{{ unmanaged_type_name }}>.TableName = __tableName;
+        try
+        {
+            var __cfgSType = typeof(CfgS<>).MakeGenericType(typeof({{ unmanaged_type_name }}));
+            var __prop = __cfgSType.GetProperty("TableName", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            __prop?.SetValue(null, __tableName);
+        }
+        catch { }
+        const string __modName = "{{ mod_name }}";
+        TblS = new TblS(new ModS(__modName), __tableName);
     }
 
     public {{ helper_class_name }}(IConfigDataCenter dataCenter)
@@ -28,12 +41,15 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
 
     public override TblS GetTblS()
     {
-        return new TblS(new ModS("Default"), "{{ table_name }}");
+        return TblS;
     }
 
-    public override void SetTblIDefinedInMod(ModI modHandle)
+    /// <summary>由 TblI 分配时一并确定，无需单独字段。</summary>
+    public static ModI DefinedInMod => TblI.Mod;
+
+    public override void SetTblIDefinedInMod(TblI c)
     {
-        _definedInMod = modHandle;
+        TblI = c;
     }
 
     public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
@@ -77,8 +93,6 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
 
 {{~ end ~}}
     #endregion
-
-    private ModI _definedInMod;
 }
 
 {{~ if namespace != "" ~}}

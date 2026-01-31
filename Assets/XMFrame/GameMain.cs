@@ -363,7 +363,7 @@ namespace XM
             }
             catch (Exception ex)
             {
-                XLog.ErrorFormat("初始化管理器失败: {0}, 错误: {1}", managerType.Name, ex.Message);
+                XLog.ErrorFormat("初始化管理器失败: {0}, 错误: {1}", managerType.Name, XM.Utils.ExceptionUtil.GetMessageWithInner(ex));
             }
         }
     }
@@ -486,7 +486,7 @@ namespace XM
         }
         catch (Exception ex)
         {
-            XLog.ErrorFormat("创建管理器失败: {0}, 错误: {1}", type.Name, ex.Message);
+            XLog.ErrorFormat("创建管理器失败: {0}, 错误: {1}", type.Name, XM.Utils.ExceptionUtil.GetMessageWithInner(ex));
             throw;
         }
     }

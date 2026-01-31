@@ -30,8 +30,8 @@ MonoBehaviour:
       AssetTags: 
       ActiveRuleName: EnableGroup
       Collectors:
-      - CollectPath: Assets/Mods/MyMod/Asset/dwf
-        CollectorGUID: c96d19bb57332cb46b3b1d42b60e36c7
+      - CollectPath: Assets/Mods/MyMod/Asset
+        CollectorGUID: 07bcafc81b732eb4a802df7232d55d11
         CollectorType: 0
         AddressRuleName: AddressByFileName
         PackRuleName: PackDirectory

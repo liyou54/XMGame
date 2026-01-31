@@ -29,18 +29,36 @@ public class ModConfig
     public string IconPath { get; set; }
     public string HomePageLink { get; set; }
     public string ImagePath { get; set; }
+    public string PackageName { get; set; }
+    
+    public string AssetName { get; set; }
 
-    public ModConfig(string modName, string version, string author, string description, string dllPath, 
-        string iconPath = "", string homePageLink = "", string imagePath = "")
+    public List<string> ConfigFiles { get; set; }
+
+    public ModConfig(
+        string modName,
+        string version,
+        string author,
+        string description,
+        string dllPath,
+        string packageName,
+        List<string> configFiles, 
+        string assetName,
+        string iconPath = "",
+        string homePageLink = "",
+        string imagePath = "")
     {
-        ModName = modName;
-        Version = version;
-        Author = author;
-        Description = description;
-        DllPath = dllPath;
-        IconPath = iconPath;
-        HomePageLink = homePageLink;
-        ImagePath = imagePath;
+        ModName = modName ?? "";
+        Version = version ?? "1.0.0";
+        Author = author ?? "";
+        Description = description ?? "";
+        DllPath = dllPath ?? "";
+        PackageName = packageName ?? modName ?? "";
+        ConfigFiles = configFiles ?? new List<string>();
+        AssetName = assetName ?? "";
+        IconPath = iconPath ?? "";
+        HomePageLink = homePageLink ?? "";
+        ImagePath = imagePath ?? "";
     }
 }
 
@@ -53,8 +71,7 @@ public class ModRuntime
     public Assembly? Assembly { get; set; }
 
     public List<Type> ConfigDefineTypes { get; set; }  = new List<Type>();
-
-
+    
     public  ModRuntime(ModS modKey,  ModConfig config,Assembly? assembly, ModBase? modEntry)
     {
         ModS = modKey;

@@ -26,7 +26,7 @@ namespace XM.Contracts
         /// 读取已保存的Mod配置列表
         /// </summary>
         /// <returns>Mod配置列表，如果不存在则返回空列表</returns>
-        List<SavedModInfo> LoadModConfigs();
+        List<SavedModInfo> LoadGameMetaSave();
 
         /// <summary>
         /// 保存Mod配置列表

@@ -1,0 +1,26 @@
+{
+"Date": "2026/1/31 0:53:04",
+"UnityVersion": "6000.0.29f1",
+"com.unity.scriptablebuildpipeline": "2.1.4",
+"traceEvents": [
+{"name": "AssetDatabase.SaveAssets", "ph": "X", "dur": 67821.1, "tid": 1, "ts": 1206, "pid": 1}
+,{"name": "SwitchToBuildPlatform", "ph": "X", "dur": 152.799999999999, "tid": 1, "ts": 113854, "pid": 1}
+,{"name": "RebuildSpriteAtlasCache", "ph": "X", "dur": 90.5000000000058, "tid": 1, "ts": 114184, "pid": 1}
+,{"name": "BuildPlayerScripts", "ph": "X", "dur": 3328998.8, "tid": 1, "ts": 114318, "pid": 1}
+,{"name": "PostScriptsCallback", "ph": "X", "dur": 181.599999999889, "tid": 1, "ts": 3443588, "pid": 1}
+,{"name": "CalculateSceneDependencyData", "ph": "X", "dur": 1475.09999999966, "tid": 1, "ts": 3443892, "pid": 1}
+,{"name": "CalculateCustomDependencyData", "ph": "X", "dur": 967.200000000048, "tid": 1, "ts": 3445504, "pid": 1}
+,{"name": "CalculateAssetDependencyData", "ph": "X", "dur": 69097.4000000001, "tid": 1, "ts": 3446618, "pid": 1, "args": {"0":"a5f5dee28bca60e4fb7083ef5281cde0", "1":"933532a4fcc9baf4fa0491de14d08ed7"}}
+,{"name": "Gathering Cache Entries to Load", "ph": "X", "dur": 12525.2, "tid": 1, "ts": 3448749, "pid": 1}
+,{"name": "LoadCachedData", "ph": "X", "dur": 7766.10000000028, "tid": 1, "ts": 3452907, "pid": 1, "args": {"0":"2 items", "1":"Time spent deserializing: 6ms", "2":"Local Cache hit count: 0"}}
+,{"name": "Read and deserialize cache info", "ph": "X", "dur": 7181.00000000004, "tid": 1, "ts": 3453435, "pid": 1}
+,{"name": "Check for changed dependencies", "ph": "X", "dur": 508.600000000115, "tid": 1, "ts": 3460716, "pid": 1, "args": {"0":"Unchanged dependencies count: 0"}}
+,{"name": "Calculate Asset Dependencies", "ph": "X", "dur": 406.500000000051, "tid": 1, "ts": 3461727, "pid": 1}
+,{"name": "Calculate Asset Dependencies", "ph": "X", "dur": 197.80000000037, "tid": 1, "ts": 3462136, "pid": 1}
+,{"name": "Gathering Cache Entries to Save", "ph": "X", "dur": 38387.4000000001, "tid": 1, "ts": 3471640, "pid": 1}
+,{"name": "SaveCachedData", "ph": "X", "dur": 29676.3000000001, "tid": 1, "ts": 3480349, "pid": 1, "args": {"0":"Saving 2 infos"}}
+,{"name": "SerializingCacheInfos[2]", "ph": "X", "dur": 28506.3999999998, "tid": 1, "ts": 3481513, "pid": 1}
+,{"name": "StripUnusedSpriteSources", "ph": "X", "dur": 767.900000000282, "tid": 1, "ts": 3516461, "pid": 1}
+,{"name": "CreateBuiltInShadersBundle", "ph": "X", "dur": 1564.10000000005, "tid": 1, "ts": 3517493, "pid": 1}
+]
+}

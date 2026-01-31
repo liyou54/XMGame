@@ -10,6 +10,10 @@ namespace XModToolkit.Config
         public string Namespace { get; set; }
         public string ManagedTypeName { get; set; }
         public string UnmanagedTypeName { get; set; }
+        /// <summary>表名：优先来自 [XmlDefined(xmlName)]，否则为类型名。注入到 CfgS&lt;T&gt;.TableName 与 GetTblS()。</summary>
+        public string TableName { get; set; }
+        /// <summary>Mod 名称：来自程序集 [ModName] 特性，生成时静态读取后直接赋字符串，供 TblS 使用。</summary>
+        public string ModName { get; set; }
         public bool HasBase { get; set; }
         public string BaseManagedTypeName { get; set; }
         public string BaseUnmanagedTypeName { get; set; }

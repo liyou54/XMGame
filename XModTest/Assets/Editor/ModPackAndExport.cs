@@ -3,12 +3,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Xml;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
 using YooAsset;
 using YooAsset.Editor;
+using Assembly = System.Reflection.Assembly;
 
 namespace XMod.Editor
 {
@@ -56,12 +58,102 @@ namespace XMod.Editor
             return TryGetSelectedModName(out _);
         }
 
+        [MenuItem("Mod/生成配置代码", false, 1)]
+        public static void GenerateConfigCodeForAllMods()
+        {
+            var modNames = GetModNames();
+            if (modNames.Count == 0)
+            {
+                EditorUtility.DisplayDialog("生成配置代码", "未找到任何 Mod。请在 Assets/Mods/ 下创建含 ModDefine.xml 的 Mod 目录。", "确定");
+                return;
+            }
+            int done = 0, skipped = 0;
+            foreach (string modName in modNames)
+            {
+                if (GenerateConfigCodeForMod(modName))
+                    done++;
+                else
+                    skipped++;
+            }
+            EditorUtility.DisplayDialog("生成配置代码", $"已为 {done} 个 Mod 生成配置代码" + (skipped > 0 ? $"，{skipped} 个跳过（无程序集或无 XConfig 类型）" : "") + "。", "确定");
+            AssetDatabase.Refresh();
+        }
+
+        [MenuItem(AssetsModMenuPrefix + "生成配置代码", false, 1)]
+        public static void GenerateConfigCodeFromContext()
+        {
+            if (!TryGetSelectedModName(out string modName))
+                return;
+            if (GenerateConfigCodeForMod(modName))
+                EditorUtility.DisplayDialog("生成配置代码", $"已为 Mod \"{modName}\" 生成 ClassHelper 与 Unmanaged 配置代码。", "确定");
+            else
+                EditorUtility.DisplayDialog("生成配置代码", $"无法为 Mod \"{modName}\" 生成代码：未找到程序集或该 Mod 下无 XConfig 类型。请先编译工程。", "确定");
+            AssetDatabase.Refresh();
+        }
+
+        [MenuItem(AssetsModMenuPrefix + "生成配置代码", true, 1)]
+        public static bool GenerateConfigCodeFromContextValidate()
+        {
+            return TryGetSelectedModName(out _);
+        }
+
+        /// <summary>
+        /// 为指定 Mod 生成配置代码（ClassHelper + Unmanaged），输出到 Mod 目录下 Config/Code.Gen。
+        /// 返回是否成功（找到程序集并至少生成了代码）。
+        /// </summary>
+        public static bool GenerateConfigCodeForMod(string modName)
+        {
+            Assembly assembly = GetModAssembly(modName);
+            if (assembly == null)
+            {
+                Debug.LogWarning($"[ModPackAndExport] 未找到 Mod 程序集: {modName}，请先编译工程。");
+                return false;
+            }
+            string outputPath = Path.GetFullPath(Path.Combine(Application.dataPath, ModsFolderName, modName, "Config", "Code.Gen"));
+            try
+            {
+                UnityToolkit.ClassHelperCodeGenerator.GenerateClassHelperForAssemblies(new List<Assembly> { assembly }, outputPath);
+                UnityToolkit.UnmanagedCodeGenerator.GenerateUnmanagedCodeForAssemblies(new List<Assembly> { assembly }, outputPath);
+                Debug.Log($"[ModPackAndExport] 已为 Mod \"{modName}\" 生成配置代码 -> {outputPath}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[ModPackAndExport] 生成配置代码失败: {modName}, {ex.Message}\n{ex.StackTrace}");
+                return false;
+            }
+        }
+
+        private static Assembly GetModAssembly(string modName)
+        {
+            if (string.IsNullOrEmpty(modName)) return null;
+            string asmName = modName.Replace(" ", "");
+            return AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => string.Equals(a.GetName().Name, asmName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static List<string> GetModNames()
+        {
+            string modsRoot = Path.Combine(Application.dataPath, ModsFolderName);
+            var list = new List<string>();
+            if (!Directory.Exists(modsRoot)) return list;
+            foreach (string dir in Directory.GetDirectories(modsRoot))
+            {
+                if (File.Exists(Path.Combine(dir, ModDefineXmlName)))
+                    list.Add(Path.GetFileName(dir));
+            }
+            return list;
+        }
+
         /// <summary>
         /// 先请求编译，编译完成后再打包并导出（仅打包当前选中的 Mod 文件夹）。
+        /// 导出前自动生成配置代码（ClassHelper + Unmanaged），再触发编译以使生成代码参与构建。
         /// </summary>
         private static void RequestCompileThenPackAndExport(string modName)
         {
             Debug.Log($"[ModPackAndExport] 请求编译并打包导出: {modName}");
+            if (GenerateConfigCodeForMod(modName))
+                Debug.Log($"[ModPackAndExport] 已自动生成配置代码: {modName}");
             CompilationPipeline.RequestScriptCompilation();
             EditorApplication.delayCall += OnFirstDelayCall;
             void OnFirstDelayCall()
@@ -91,10 +183,14 @@ namespace XMod.Editor
         /// </summary>
         private static void TriggerYooAssetBuildThenExport(string modName)
         {
-            Debug.Log($"[ModPackAndExport] 开始 YooAsset 打包: {modName}");
+            string definePath = Path.Combine(Path.Combine(Application.dataPath, ModsFolderName), modName);
+            definePath = Path.Combine(definePath, ModDefineXmlName);
+            string packageName = File.Exists(definePath) ? GetPackageNameFromModDefine(definePath, modName) : modName;
+            string assetName = File.Exists(definePath) ? GetAssetNameFromModDefine(definePath) : "Asset";
+            Debug.Log($"[ModPackAndExport] 开始 YooAsset 打包: {modName}, 包名: {packageName}, 资源根: Assets/{ModsFolderName}/{modName}/{assetName}");
             try
             {
-                string yooErr = TryTriggerYooAssetBuild(modName);
+                string yooErr = TryTriggerYooAssetBuild(packageName, modName, assetName);
                 if (!string.IsNullOrEmpty(yooErr))
                     Debug.LogWarning($"[ModPackAndExport] YooAsset 打包未执行: {yooErr}");
             }
@@ -109,7 +205,10 @@ namespace XMod.Editor
         private static void DoPackAndExportWithDialog(string modName)
         {
             Debug.Log($"[ModPackAndExport] DoPackAndExportWithDialog: {modName}");
-            if (PackAndExport(modName, out string err))
+            string definePath = Path.Combine(Path.Combine(Application.dataPath, ModsFolderName), modName);
+            definePath = Path.Combine(definePath, ModDefineXmlName);
+            string packageName = File.Exists(definePath) ? GetPackageNameFromModDefine(definePath, modName) : modName;
+            if (PackAndExport(modName, packageName, out string err))
                 EditorUtility.DisplayDialog("打包并导出", $"Mod \"{modName}\" 已导出到主项目 {MainProjectModsFolderName} 文件夹。", "确定");
             else
                 EditorUtility.DisplayDialog("打包并导出失败", err, "确定");
@@ -119,46 +218,88 @@ namespace XMod.Editor
         /// 直接调用 YooAsset.Editor 构建接口，对指定包名执行打包。参考官方文档 Jenkins 支持示例。
         /// https://www.yooasset.com/docs/guide-editor/AssetBundleBuilder
         /// Mod 打包并导出时固定使用 BuiltinBuildPipeline，避免 SBP 与 Unity BuildContext（如 IBundleExplicitObjectLayout）不兼容导致 CreateBuiltInShadersBundle 报错。
+        /// 构建前将收集器的 CollectPath 设为 Mod 文件夹（Assets/Mods/modName/assetName），实现以 Mod 文件夹为资源根目录。
         /// </summary>
-        private static string TryTriggerYooAssetBuild(string packageName)
+        private static string TryTriggerYooAssetBuild(string packageName, string modName, string assetName)
         {
             try
             {
-                BuildTarget buildTarget = EditorUserBuildSettings.activeBuildTarget;
-                string buildOutputRoot = AssetBundleBuilderHelper.GetDefaultBuildOutputRoot();
-                string streamingAssetsRoot = AssetBundleBuilderHelper.GetStreamingAssetsRoot();
-                string packageVersion = DateTime.Now.ToString("yyyyMMddHHmmss");
-
-                // Mod 打包固定使用内置管线，避免 ScriptableBuildPipeline 与 Unity SBP 上下文不兼容
-                BuiltinBuildParameters buildParameters = new BuiltinBuildParameters
+                string modCollectPath = "Assets/" + ModsFolderName + "/" + modName + "/" + assetName;
+                string oldCollectPath = SetPackageCollectPathToModFolder(packageName, modCollectPath);
+                try
                 {
-                    BuildOutputRoot = buildOutputRoot,
-                    BuildinFileRoot = streamingAssetsRoot,
-                    BuildPipeline = EBuildPipeline.BuiltinBuildPipeline.ToString(),
-                    BuildBundleType = (int)EBuildBundleType.AssetBundle,
-                    BuildTarget = buildTarget,
-                    PackageName = packageName,
-                    PackageVersion = packageVersion,
-                    VerifyBuildingResult = true,
-                    EnableSharePackRule = true,
-                    FileNameStyle = EFileNameStyle.BundleName,
-                    BuildinFileCopyOption = EBuildinFileCopyOption.None,
-                    BuildinFileCopyParams = string.Empty,
-                    EncryptionServices = null,
-                    CompressOption = ECompressOption.LZ4,
-                    ClearBuildCacheFiles = false,
-                    UseAssetDependencyDB = true
-                };
-                var pipeline = new BuiltinBuildPipeline();
-                BuildResult result = pipeline.Run(buildParameters, true);
+                    BuildTarget buildTarget = EditorUserBuildSettings.activeBuildTarget;
+                    string buildOutputRoot = AssetBundleBuilderHelper.GetDefaultBuildOutputRoot();
+                    string streamingAssetsRoot = AssetBundleBuilderHelper.GetStreamingAssetsRoot();
+                    string packageVersion = DateTime.Now.ToString("yyyyMMddHHmmss");
 
-                if (result.Success)
-                    return null;
-                return result.ErrorInfo ?? "构建失败";
+                    BuiltinBuildParameters buildParameters = new BuiltinBuildParameters
+                    {
+                        BuildOutputRoot = buildOutputRoot,
+                        BuildinFileRoot = streamingAssetsRoot,
+                        BuildPipeline = EBuildPipeline.BuiltinBuildPipeline.ToString(),
+                        BuildBundleType = (int)EBuildBundleType.AssetBundle,
+                        BuildTarget = buildTarget,
+                        PackageName = packageName,
+                        PackageVersion = packageVersion,
+                        VerifyBuildingResult = true,
+                        EnableSharePackRule = true,
+                        FileNameStyle = EFileNameStyle.BundleName,
+                        BuildinFileCopyOption = EBuildinFileCopyOption.None,
+                        BuildinFileCopyParams = string.Empty,
+                        EncryptionServices = null,
+                        CompressOption = ECompressOption.LZ4,
+                        ClearBuildCacheFiles = false,
+                        UseAssetDependencyDB = true
+                    };
+                    var pipeline = new BuiltinBuildPipeline();
+                    BuildResult result = pipeline.Run(buildParameters, true);
+
+                    if (result.Success)
+                        return null;
+                    return result.ErrorInfo ?? "构建失败";
+                }
+                finally
+                {
+                    if (oldCollectPath != null)
+                        SetPackageCollectPathToModFolder(packageName, oldCollectPath);
+                }
             }
             catch (Exception ex)
             {
                 return ex.Message;
+            }
+        }
+
+        /// <summary>
+        /// 将指定包的收集器 CollectPath 设为 modCollectPath（以 Mod 文件夹为资源根），返回原路径；若未找到包则返回 null。
+        /// </summary>
+        private static string SetPackageCollectPathToModFolder(string packageName, string modCollectPath)
+        {
+            try
+            {
+                var setting = AssetBundleCollectorSettingData.Setting;
+                if (setting?.Packages == null) return null;
+                foreach (var pkg in setting.Packages)
+                {
+                    if (pkg.PackageName != packageName) continue;
+                    if (pkg.Groups == null || pkg.Groups.Count == 0) continue;
+                    var group = pkg.Groups[0];
+                    if (group.Collectors == null || group.Collectors.Count == 0) continue;
+                    var collector = group.Collectors[0];
+                    string oldPath = collector.CollectPath;
+                    collector.CollectPath = modCollectPath;
+                    EditorUtility.SetDirty(setting);
+                    AssetDatabase.SaveAssets();
+                    return oldPath;
+                }
+                Debug.LogWarning($"[ModPackAndExport] 未在收集器中找到包 \"{packageName}\"，请确保 AssetBundleCollectorSetting 中存在同名包且 CollectPath 可指向 Mod 文件夹。");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[ModPackAndExport] 设置收集路径失败: {ex.Message}");
+                return null;
             }
         }
 
@@ -240,7 +381,7 @@ namespace XMod.Editor
                         BuildinFileCopyOption = EBuildinFileCopyOption.None,
                         BuildinFileCopyParams = string.Empty,
                         EncryptionServices = null,
-                        ClearBuildCacheFiles = false,
+                        ClearBuildCacheFiles = false, 
                         UseAssetDependencyDB = true
                     };
                     var pipeline = new RawFileBuildPipeline();
@@ -279,26 +420,30 @@ namespace XMod.Editor
         }
 
         /// <summary>
-        /// 当前选中的是否为单个 Mod 目录（Assets/Mods/xxx 且含 ModDefine.xml）。返回该 Mod 名称。
+        /// 当前选中的是否在某个 Mod 目录下（Assets/Mods/xxx 或其任意子路径），且该 Mod 含 ModDefine.xml。返回该 Mod 名称。
+        /// 支持在 Mod 文件夹内任意位置（子文件夹、文件）右键打包。
         /// </summary>
         private static bool TryGetSelectedModName(out string modName)
         {
             modName = null;
-            string modsRoot = "Assets/" + ModsFolderName;
+            string modsRoot = "Assets/" + ModsFolderName + "/";
             if (Selection.assetGUIDs.Length != 1)
                 return false;
             string path = AssetDatabase.GUIDToAssetPath(Selection.assetGUIDs[0]);
-            if (string.IsNullOrEmpty(path) || !path.StartsWith(modsRoot) || path.Length <= modsRoot.Length + 1)
+            if (string.IsNullOrEmpty(path) || !path.StartsWith(modsRoot, StringComparison.OrdinalIgnoreCase) || path.Length <= modsRoot.Length)
                 return false;
-            string relative = path.Substring(modsRoot.Length).TrimStart('/');
-            if (relative.Contains("/") || relative.Contains("\\"))
+            string relative = path.Substring(modsRoot.Length).TrimStart('/', '\\');
+            if (string.IsNullOrEmpty(relative))
                 return false;
-            string fullPath = Path.Combine(Application.dataPath, "..", path).Replace('/', Path.DirectorySeparatorChar);
-            fullPath = Path.GetFullPath(fullPath);
-            string definePath = Path.Combine(fullPath, ModDefineXmlName);
+            // 取第一段作为 Mod 名（在 Mod 根或任意子目录/文件上右键均可）
+            string firstSegment = relative.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            if (string.IsNullOrEmpty(firstSegment))
+                return false;
+            string modRootFull = Path.GetFullPath(Path.Combine(Application.dataPath, ModsFolderName, firstSegment));
+            string definePath = Path.Combine(modRootFull, ModDefineXmlName);
             if (!File.Exists(definePath))
                 return false;
-            modName = relative;
+            modName = firstSegment;
             return true;
         }
 
@@ -387,9 +532,32 @@ namespace XMod.Editor
         }
 
         /// <summary>
-        /// 打包并导出指定 Mod 到主项目 Mods 文件夹。返回是否成功。
+        /// 打包并导出指定 Mod 到主项目 Mods 文件夹。packageName 从 ModDefine 读取（默认 modName），用于 YooAsset 构建输出目录。
         /// </summary>
         public static bool PackAndExport(string modName, out string error)
+        {
+            error = null;
+            string modsRoot = Path.Combine(Application.dataPath, ModsFolderName);
+            string modRoot = Path.Combine(modsRoot, modName);
+            if (!Directory.Exists(modRoot))
+            {
+                error = $"Mod 目录不存在: {modRoot}";
+                return false;
+            }
+            string definePath = Path.Combine(modRoot, ModDefineXmlName);
+            if (!File.Exists(definePath))
+            {
+                error = $"未找到 {ModDefineXmlName}";
+                return false;
+            }
+            string packageName = GetPackageNameFromModDefine(definePath, modName);
+            return PackAndExport(modName, packageName, out error);
+        }
+
+        /// <summary>
+        /// 打包并导出指定 Mod 到主项目 Mods 文件夹，显式指定 YooAsset 包名。返回是否成功。
+        /// </summary>
+        public static bool PackAndExport(string modName, string packageName, out string error)
         {
             error = null;
             string modsRoot = Path.Combine(Application.dataPath, ModsFolderName);
@@ -475,7 +643,7 @@ namespace XMod.Editor
                 }
 
                 // Bundles：将 YooAsset 构建输出（Bundles/.../包名/版本号）拷贝到 Mods/<modName>/Asset 下
-                string buildOutputDir = GetModBuildOutputDirectory(modName);
+                string buildOutputDir = GetModBuildOutputDirectory(packageName);
                 string assetDst = Path.Combine(targetRoot, AssetFolderName);
                 if (!string.IsNullOrEmpty(buildOutputDir) && Directory.Exists(buildOutputDir))
                 {
@@ -529,6 +697,44 @@ namespace XMod.Editor
             catch
             {
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 从 ModDefine.xml 读取 YooAsset 包名（PackageName），若未配置则返回 modName。
+        /// </summary>
+        private static string GetPackageNameFromModDefine(string definePath, string modName)
+        {
+            try
+            {
+                var doc = new XmlDocument();
+                doc.Load(definePath);
+                var node = doc.DocumentElement?.SelectSingleNode("PackageName");
+                var raw = node?.InnerText?.Trim();
+                return string.IsNullOrEmpty(raw) ? modName : raw;
+            }
+            catch
+            {
+                return modName;
+            }
+        }
+
+        /// <summary>
+        /// 从 ModDefine.xml 读取资源目录名（AssetName），若未配置则返回 "Asset"。
+        /// </summary>
+        private static string GetAssetNameFromModDefine(string definePath)
+        {
+            try
+            {
+                var doc = new XmlDocument();
+                doc.Load(definePath);
+                var node = doc.DocumentElement?.SelectSingleNode("AssetName");
+                var raw = node?.InnerText?.Trim();
+                return string.IsNullOrEmpty(raw) ? "Asset" : raw;
+            }
+            catch
+            {
+                return "Asset";
             }
         }
 

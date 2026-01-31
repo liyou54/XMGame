@@ -45,6 +45,9 @@ public readonly struct ModI : IEquatable<ModI>
     {
         return !(left == right);
     }
+
+    /// <summary>方便调试：返回 ModI(Id)，解析名称由 ModS.ToString 提供。</summary>
+    public override string ToString() => $"ModI({ModId})";
 }
 
 /// <summary>
@@ -98,6 +101,9 @@ public readonly struct TblI : IEquatable<TblI>
     {
         return !(left == right);
     }
+
+    /// <summary>方便调试：返回 TblI(Id)，解析名称由 TblS.ToString 提供。</summary>
+    public override string ToString() => $"TblI({TableId})";
 }
 
 
@@ -149,6 +155,9 @@ public readonly struct TblI<T> : IEquatable<TblI<T>> where T : unmanaged
     {
         return !(left == right);
     }
+
+    /// <summary>方便调试：返回 TblI(Id)，解析名称由 TblS.ToString 提供。</summary>
+    public override string ToString() => $"TblI({TableId})";
 }
 
 
@@ -208,6 +217,9 @@ public readonly struct CfgI : IEquatable<CfgI>
         return !(left == right);
     }
 
+    /// <summary>方便调试：返回 CfgI(Id)，解析名称由 CfgS.ToString 提供。</summary>
+    public override string ToString() => $"CfgI({Id})";
+
     public bool TryGetData<T>(out T data) where T : unmanaged, IConfigUnManaged<T>
     {
         return IConfigDataCenter.I.TryGetConfig(out data);
@@ -264,6 +276,9 @@ public readonly struct CfgI<T> :
     {
         return !(left == right);
     }
+
+    /// <summary>方便调试：返回 CfgI(Id)，解析名称由 CfgS.ToString 提供。</summary>
+    public override string ToString() => $"CfgI({Id})";
 
     public bool TryGetData(out T data)
     {

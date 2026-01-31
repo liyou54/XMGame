@@ -1,0 +1,36 @@
+{
+    "FileVersion": "2025.9.30",
+    "EnableAddressable": false,
+    "SupportExtensionless": true,
+    "LocationToLower": false,
+    "IncludeAssetGUID": false,
+    "ReplaceAssetPathWithAddress": false,
+    "OutputNameStyle": 0,
+    "BuildBundleType": 1,
+    "BuildPipeline": "EditorSimulateBuildPipeline",
+    "PackageName": "Core",
+    "PackageVersion": "Simulate",
+    "PackageNote": "2026/1/31 11:36:58",
+    "AssetList": [
+        {
+            "Address": "",
+            "AssetPath": "Assets/Core/AA/New Material.mat",
+            "AssetGUID": "",
+            "AssetTags": [],
+            "BundleID": 0,
+            "DependBundleIDs": []
+        }
+    ],
+    "BundleList": [
+        {
+            "BundleName": "assets_core_aa.bundle",
+            "UnityCRC": 0,
+            "FileHash": "511eb9289b5ebfd5f1d766fc0f3b90e9",
+            "FileCRC": 0,
+            "FileSize": 3691,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundleIDs": []
+        }
+    ]
+}

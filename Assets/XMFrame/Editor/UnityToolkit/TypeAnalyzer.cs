@@ -43,6 +43,8 @@ namespace UnityToolkit
         public string Namespace { get; set; }
         public string ManagedTypeName { get; set; }
         public string UnmanagedTypeName { get; set; }
+        /// <summary>表名：优先来自 [XmlDefined(xmlName)]，否则为类型名。用于生成 CfgS&lt;T&gt;.TableName 与 GetTblS()。</summary>
+        public string TableName { get; set; }
         public List<FieldInfo> Fields { get; set; } = new List<FieldInfo>();
         public List<IndexGroupInfo> IndexGroups { get; set; } = new List<IndexGroupInfo>();
         public HashSet<string> RequiredUsings { get; set; } = new HashSet<string>();
@@ -74,11 +76,13 @@ namespace UnityToolkit
                     return cached;
             }
 
+            var xmlDefined = configType.GetCustomAttribute<XmlDefinedAttribute>();
             var info = new ConfigTypeInfo
             {
                 ManagedType = configType,
                 Namespace = configType.Namespace ?? string.Empty,
-                ManagedTypeName = configType.Name
+                ManagedTypeName = configType.Name,
+                TableName = !string.IsNullOrEmpty(xmlDefined?.XmlName) ? xmlDefined.XmlName : configType.Name
             };
 
             var baseType = configType.BaseType;

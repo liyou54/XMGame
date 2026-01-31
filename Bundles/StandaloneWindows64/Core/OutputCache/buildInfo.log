@@ -1,0 +1,17 @@
+﻿2026-01-31 01:01:58.920 [INFO] Begin to build package : Core by BuiltinBuildPipeline
+2026-01-31 01:01:58.920 [INFO] --------------------------------------------->TaskPrepare<--------------------------------------------
+2026-01-31 01:01:58.921 [WARN] [ErrorCode130] Starting with UnityEngine2021, recommend use script build pipeline (SBP) !
+2026-01-31 01:01:58.921 [INFO] TaskPrepare It takes 0 seconds in total
+2026-01-31 01:01:58.921 [INFO] --------------------------------------------->TaskGetBuildMap<--------------------------------------------
+2026-01-31 01:01:59.221 [INFO] TaskGetBuildMap It takes 0 seconds in total
+2026-01-31 01:01:59.221 [INFO] --------------------------------------------->TaskBuilding<--------------------------------------------
+2026-01-31 01:01:59.224 [INFO] Total build process time: 0 seconds
+2026-01-31 01:01:59.224 [ERROR] BuiltinBuildPipeline build failed !
+2026-01-31 01:01:59.224 [ERROR] An error occurred in build task TaskBuilding_BBP
+2026-01-31 01:01:59.224 [ERROR] System.InvalidOperationException: Building AssetBundles while in play mode is not allowed, please exit play mode first.
+  at (wrapper managed-to-native) UnityEditor.BuildPipeline.BuildAssetBundlesInternal_Injected(UnityEditor.BuildAssetBundlesParameters&)
+  at UnityEditor.BuildPipeline.BuildAssetBundlesInternal (UnityEditor.BuildAssetBundlesParameters buildParameters) [0x00000] in <20f98a04ac634cc8bf5f95425bb19bb9>:0 
+  at UnityEditor.BuildPipeline.BuildAssetBundles (UnityEditor.BuildAssetBundlesParameters buildParameters) [0x000b8] in <20f98a04ac634cc8bf5f95425bb19bb9>:0 
+  at UnityEditor.BuildPipeline.BuildAssetBundles (System.String outputPath, UnityEditor.AssetBundleBuild[] builds, UnityEditor.BuildAssetBundleOptions assetBundleOptions, UnityEditor.BuildTarget targetPlatform) [0x00050] in <20f98a04ac634cc8bf5f95425bb19bb9>:0 
+  at YooAsset.Editor.TaskBuilding_BBP.YooAsset.Editor.IBuildTask.Run (YooAsset.Editor.BuildContext context) [0x00038] in .\Library\PackageCache\com.tuyoogame.yooasset\Editor\AssetBundleBuilder\BuildPipeline\BuiltinBuildPipeline\BuildTasks\TaskBuilding_BBP.cs:27 
+  at YooAsset.Editor.BuildRunner.Run (System.Collections.Generic.List`1[T] pipeline, YooAsset.Editor.BuildContext context) [0x00085] in .\Library\PackageCache\com.tuyoogame.yooasset\Editor\AssetBundleBuilder\BuildSystem\BuildRunner.cs:41 

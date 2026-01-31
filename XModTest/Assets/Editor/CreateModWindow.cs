@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -25,6 +26,8 @@ namespace XMod.Editor
         private string _author = "";
         private string _description = "";
         private string _dllPath = ""; // 空则用 {ModName}.dll
+        private string _packageName = ""; // 空则与 Mod 名称一致，用于 YooAsset 包名
+        private string _assetName = "Asset"; // YooAsset 资源目录名（相对 Mod 根目录）
         private string _iconPath = "";
         private string _homePageLink = "";
         private string _imagePath = "";
@@ -57,6 +60,12 @@ namespace XMod.Editor
             _dllPath = EditorGUILayout.TextField("DLL 路径（相对 Mod 目录）", _dllPath);
             if (string.IsNullOrWhiteSpace(_dllPath))
                 EditorGUILayout.HelpBox("留空则使用 \"{ModName}.dll\"。", MessageType.None);
+            _packageName = EditorGUILayout.TextField("YooAsset 包名（可选）", _packageName);
+            if (string.IsNullOrWhiteSpace(_packageName))
+                EditorGUILayout.HelpBox("留空则与 Mod 名称一致。", MessageType.None);
+            _assetName = EditorGUILayout.TextField("资源目录名（AssetName）", _assetName);
+            if (string.IsNullOrWhiteSpace(_assetName))
+                EditorGUILayout.HelpBox("留空则使用 \"Asset\"。", MessageType.None);
             _iconPath = EditorGUILayout.TextField("图标路径（相对 Mod 目录）", _iconPath);
             _homePageLink = EditorGUILayout.TextField("主页链接", _homePageLink);
             _imagePath = EditorGUILayout.TextField("图片路径（相对 Mod 目录）", _imagePath);
@@ -80,6 +89,8 @@ namespace XMod.Editor
             string author = _author?.Trim() ?? "";
             string description = _description?.Trim() ?? "";
             string dllPath = string.IsNullOrWhiteSpace(_dllPath) ? $"{modName}.dll" : _dllPath.Trim();
+            string packageName = string.IsNullOrWhiteSpace(_packageName) ? modName : _packageName.Trim();
+            string assetName = string.IsNullOrWhiteSpace(_assetName) ? "Asset" : _assetName.Trim();
             string iconPath = _iconPath?.Trim() ?? "";
             string homePageLink = _homePageLink?.Trim() ?? "";
             string imagePath = _imagePath?.Trim() ?? "";
@@ -89,7 +100,7 @@ namespace XMod.Editor
             string modRoot = Path.Combine(modsRoot, modName);
             string scriptsDir = Path.Combine(modRoot, ScriptsFolderName);
             string xmlDir = Path.Combine(modRoot, XmlFolderName);
-            string assetDir = Path.Combine(modRoot, AssetFolderName);
+            string assetDir = Path.Combine(modRoot, assetName);
 
             if (Directory.Exists(modRoot))
             {
@@ -110,13 +121,14 @@ namespace XMod.Editor
                 if (!Directory.Exists(assetDir))
                     Directory.CreateDirectory(assetDir);
 
-                WriteModDefineXml(modRoot, modName, version, author, description, dllPath, iconPath, homePageLink, imagePath);
-                WriteYooAssetPackageConfig(modRoot, modName, YooAssetPathFixed);
+                WriteModDefineXml(modRoot, modName, version, author, description, dllPath, packageName, assetName, iconPath, homePageLink, imagePath);
+                WriteYooAssetPackageConfig(modRoot, packageName, assetName);
                 WriteModEntryCs(scriptsDir, modName);
+                WriteAssemblyModName(scriptsDir, modName);
                 WriteAsmdef(modRoot, modName);
 
                 AssetDatabase.Refresh();
-                EditorUtility.DisplayDialog("创建 Mod", $"Mod \"{modName}\" 已创建。\n路径: Assets/{ModsFolderName}/{modName}\n含: ModDefine.xml、Xml、Asset、Scripts、YooAssetPackage.xml", "确定");
+                EditorUtility.DisplayDialog("创建 Mod", $"Mod \"{modName}\" 已创建。\n路径: Assets/{ModsFolderName}/{modName}\n含: ModDefine.xml、Xml、Asset、Scripts（含 AssemblyModName.cs）、YooAssetPackage.xml", "确定");
                 Close();
             }
             catch (System.Exception ex)
@@ -127,9 +139,9 @@ namespace XMod.Editor
         }
 
         /// <summary>
-        /// 生成 ModDefine.xml，节点与 ModConfig 对应：Name→ModName, Version, Author, Description, DllPath, IconPath, HomePageLink, ImagePath。
+        /// 生成 ModDefine.xml，节点与 ModConfig 对应：Name→ModName, Version, Author, Description, DllPath, PackageName, AssetName, IconPath, HomePageLink, ImagePath。ConfigFiles 由运行时读 Xml 目录自动获取。
         /// </summary>
-        private static void WriteModDefineXml(string modRoot, string modName, string version, string author, string description, string dllPath, string iconPath, string homePageLink, string imagePath)
+        private static void WriteModDefineXml(string modRoot, string modName, string version, string author, string description, string dllPath, string packageName, string assetName, string iconPath, string homePageLink, string imagePath)
         {
             string path = Path.Combine(modRoot, ModDefineXmlName);
             string xml = $@"<?xml version=""1.0"" encoding=""utf-8""?>
@@ -139,6 +151,8 @@ namespace XMod.Editor
   <Author>{EscapeXml(author)}</Author>
   <Description>{EscapeXml(description)}</Description>
   <DllPath>{EscapeXml(dllPath)}</DllPath>
+  <PackageName>{EscapeXml(packageName)}</PackageName>
+  <AssetName>{EscapeXml(assetName)}</AssetName>
   <IconPath>{EscapeXml(iconPath)}</IconPath>
   <HomePageLink>{EscapeXml(homePageLink)}</HomePageLink>
   <ImagePath>{EscapeXml(imagePath)}</ImagePath>
@@ -194,6 +208,18 @@ namespace {ns}
         }}
     }}
 }}
+";
+            File.WriteAllText(path, content);
+        }
+
+        /// <summary>
+        /// 生成程序集级 Mod 名称特性文件，供主工程通过反射读取该 Mod 程序集对应的 Mod 名。
+        /// </summary>
+        private static void WriteAssemblyModName(string scriptsDir, string modName)
+        {
+            string path = Path.Combine(scriptsDir, "AssemblyModName.cs");
+            string content = $@"// 由「创建 Mod」生成，用于标记程序集对应的 Mod 名称；主工程可通过反射读取。
+[assembly: XM.Contracts.ModNameAttribute(""{modName.Replace("\"", "\\\"")}"")]
 ";
             File.WriteAllText(path, content);
         }

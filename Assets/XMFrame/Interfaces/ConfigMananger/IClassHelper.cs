@@ -35,7 +35,7 @@ namespace XM.Contracts.Config
         public abstract TblS GetTblS();
         public abstract IXConfig Create();
 
-        public abstract void SetTblIDefinedInMod(ModI modHandle);
+        public abstract void SetTblIDefinedInMod(TblI tbl);
 
         /// <summary>
         /// 递归判断本表或父类表中是否已存在该 (mod, configName)

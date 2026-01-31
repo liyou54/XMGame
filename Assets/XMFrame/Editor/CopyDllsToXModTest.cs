@@ -2,14 +2,13 @@
 using System;
 using System.IO;
 using UnityEditor;
-using UnityEditor.Compilation;
 using UnityEngine;
 
 namespace XM.Editor
 {
     /// <summary>
-    /// 程序集编译完成后，将 XMFrame 必要 DLL 拷贝到 XModTest 工程；运行时 DLL 到 Plugins，工具集到 Mod Editor。
-    /// 不拷贝 YooAsset（Mod 工程通过 Package 引用）；每次编译后强制覆盖拷贝。
+    /// 将 XMFrame 必要 DLL 拷贝到 XModTest 工程；运行时 DLL 到 Plugins，工具集到 Mod Editor。
+    /// 不拷贝 YooAsset（Mod 工程通过 Package 引用）。仅通过菜单「XMFrame/拷贝 DLL 到 XModTest」手动执行。
     /// </summary>
     public static class CopyDllsToXModTest
     {
@@ -19,57 +18,12 @@ namespace XM.Editor
         private const string PluginsSubPath = "Plugins/XMFrame";
         private const string EditorPluginsSubPath = "Plugins/Editor/XMFrame";
 
-        private const bool DeferCopyAfterCompile = true;
-        private static bool _copyPending;
-
         private static readonly string[] RuntimeDllNames = { "XM.Utils.dll", "XM.Contracts.dll", "XM.ModAPI.dll", "XM.Runtime.dll" };
         /// <summary>运行时依赖（仅 UniTask）；不拷贝 YooAsset，Mod 工程用 Package</summary>
         private static readonly string[] RuntimeDependencyDllNames = { "UniTask.dll" };
         private static readonly string[] EditorToolDllNames = { "XModToolkit.dll", "UnityToolkit.dll", "XM.Editor.dll" };
         /// <summary>Editor 依赖；不拷贝 YooAsset.Editor</summary>
         private static readonly string[] EditorDependencyDllNames = Array.Empty<string>();
-
-        [InitializeOnLoadMethod]
-        private static void RegisterCompilationFinished()
-        {
-            CompilationPipeline.compilationFinished += OnCompilationFinished;
-            EditorApplication.delayCall += RunCopyOnceAfterLoad;
-        }
-
-        private static void RunCopyOnceAfterLoad()
-        {
-            EditorApplication.delayCall -= RunCopyOnceAfterLoad;
-            CopyDlls();
-        }
-
-        private static void OnCompilationFinished(object context)
-        {
-            try
-            {
-                if (DeferCopyAfterCompile)
-                {
-                    if (_copyPending) return;
-                    _copyPending = true;
-                    EditorApplication.delayCall += OnDeferredCopy;
-                }
-                else
-                {
-                    CopyDlls();
-                }
-            }
-            catch (Exception ex)
-            {
-                _copyPending = false;
-                Debug.LogException(ex);
-            }
-        }
-
-        private static void OnDeferredCopy()
-        {
-            _copyPending = false;
-            try { EditorApplication.delayCall -= OnDeferredCopy; } catch { }
-            CopyDlls();
-        }
 
         private static bool CopyForce(string srcPath, string destPath, string logLabel)
         {

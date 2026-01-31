@@ -13,9 +13,14 @@ namespace XM.Editor.Gen
 /// </summary>
 public sealed class TestInhertClassHelper : ConfigClassHelper<TestInhert, TestInhertUnmanaged>
 {
+    public static TblI TblI { get; private set; }
+    public static TblS TblS { get; private set; }
+
     static TestInhertClassHelper()
     {
-        CfgS<TestInhertUnmanaged>.TableName = "TestInhert";
+        const string __tableName = "TestInhert";
+        CfgS<TestInhertUnmanaged>.TableName = __tableName;
+        TblS = new TblS(new ModS("Default"), __tableName);
     }
 
     public TestInhertClassHelper(IConfigDataCenter dataCenter)
@@ -23,14 +28,16 @@ public sealed class TestInhertClassHelper : ConfigClassHelper<TestInhert, TestIn
     {
     }
 
+    public static ModI DefinedInMod => TblI.Mod;
+
     public override TblS GetTblS()
     {
-        return new TblS(new ModS("Default"), "TestInhert");
+        return TblS;
     }
 
-    public override void SetTblIDefinedInMod(ModI modHandle)
+    public override void SetTblIDefinedInMod(TblI c)
     {
-        _definedInMod = modHandle;
+        TblI = c;
     }
 
     public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
@@ -74,7 +81,6 @@ public sealed class TestInhertClassHelper : ConfigClassHelper<TestInhert, TestIn
 
     #endregion
 
-    private ModI _definedInMod;
 }
 
 }

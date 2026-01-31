@@ -1,0 +1,21 @@
+ManifestFileVersion: 0
+UnityVersion: 6000.0.29f1
+CRC: 3072814105
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: aeb7636405af64733c4b285eea1b5989
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: bb8521372c98e74594d3b7eb1b0a7a88
+  IncrementalBuildHash:
+    serializedVersion: 2
+    Hash: 68dbf549fbdd2abe7640383711b823a1
+HashAppended: 0
+ClassTypes:
+- Class: 48
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Packages/com.unity.render-pipelines.universal/Shaders/Lit.shader
+Dependencies: []

@@ -94,3 +94,10 @@ XModTest/.vs/
 XModTest/.gradle/
 XModTest/ExportedObj/
 XModTest/.consulo/
+
+# 本地临时脚本（修正提交信息用，不提交）
+fix-msg.ps1
+fix-msg.sh
+reword-editor.ps1
+seq-editor.ps1
+commit-msg-utf8.txt

@@ -12,9 +12,14 @@ using XM.Utils;
 /// </summary>
 public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnManaged>
 {
+    public static TblI TblI { get; private set; }
+    public static TblS TblS { get; private set; }
+
     static TestConfigClassHelper()
     {
-        CfgS<TestConfigUnManaged>.TableName = "TestConfig";
+        const string __tableName = "TestConfig";
+        CfgS<TestConfigUnManaged>.TableName = __tableName;
+        TblS = new TblS(new ModS("Default"), __tableName);
     }
 
     public TestConfigClassHelper(IConfigDataCenter dataCenter)
@@ -22,14 +27,16 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
     {
     }
 
+    public static ModI DefinedInMod => TblI.Mod;
+
     public override TblS GetTblS()
     {
-        return new TblS(new ModS("Default"), "TestConfig");
+        return TblS;
     }
 
-    public override void SetTblIDefinedInMod(ModI modHandle)
+    public override void SetTblIDefinedInMod(TblI c)
     {
-        _definedInMod = modHandle;
+        TblI = c;
     }
 
     public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
@@ -330,6 +337,5 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
 
     #endregion
 
-    private ModI _definedInMod;
 }
 

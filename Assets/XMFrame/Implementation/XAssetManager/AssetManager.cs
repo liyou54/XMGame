@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using XM.Contracts;
@@ -15,6 +16,7 @@ namespace XM
     /// </summary>
     [AutoCreate]
     [ManagerDependency(typeof(IPoolManager))]
+    [ManagerDependency(typeof(IModManager))]
     public class AssetManager : ManagerBase<IAssetManager>, IAssetManager
     {
         #region 内部类型定义
@@ -129,7 +131,6 @@ namespace XM
                 // 创建YooAsset资源包
                 var resourcePackage = YooAssets.CreatePackage(packageName);
 
-
                 var resPackageInfo = new ResPackageInfo
                 {
                     ModId = modId,
@@ -138,6 +139,7 @@ namespace XM
                     ResourcePackage = resourcePackage,
                     IsInitialized = false
                 };
+
 
                 // 初始化并加载资源包
                 await InitializeResourcePackageAsync(resPackageInfo);
@@ -231,12 +233,13 @@ namespace XM
                     {
                         _pathToAssetId[path] = new Dictionary<ModI, AssetI>();
                     }
+
                     _pathToAssetId[path][modId] = xAssetIdStruct;
 
                     // 建立AssetId到路径信息的映射（用于延迟加载）
                     _assetIdToPathInfo[xAssetIdStruct] = (modId, path);
 
-                    XLog.InfoFormat("成功创建并注册AssetId，ModId: {0}, Path: {1}, AssetId: {2}", 
+                    XLog.InfoFormat("成功创建并注册AssetId，ModId: {0}, Path: {1}, AssetId: {2}",
                         modId.ModId, path, assetId);
                 }
 
@@ -331,6 +334,7 @@ namespace XM
                     {
                         return default(Address);
                     }
+
                     xAssetId = loadedAssetId;
                 }
                 else
@@ -401,6 +405,7 @@ namespace XM
                     {
                         return default(TAsset);
                     }
+
                     xAssetId = loadedAssetId;
                 }
                 else
@@ -458,7 +463,7 @@ namespace XM
         /// 通过资源地址获取资源ID
         /// </summary>
         public TAsset GetAssetByAddress<TAsset, TAddress>(TAddress address)
-            where TAsset :  IAssetId
+            where TAsset : IAssetId
             where TAddress : IAssetAddress
         {
             int addressId = address.AddressId;
@@ -660,17 +665,17 @@ namespace XM
             // 从对象池获取句柄
             var handle = GetHandleFromPool();
             handle.Id = xAssetId;
-            
+
             // 引用计数+1
             loadedAssetInfo.RefCount++;
-            
+
             // 如果资源在待回收队列中，移除它（资源被重新引用）
             if (_assetsToRecycle.Remove(xAssetId))
             {
                 XLog.DebugFormat("资源被重新引用，从待回收队列中移除，AssetId: {0}", xAssetId.Id);
             }
 
-            XLog.DebugFormat("创建资源句柄，AssetId: {0}, 引用计数: {1}", 
+            XLog.DebugFormat("创建资源句柄，AssetId: {0}, 引用计数: {1}",
                 xAssetId.Id, loadedAssetInfo.RefCount);
 
             return handle;
@@ -679,7 +684,7 @@ namespace XM
         /// <summary>
         /// 释放资源句柄（引用计数-1）
         /// </summary>
-        public  void ReleaseAssetHandle(XAssetHandle handle)
+        public void ReleaseAssetHandle(XAssetHandle handle)
         {
             if (handle == null)
             {
@@ -688,7 +693,7 @@ namespace XM
             }
 
             var assetId = handle.Id;
-            
+
             // 检查资源是否存在
             if (!_loadedAssets.TryGetValue(assetId, out var loadedAssetInfo))
             {
@@ -698,8 +703,8 @@ namespace XM
 
             // 引用计数-1
             loadedAssetInfo.RefCount--;
-            
-            XLog.DebugFormat("释放资源句柄，AssetId: {0}, 剩余引用计数: {1}", 
+
+            XLog.DebugFormat("释放资源句柄，AssetId: {0}, 剩余引用计数: {1}",
                 assetId.Id, loadedAssetInfo.RefCount);
 
             // 如果引用计数降为0，加入待回收队列
@@ -751,7 +756,8 @@ namespace XM
         /// <summary>
         /// 内部异步加载资源方法（提取公共逻辑）
         /// </summary>
-        private async UniTask<AssetI> LoadAssetInternalAsync(ResPackageInfo resPackageInfo, ModI modId, string path, AssetI xAssetId)
+        private async UniTask<AssetI> LoadAssetInternalAsync(ResPackageInfo resPackageInfo, ModI modId, string path,
+            AssetI xAssetId)
         {
             // 使用已创建的AssetId
             var assetIdStruct = xAssetId;
@@ -795,7 +801,7 @@ namespace XM
                 RefCount = 0
             };
             _loadedAssets[assetIdStruct] = loadedAssetInfo;
-            
+
             // 如果资源在待回收Set中，移除它（资源被重新加载）
             _assetsToRecycle.Remove(assetIdStruct);
 
@@ -847,7 +853,7 @@ namespace XM
                 RefCount = 0
             };
             _loadedAssets[assetIdStruct] = loadedAssetInfo;
-            
+
             // 如果资源在待回收Set中，移除它（资源被重新加载）
             _assetsToRecycle.Remove(assetIdStruct);
 
@@ -873,13 +879,13 @@ namespace XM
             {
                 // 创建初始化参数
                 var initParameters = CreateInitParameters(resPackageInfo);
-
                 // 异步初始化资源包
                 var initOperation = resPackageInfo.ResourcePackage.InitializeAsync(initParameters);
 
                 // 等待初始化完成（使用YooAsset的UniTask扩展方法）
                 await initOperation.ToUniTask();
-
+                var operation = resPackageInfo.ResourcePackage.RequestPackageVersionAsync();
+                await operation.ToUniTask();
                 if (initOperation.Status == EOperationStatus.Succeed)
                 {
                     resPackageInfo.IsInitialized = true;
@@ -959,37 +965,14 @@ namespace XM
             }
         }
 
-        /// <summary>
-        /// 创建初始化参数
-        /// </summary>
+
         private OfflinePlayModeParameters CreateInitParameters(ResPackageInfo resPackageInfo)
         {
             var initParameters = new OfflinePlayModeParameters();
-
-            // 设置资源包路径
-            if (!string.IsNullOrEmpty(resPackageInfo.Path))
-            {
-                // 如果是文件路径，使用其所在目录；如果是目录，直接使用
-                string rootDirectory = Directory.Exists(resPackageInfo.Path)
-                    ? resPackageInfo.Path
-                    : System.IO.Path.GetDirectoryName(resPackageInfo.Path);
-
-                if (!string.IsNullOrEmpty(rootDirectory))
-                {
-                    // 转换为Unity可用的路径格式（相对路径）
-                    string relativePath = rootDirectory.Replace('\\', '/');
-                    if (relativePath.StartsWith(Application.dataPath))
-                    {
-                        relativePath = "Assets" + relativePath.Substring(Application.dataPath.Length);
-                    }
-
-                    // 使用 BuildinFileSystemParameters 设置路径
-                    var buildinFileSystemParams =
-                        FileSystemParameters.CreateDefaultBuildinFileSystemParameters(packageRoot: relativePath);
-                    initParameters.BuildinFileSystemParameters = buildinFileSystemParams;
-                }
-            }
-
+            
+            initParameters.BuildinFileSystemParameters = FileSystemParameters.
+                CreateDefaultBuildinFileSystemParameters(packageRoot:resPackageInfo.Path);
+            initParameters.BuildinFileSystemParameters.AddParameter(FileSystemParametersDefine.DISABLE_CATALOG_FILE, true);
             return initParameters;
         }
 
@@ -1126,22 +1109,67 @@ namespace XM
         public override UniTask OnCreate()
         {
             XLog.Info("AssetManager OnCreate");
-            
+
             // 初始化 XAssetHandle 对象池
             XAssetHandle.InitializePool();
-            
+
             return UniTask.CompletedTask;
         }
 
-        public override UniTask OnInit()
+        public override async UniTask OnInit()
         {
             XLog.Info("AssetManager OnInit");
+            try
+            {
+                await InitYooAsset();
+                await InitAllModAsset();
+            }
+            catch (NotImplementedException ex)
+            {
+                XLog.WarningFormat("AssetManager 资源包初始化跳过（当前环境可能不支持，如 Editor 下 OfflinePlayMode）: {0}", ex.Message);
+            }
+            catch (Exception ex)
+            {
+                XLog.WarningFormat("AssetManager 资源包初始化异常，将继续运行: {0}", ex.Message);
+            }
 
             // 启动定期回收协程
             _recycleCancellationTokenSource = new CancellationTokenSource();
             StartRecycleCoroutine(_recycleCancellationTokenSource.Token).Forget();
+        }
 
-            return UniTask.CompletedTask;
+        private async UniTask InitYooAsset()
+        {
+            // 必须先初始化 YooAssets，否则 CreatePackage 会报 "YooAssets not initialize !"
+            if (!YooAssets.Initialized)
+                YooAssets.Initialize();
+            if (Application.isEditor)
+            {
+                var package = YooAssets.CreatePackage("Core");
+                var buildResult = EditorSimulateModeHelper.SimulateBuild("Core");    
+                var packageRoot = buildResult.PackageRootDirectory;
+                var fileSystemParams = FileSystemParameters.CreateDefaultEditorFileSystemParameters(packageRoot);
+                var createParameters = new EditorSimulateModeParameters();
+                createParameters.EditorFileSystemParameters = fileSystemParams;
+                var initOperation = package.InitializeAsync(createParameters);
+                await initOperation.ToUniTask();
+            }
+            await UniTask.CompletedTask;
+        }
+
+        private async UniTask InitAllModAsset()
+        {
+            var allMod = IModManager.I.GetSortedModConfigs();
+            var modsRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Mods"));
+            foreach (var mod in allMod)
+            {
+                var assetName = string.IsNullOrEmpty(mod.ModConfig.AssetName) ? "Asset" : mod.ModConfig.AssetName ;
+                var modPath = Path.Combine(modsRoot, mod.ModConfig.ModName, assetName);
+                if (!Directory.Exists(modPath))
+                    continue;
+                var modId = IModManager.I.GetModId(mod.ModConfig.ModName);
+                await CreateResPackage(modId, mod.ModConfig.PackageName, modPath);
+            }
         }
 
         public override async UniTask OnDestroy()
@@ -1207,10 +1235,10 @@ namespace XM
             _pathToAssetId.Clear();
             _assetIdToPathInfo.Clear();
             _assetsToRecycle.Clear();
-            
+
             // 清理 XAssetHandle 对象池
             XAssetHandle.CleanupPool();
-            
+
             _nextAssetId = 1;
 
             XLog.Info("AssetManager OnDestroy");

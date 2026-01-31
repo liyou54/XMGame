@@ -14,9 +14,14 @@ using XM.Utils;
 /// </summary>
 public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, NestedConfigUnManaged>
 {
+    public static TblI TblI { get; private set; }
+    public static TblS TblS { get; private set; }
+
     static NestedConfigClassHelper()
     {
-        CfgS<NestedConfigUnManaged>.TableName = "NestedConfig";
+        const string __tableName = "NestedConfig";
+        CfgS<NestedConfigUnManaged>.TableName = __tableName;
+        TblS = new TblS(new ModS("Default"), __tableName);
     }
 
     public NestedConfigClassHelper(IConfigDataCenter dataCenter)
@@ -25,14 +30,16 @@ public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, Ne
         TypeConverterRegistry.RegisterLocalConverter<String, int2>("", new TestInt2Convert());
     }
 
+    public static ModI DefinedInMod => TblI.Mod;
+
     public override TblS GetTblS()
     {
-        return new TblS(new ModS("Default"), "NestedConfig");
+        return TblS;
     }
 
-    public override void SetTblIDefinedInMod(ModI modHandle)
+    public override void SetTblIDefinedInMod(TblI c)
     {
-        _definedInMod = modHandle;
+        TblI = c;
     }
 
     public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
@@ -188,6 +195,5 @@ public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, Ne
 
     #endregion
 
-    private ModI _definedInMod;
 }
 

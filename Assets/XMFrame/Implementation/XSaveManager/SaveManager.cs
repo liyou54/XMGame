@@ -11,6 +11,9 @@ namespace XM
     [AutoCreate]
     public class SaveManager : ManagerBase<ISaveManager>, ISaveManager
     {
+
+        public static string MetaSavedPath = "../metaSave";
+        
         public override UniTask OnCreate()
         {
             return UniTask.CompletedTask;
@@ -21,9 +24,10 @@ namespace XM
             return UniTask.CompletedTask;
         }
 
-        public List<SavedModInfo> LoadModConfigs()
+        public List<SavedModInfo> LoadGameMetaSave()
         {
-            throw new System.NotImplementedException();
+            var saveMod = new SavedModInfo("MyMod", "1.0.0", true);
+            return new List<SavedModInfo> { saveMod };
         }
 
         public void SaveModConfigs(List<SavedModInfo> modConfigs)

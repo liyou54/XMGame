@@ -1773,8 +1773,7 @@ namespace XM
             // 设置为加载完成状态
             loadUI.Status = EAssetStatus.Success;
 
-            // 使用AddOrUpdate添加到MultiKeyDictionary
-            loadedUIData.AddOrUpdate(loadUI, config.Prefab, cfgId);
+            loadedUIData.Set(loadUI, config.Prefab, cfgId);
 
             XLog.InfoFormat("UI加载完成: {0}", cfgId);
             return loadUI;

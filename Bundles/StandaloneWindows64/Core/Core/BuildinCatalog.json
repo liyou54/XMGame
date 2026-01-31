@@ -1,0 +1,15 @@
+{
+    "FileVersion": "1.0.0",
+    "PackageName": "Core",
+    "PackageVersion": "2026-01-31-53",
+    "Wrappers": [
+        {
+            "BundleGUID": "396299e6fb827fef04d4c95801a92043",
+            "FileName": "396299e6fb827fef04d4c95801a92043.bundle"
+        },
+        {
+            "BundleGUID": "7d30e011b15dcf7b180efbb450446f8d",
+            "FileName": "7d30e011b15dcf7b180efbb450446f8d.bundle"
+        }
+    ]
+}

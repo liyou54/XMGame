@@ -19,7 +19,8 @@ namespace XModToolkit
             scriptObject["managed_type_name"] = dto.ManagedTypeName ?? "";
             scriptObject["unmanaged_type_name"] = dto.UnmanagedTypeName ?? "";
             scriptObject["helper_class_name"] = (dto.ManagedTypeName ?? "") + "ClassHelper";
-            scriptObject["table_name"] = dto.ManagedTypeName ?? "";
+            scriptObject["table_name"] = !string.IsNullOrEmpty(dto.TableName) ? dto.TableName : (dto.ManagedTypeName ?? "");
+            scriptObject["mod_name"] = !string.IsNullOrEmpty(dto.ModName) ? dto.ModName : "Default";
             scriptObject["has_base"] = dto.HasBase;
             scriptObject["base_managed_type_name"] = dto.BaseManagedTypeName ?? "";
             scriptObject["required_usings"] = dto.RequiredUsings ?? new List<string>();

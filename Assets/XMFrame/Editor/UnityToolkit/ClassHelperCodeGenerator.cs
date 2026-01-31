@@ -111,6 +111,7 @@ namespace UnityToolkit
             var fieldAssigns = BuildFieldAssignCodes(typeInfo);
             var converterRegistrations = BuildConverterRegistrations(typeInfo);
             var dto = ToClassHelperDto(typeInfo, fieldAssigns, converterRegistrations);
+            dto.ModName = GetModNameFromAssembly(typeInfo.ManagedType?.Assembly);
             var scriptObject = ClassHelperModelBuilder.Build(dto);
             if (scriptObject == null)
             {
@@ -181,6 +182,31 @@ namespace UnityToolkit
             return list;
         }
 
+        /// <summary>从程序集读取 [ModName] 特性，生成时静态解析，供模板直接赋字符串（无运行时反射）。</summary>
+        private static string GetModNameFromAssembly(Assembly assembly)
+        {
+            if (assembly == null) return "Default";
+            try
+            {
+                var attrType = assembly.GetType("XM.Contracts.ModNameAttribute");
+                if (attrType == null)
+                {
+                    foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+                    {
+                        attrType = a.GetType("XM.Contracts.ModNameAttribute");
+                        if (attrType != null) break;
+                    }
+                }
+                if (attrType == null) return "Default";
+                var attr = Attribute.GetCustomAttribute(assembly, attrType);
+                if (attr == null) return "Default";
+                var prop = attrType.GetProperty("ModName");
+                var v = prop?.GetValue(attr) as string;
+                return !string.IsNullOrEmpty(v) ? v : "Default";
+            }
+            catch { return "Default"; }
+        }
+
         /// <summary>将 Editor 侧类型信息与生成结果转为 Toolkit 用 DTO，供 XModToolkit 渲染（不依赖 Unity）。</summary>
         private static ConfigTypeInfoDto ToClassHelperDto(ConfigTypeInfo typeInfo, List<ScriptObject> fieldAssigns, List<ScriptObject> converterRegistrations)
         {
@@ -189,6 +215,7 @@ namespace UnityToolkit
                 Namespace = typeInfo.Namespace ?? "",
                 ManagedTypeName = typeInfo.ManagedTypeName,
                 UnmanagedTypeName = typeInfo.UnmanagedTypeName,
+                TableName = typeInfo.TableName ?? typeInfo.ManagedTypeName,
                 HasBase = typeInfo.HasBase,
                 BaseManagedTypeName = typeInfo.BaseManagedTypeName ?? "",
                 BaseUnmanagedTypeName = typeInfo.BaseUnmanagedTypeName ?? "",

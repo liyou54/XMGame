@@ -1,0 +1,13 @@
+ManifestFileVersion: 0
+UnityVersion: 6000.0.29f1
+CRC: 2139056484
+HashAppended: 0
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: assets_core_aa.bundle
+      Dependencies:
+        Dependency_0: unityshaders.bundle
+    Info_1:
+      Name: unityshaders.bundle
+      Dependencies: {}

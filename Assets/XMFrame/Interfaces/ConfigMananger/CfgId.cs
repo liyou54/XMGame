@@ -35,6 +35,12 @@ public readonly struct TblS : IEquatable<TblS>
         TableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
     }
 
+    public TblS(string definedInMod,string tableName)
+    {
+        DefinedInMod = new ModS(definedInMod);
+        TableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
+    }
+
     public override bool Equals(object obj) => obj is TblS other && Equals(other);
 
     public bool Equals(TblS other)
@@ -56,7 +62,8 @@ public readonly struct TblS : IEquatable<TblS>
 
     public static bool operator !=(TblS left, TblS right) => !(left == right);
 
-    public override string ToString() => $"{DefinedInMod}.{TableName}";
+    /// <summary>方便调试：TableName(DefinedInMod)。</summary>
+    public override string ToString() => $"{TableName}({DefinedInMod})";
 }
 
 

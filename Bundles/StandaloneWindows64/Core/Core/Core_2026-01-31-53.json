@@ -1,0 +1,50 @@
+{
+    "FileVersion": "2025.9.30",
+    "EnableAddressable": false,
+    "SupportExtensionless": true,
+    "LocationToLower": false,
+    "IncludeAssetGUID": false,
+    "ReplaceAssetPathWithAddress": false,
+    "OutputNameStyle": 0,
+    "BuildBundleType": 2,
+    "BuildPipeline": "BuiltinBuildPipeline",
+    "PackageName": "Core",
+    "PackageVersion": "2026-01-31-53",
+    "PackageNote": "2026/1/31 0:53:48",
+    "AssetList": [
+        {
+            "Address": "",
+            "AssetPath": "Assets/Core/AA/New Material.mat",
+            "AssetGUID": "",
+            "AssetTags": [],
+            "BundleID": 0,
+            "DependBundleIDs": [
+                1
+            ]
+        }
+    ],
+    "BundleList": [
+        {
+            "BundleName": "assets_core_aa.bundle",
+            "UnityCRC": 242051484,
+            "FileHash": "7d30e011b15dcf7b180efbb450446f8d",
+            "FileCRC": 2871924267,
+            "FileSize": 2929,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundleIDs": [
+                1
+            ]
+        },
+        {
+            "BundleName": "unityshaders.bundle",
+            "UnityCRC": 3072814105,
+            "FileHash": "396299e6fb827fef04d4c95801a92043",
+            "FileCRC": 3190423812,
+            "FileSize": 51511,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundleIDs": []
+        }
+    ]
+}

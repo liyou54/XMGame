@@ -59,5 +59,6 @@
     },
     "dotnet.defaultSolution": "XMGame.sln",
     "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
-    "dotnet.formatting.organizeImportsOnFormat": true
+    "dotnet.formatting.organizeImportsOnFormat": true,
+    "dotrush.roslyn.projectOrSolutionFiles": []
 }

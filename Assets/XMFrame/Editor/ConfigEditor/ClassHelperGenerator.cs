@@ -125,6 +125,8 @@ namespace XMFrame.Editor.ConfigEditor
             scriptObject["namespace"] = typeInfo.Namespace;
             scriptObject["managed_type_name"] = typeInfo.ManagedTypeName;
             scriptObject["unmanaged_type_name"] = typeInfo.UnmanagedTypeName;
+            scriptObject["table_name"] = !string.IsNullOrEmpty(typeInfo.TableName) ? typeInfo.TableName : typeInfo.ManagedTypeName;
+            scriptObject["mod_name"] = GetModNameFromAssembly(configType.Assembly);
             scriptObject["has_base"] = typeInfo.HasBase;
             scriptObject["base_managed_type_name"] = typeInfo.BaseManagedTypeName ?? "";
             scriptObject["base_unmanaged_type_name"] = typeInfo.BaseUnmanagedTypeName ?? "";
@@ -522,6 +524,31 @@ namespace XMFrame.Editor.ConfigEditor
         private static bool IsConfigKeyType(Type type)
         {
             return type.IsGenericType && type.GetGenericTypeDefinition().Name == "ConfigKey`1";
+        }
+
+        /// <summary>从程序集读取 [ModName] 特性，生成时静态解析，供模板直接赋字符串（无运行时反射）。</summary>
+        private static string GetModNameFromAssembly(Assembly assembly)
+        {
+            if (assembly == null) return "Default";
+            try
+            {
+                var attrType = assembly.GetType("XM.Contracts.ModNameAttribute");
+                if (attrType == null)
+                {
+                    foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+                    {
+                        attrType = a.GetType("XM.Contracts.ModNameAttribute");
+                        if (attrType != null) break;
+                    }
+                }
+                if (attrType == null) return "Default";
+                var attr = Attribute.GetCustomAttribute(assembly, attrType);
+                if (attr == null) return "Default";
+                var prop = attrType.GetProperty("ModName");
+                var v = prop?.GetValue(attr) as string;
+                return !string.IsNullOrEmpty(v) ? v : "Default";
+            }
+            catch { return "Default"; }
         }
 
         /// <summary>

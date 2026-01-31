@@ -1,0 +1,104 @@
+{
+    "Summary": {
+        "YooVersion": "2.3.18",
+        "UnityVersion": "6000.0.29f1",
+        "BuildDate": "2026/1/31 0:54:26",
+        "BuildSeconds": 37,
+        "BuildTarget": 19,
+        "BuildPipeline": "BuiltinBuildPipeline",
+        "BuildBundleType": 2,
+        "BuildPackageName": "Core",
+        "BuildPackageVersion": "2026-01-31-53",
+        "BuildPackageNote": "2026/1/31 0:53:48",
+        "UniqueBundleName": false,
+        "EnableAddressable": false,
+        "SupportExtensionless": true,
+        "LocationToLower": false,
+        "IncludeAssetGUID": false,
+        "AutoCollectShaders": true,
+        "IgnoreRuleName": "YooAsset.Editor.NormalIgnoreRule",
+        "ClearBuildCacheFiles": false,
+        "UseAssetDependencyDB": false,
+        "EnableSharePackRule": true,
+        "SingleReferencedPackAlone": true,
+        "EncryptionServicesClassName": "YooAsset.Editor.EncryptionNone",
+        "ManifestProcessServicesClassName": "YooAsset.Editor.ManifestProcessNone",
+        "ManifestRestoreServicesClassName": "YooAsset.Editor.ManifestRestoreNone",
+        "FileNameStyle": 0,
+        "CompressOption": 2,
+        "DisableWriteTypeTree": false,
+        "IgnoreTypeTreeChanges": true,
+        "ReplaceAssetPathWithAddress": false,
+        "WriteLinkXML": true,
+        "CacheServerHost": "",
+        "CacheServerPort": 0,
+        "BuiltinShadersBundleName": "",
+        "MonoScriptsBundleName": "",
+        "AssetFileTotalCount": 2,
+        "MainAssetTotalCount": 1,
+        "AllBundleTotalCount": 2,
+        "AllBundleTotalSize": 54440,
+        "EncryptedBundleTotalCount": 0,
+        "EncryptedBundleTotalSize": 0
+    },
+    "AssetInfos": [
+        {
+            "Address": "",
+            "AssetPath": "Assets/Core/AA/New Material.mat",
+            "AssetGUID": "a5f5dee28bca60e4fb7083ef5281cde0",
+            "AssetTags": [],
+            "MainBundleName": "assets_core_aa.bundle",
+            "MainBundleSize": 2929,
+            "DependAssets": [
+                {
+                    "AssetPath": "Packages/com.unity.render-pipelines.universal/Shaders/Lit.shader",
+                    "AssetGUID": "933532a4fcc9baf4fa0491de14d08ed7"
+                }
+            ],
+            "DependBundles": [
+                "unityshaders.bundle"
+            ]
+        }
+    ],
+    "BundleInfos": [
+        {
+            "BundleName": "assets_core_aa.bundle",
+            "FileName": "7d30e011b15dcf7b180efbb450446f8d.bundle",
+            "FileHash": "7d30e011b15dcf7b180efbb450446f8d",
+            "FileCRC": 2871924267,
+            "FileSize": 2929,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [
+                "unityshaders.bundle"
+            ],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/Core/AA/New Material.mat",
+                    "AssetGUID": "a5f5dee28bca60e4fb7083ef5281cde0"
+                }
+            ]
+        },
+        {
+            "BundleName": "unityshaders.bundle",
+            "FileName": "396299e6fb827fef04d4c95801a92043.bundle",
+            "FileHash": "396299e6fb827fef04d4c95801a92043",
+            "FileCRC": 3190423812,
+            "FileSize": 51511,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [
+                "assets_core_aa.bundle"
+            ],
+            "BundleContents": [
+                {
+                    "AssetPath": "Packages/com.unity.render-pipelines.universal/Shaders/Lit.shader",
+                    "AssetGUID": "933532a4fcc9baf4fa0491de14d08ed7"
+                }
+            ]
+        }
+    ],
+    "IndependAssets": []
+}

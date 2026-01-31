@@ -1,0 +1,24 @@
+ManifestFileVersion: 0
+UnityVersion: 6000.0.29f1
+CRC: 3796929037
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: ebed846b24940b1f619a4ebbf66042b6
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 4afb0d898c1c22a5e88248733bd69457
+  IncrementalBuildHash:
+    serializedVersion: 2
+    Hash: 923e791c6837d211cb573e38ab276581
+HashAppended: 0
+ClassTypes:
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/Mods/MyMod/Asset/New Material.mat
+Dependencies:
+- D:/Project/unity/XMGame/XModTest/Bundles/StandaloneWindows64/MyMod/OutputCache/mymod_unityshaders.bundle
