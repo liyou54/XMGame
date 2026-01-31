@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig7" id="perf7_0600_0">
+    <Id>TestConfigLargenum::perf7_0600_0</Id>
+    <Name>Item_perf7_0600_0</Name>
+    <Level>88</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0600_1">
+    <Id>TestConfigLargenum::perf7_0600_1</Id>
+    <Name>Item_perf7_0600_1</Name>
+    <Level>50</Level>
+    <Tags>4</Tags>
+    <Tags>19</Tags>
+    <Tags>19</Tags>
+    <Tags>18</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0600_2">
+    <Id>TestConfigLargenum::perf7_0600_2</Id>
+    <Name>Item_perf7_0600_2</Name>
+    <Level>40</Level>
+    <Tags>1</Tags>
+    <Tags>8</Tags>
+    <Tags>16</Tags>
+    <Tags>15</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0600_3">
+    <Id>TestConfigLargenum::perf7_0600_3</Id>
+    <Name>Item_perf7_0600_3</Name>
+    <Level>28</Level>
+    <Tags>8</Tags>
+    <Tags>5</Tags>
+    <Tags>16</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+</Root>

@@ -28,7 +28,12 @@ namespace XM
         /// <summary>
         /// 严重错误 - 深红色
         /// </summary>
-        Fatal = 4
+        Fatal = 4,
+
+        /// <summary>
+        /// 性能测试：不输出任何日志，用于配置加载等性能测试时减少 I/O。
+        /// </summary>
+        PerformanceTest = 5
     }
 
     /// <summary>
@@ -53,6 +58,8 @@ namespace XM
                     return "<color=#FF0000>"; // 红色
                 case LogLevel.Fatal:
                     return "<color=#8B0000>"; // 深红色
+                case LogLevel.PerformanceTest:
+                    return "<color=#808080>"; // 测试级别不输出，仅占位
                 default:
                     return "<color=#FFFFFF>"; // 默认白色
             }

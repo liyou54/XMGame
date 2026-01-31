@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig9" id="perf9_0175_0">
+    <Id>TestConfigLargenum::perf9_0175_0</Id>
+    <Name>Item_perf9_0175_0</Name>
+    <Level>39</Level>
+    <Tags>11</Tags>
+    <Tags>15</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0175_1">
+    <Id>TestConfigLargenum::perf9_0175_1</Id>
+    <Name>Item_perf9_0175_1</Name>
+    <Level>42</Level>
+    <Tags>15</Tags>
+    <Tags>8</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0175_2">
+    <Id>TestConfigLargenum::perf9_0175_2</Id>
+    <Name>Item_perf9_0175_2</Name>
+    <Level>53</Level>
+    <Tags>6</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0175_3">
+    <Id>TestConfigLargenum::perf9_0175_3</Id>
+    <Name>Item_perf9_0175_3</Name>
+    <Level>15</Level>
+    <Tags>19</Tags>
+    <Tags>16</Tags>
+    <Tags>13</Tags>
+    <Tags>16</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0175_4">
+    <Id>TestConfigLargenum::perf9_0175_4</Id>
+    <Name>Item_perf9_0175_4</Name>
+    <Level>3</Level>
+    <Tags>7</Tags>
+    <Tags>16</Tags>
+    <Tags>4</Tags>
+    <Tags>5</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0175_5">
+    <Id>TestConfigLargenum::perf9_0175_5</Id>
+    <Name>Item_perf9_0175_5</Name>
+    <Level>40</Level>
+    <Tags>17</Tags>
+    <Tags>11</Tags>
+    <Tags>14</Tags>
+    <Tags>17</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0175_6">
+    <Id>TestConfigLargenum::perf9_0175_6</Id>
+    <Name>Item_perf9_0175_6</Name>
+    <Level>60</Level>
+    <Tags>15</Tags>
+    <Tags>13</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0175_7">
+    <Id>TestConfigLargenum::perf9_0175_7</Id>
+    <Name>Item_perf9_0175_7</Name>
+    <Level>97</Level>
+    <Tags>16</Tags>
+    <Tags>7</Tags>
+    <Tags>2</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0175_8">
+    <Id>TestConfigLargenum::perf9_0175_8</Id>
+    <Name>Item_perf9_0175_8</Name>
+    <Level>53</Level>
+    <Tags>13</Tags>
+    <Tags>12</Tags>
+    <Tags>14</Tags>
+    <Tags>18</Tags>
+  </ConfigItem>
+</Root>

@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig9" id="perf9_0949_0">
+    <Id>TestConfigLargenum::perf9_0949_0</Id>
+    <Name>Item_perf9_0949_0</Name>
+    <Level>40</Level>
+    <Tags>18</Tags>
+    <Tags>7</Tags>
+    <Tags>18</Tags>
+    <Tags>2</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0949_1">
+    <Id>TestConfigLargenum::perf9_0949_1</Id>
+    <Name>Item_perf9_0949_1</Name>
+    <Level>15</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0949_2">
+    <Id>TestConfigLargenum::perf9_0949_2</Id>
+    <Name>Item_perf9_0949_2</Name>
+    <Level>53</Level>
+    <Tags>18</Tags>
+    <Tags>1</Tags>
+    <Tags>19</Tags>
+    <Tags>12</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0949_3">
+    <Id>TestConfigLargenum::perf9_0949_3</Id>
+    <Name>Item_perf9_0949_3</Name>
+    <Level>10</Level>
+    <Tags>18</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0949_4">
+    <Id>TestConfigLargenum::perf9_0949_4</Id>
+    <Name>Item_perf9_0949_4</Name>
+    <Level>75</Level>
+    <Tags>10</Tags>
+    <Tags>4</Tags>
+    <Tags>2</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0949_5">
+    <Id>TestConfigLargenum::perf9_0949_5</Id>
+    <Name>Item_perf9_0949_5</Name>
+    <Level>10</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+</Root>

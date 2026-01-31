@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig10" id="perf10_0729_0">
+    <Id>TestConfigLargenum::perf10_0729_0</Id>
+    <Name>Item_perf10_0729_0</Name>
+    <Level>85</Level>
+    <Tags>5</Tags>
+    <Tags>8</Tags>
+    <Tags>16</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+</Root>

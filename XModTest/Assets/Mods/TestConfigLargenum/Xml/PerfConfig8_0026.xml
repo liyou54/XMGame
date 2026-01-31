@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig8" id="perf8_0026_0">
+    <Id>TestConfigLargenum::perf8_0026_0</Id>
+    <Name>Item_perf8_0026_0</Name>
+    <Level>42</Level>
+    <Tags>8</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0026_1">
+    <Id>TestConfigLargenum::perf8_0026_1</Id>
+    <Name>Item_perf8_0026_1</Name>
+    <Level>88</Level>
+    <Tags>4</Tags>
+    <Tags>18</Tags>
+    <Tags>1</Tags>
+    <Tags>5</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0026_2">
+    <Id>TestConfigLargenum::perf8_0026_2</Id>
+    <Name>Item_perf8_0026_2</Name>
+    <Level>64</Level>
+    <Tags>11</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0026_3">
+    <Id>TestConfigLargenum::perf8_0026_3</Id>
+    <Name>Item_perf8_0026_3</Name>
+    <Level>85</Level>
+    <Tags>9</Tags>
+    <Tags>17</Tags>
+    <Tags>7</Tags>
+    <Tags>6</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0026_4">
+    <Id>TestConfigLargenum::perf8_0026_4</Id>
+    <Name>Item_perf8_0026_4</Name>
+    <Level>15</Level>
+    <Tags>13</Tags>
+    <Tags>6</Tags>
+    <Tags>18</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0026_5">
+    <Id>TestConfigLargenum::perf8_0026_5</Id>
+    <Name>Item_perf8_0026_5</Name>
+    <Level>19</Level>
+    <Tags>16</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0026_6">
+    <Id>TestConfigLargenum::perf8_0026_6</Id>
+    <Name>Item_perf8_0026_6</Name>
+    <Level>7</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0026_7">
+    <Id>TestConfigLargenum::perf8_0026_7</Id>
+    <Name>Item_perf8_0026_7</Name>
+    <Level>14</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0026_8">
+    <Id>TestConfigLargenum::perf8_0026_8</Id>
+    <Name>Item_perf8_0026_8</Name>
+    <Level>16</Level>
+    <Tags>11</Tags>
+    <Tags>9</Tags>
+    <Tags>6</Tags>
+  </ConfigItem>
+</Root>

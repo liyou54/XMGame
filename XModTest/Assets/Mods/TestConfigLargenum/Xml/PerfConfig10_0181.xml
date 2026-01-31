@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig10" id="perf10_0181_0">
+    <Id>TestConfigLargenum::perf10_0181_0</Id>
+    <Name>Item_perf10_0181_0</Name>
+    <Level>2</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0181_1">
+    <Id>TestConfigLargenum::perf10_0181_1</Id>
+    <Name>Item_perf10_0181_1</Name>
+    <Level>29</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0181_2">
+    <Id>TestConfigLargenum::perf10_0181_2</Id>
+    <Name>Item_perf10_0181_2</Name>
+    <Level>14</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0181_3">
+    <Id>TestConfigLargenum::perf10_0181_3</Id>
+    <Name>Item_perf10_0181_3</Name>
+    <Level>30</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0181_4">
+    <Id>TestConfigLargenum::perf10_0181_4</Id>
+    <Name>Item_perf10_0181_4</Name>
+    <Level>65</Level>
+    <Tags>15</Tags>
+    <Tags>15</Tags>
+  </ConfigItem>
+</Root>

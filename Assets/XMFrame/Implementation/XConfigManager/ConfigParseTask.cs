@@ -53,7 +53,7 @@ namespace XM
                 var config = Helper.DeserializeConfigFromXml(ConfigItem, ModKey, ConfigName, OverrideMode);
                 return new ConfigParseResult(config, TableHandle, ModKey, ConfigName, XmlFilePath);
             }
-            catch (Exception ex)
+            catch (Exception ex) 
             {
                 // 记录错误，返回空结果（主线程 merge 时会跳过）
                 UnityEngine.Debug.LogError($"解析配置失败: {XmlFilePath}, 配置: {ConfigName}, 错误: {ex.Message}");

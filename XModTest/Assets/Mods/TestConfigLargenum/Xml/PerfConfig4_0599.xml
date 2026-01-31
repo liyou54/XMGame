@@ -1,0 +1,137 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_0">
+    <Id>TestConfigLargenum::perf4_0599_0</Id>
+    <Name>Item_perf4_0599_0</Name>
+    <Level>52</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_1">
+    <Id>TestConfigLargenum::perf4_0599_1</Id>
+    <Name>Item_perf4_0599_1</Name>
+    <Level>68</Level>
+    <Tags>19</Tags>
+    <Tags>9</Tags>
+    <Tags>2</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_2">
+    <Id>TestConfigLargenum::perf4_0599_2</Id>
+    <Name>Item_perf4_0599_2</Name>
+    <Level>14</Level>
+    <Tags>2</Tags>
+    <Tags>6</Tags>
+    <Tags>11</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_3">
+    <Id>TestConfigLargenum::perf4_0599_3</Id>
+    <Name>Item_perf4_0599_3</Name>
+    <Level>24</Level>
+    <Tags>14</Tags>
+    <Tags>8</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_4">
+    <Id>TestConfigLargenum::perf4_0599_4</Id>
+    <Name>Item_perf4_0599_4</Name>
+    <Level>86</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_5">
+    <Id>TestConfigLargenum::perf4_0599_5</Id>
+    <Name>Item_perf4_0599_5</Name>
+    <Level>32</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_6">
+    <Id>TestConfigLargenum::perf4_0599_6</Id>
+    <Name>Item_perf4_0599_6</Name>
+    <Level>79</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_7">
+    <Id>TestConfigLargenum::perf4_0599_7</Id>
+    <Name>Item_perf4_0599_7</Name>
+    <Level>82</Level>
+    <Tags>4</Tags>
+    <Tags>12</Tags>
+    <Tags>9</Tags>
+    <Tags>8</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_8">
+    <Id>TestConfigLargenum::perf4_0599_8</Id>
+    <Name>Item_perf4_0599_8</Name>
+    <Level>7</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_9">
+    <Id>TestConfigLargenum::perf4_0599_9</Id>
+    <Name>Item_perf4_0599_9</Name>
+    <Level>96</Level>
+    <Tags>12</Tags>
+    <Tags>17</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_10">
+    <Id>TestConfigLargenum::perf4_0599_10</Id>
+    <Name>Item_perf4_0599_10</Name>
+    <Level>51</Level>
+    <Tags>15</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_11">
+    <Id>TestConfigLargenum::perf4_0599_11</Id>
+    <Name>Item_perf4_0599_11</Name>
+    <Level>18</Level>
+    <Tags>10</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_12">
+    <Id>TestConfigLargenum::perf4_0599_12</Id>
+    <Name>Item_perf4_0599_12</Name>
+    <Level>77</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_13">
+    <Id>TestConfigLargenum::perf4_0599_13</Id>
+    <Name>Item_perf4_0599_13</Name>
+    <Level>37</Level>
+    <Tags>16</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_14">
+    <Id>TestConfigLargenum::perf4_0599_14</Id>
+    <Name>Item_perf4_0599_14</Name>
+    <Level>19</Level>
+    <Tags>18</Tags>
+    <Tags>5</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_15">
+    <Id>TestConfigLargenum::perf4_0599_15</Id>
+    <Name>Item_perf4_0599_15</Name>
+    <Level>31</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_16">
+    <Id>TestConfigLargenum::perf4_0599_16</Id>
+    <Name>Item_perf4_0599_16</Name>
+    <Level>18</Level>
+    <Tags>7</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_17">
+    <Id>TestConfigLargenum::perf4_0599_17</Id>
+    <Name>Item_perf4_0599_17</Name>
+    <Level>75</Level>
+    <Tags>7</Tags>
+    <Tags>19</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_18">
+    <Id>TestConfigLargenum::perf4_0599_18</Id>
+    <Name>Item_perf4_0599_18</Name>
+    <Level>69</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig4" id="perf4_0599_19">
+    <Id>TestConfigLargenum::perf4_0599_19</Id>
+    <Name>Item_perf4_0599_19</Name>
+    <Level>42</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+</Root>

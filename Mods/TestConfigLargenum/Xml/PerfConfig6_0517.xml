@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig6" id="perf6_0517_0">
+    <Id>TestConfigLargenum::perf6_0517_0</Id>
+    <Name>Item_perf6_0517_0</Name>
+    <Level>13</Level>
+    <Tags>17</Tags>
+    <Tags>4</Tags>
+    <Tags>16</Tags>
+    <Tags>19</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0517_1">
+    <Id>TestConfigLargenum::perf6_0517_1</Id>
+    <Name>Item_perf6_0517_1</Name>
+    <Level>4</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0517_2">
+    <Id>TestConfigLargenum::perf6_0517_2</Id>
+    <Name>Item_perf6_0517_2</Name>
+    <Level>8</Level>
+    <Tags>5</Tags>
+    <Tags>12</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0517_3">
+    <Id>TestConfigLargenum::perf6_0517_3</Id>
+    <Name>Item_perf6_0517_3</Name>
+    <Level>72</Level>
+    <Tags>8</Tags>
+    <Tags>11</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0517_4">
+    <Id>TestConfigLargenum::perf6_0517_4</Id>
+    <Name>Item_perf6_0517_4</Name>
+    <Level>69</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0517_5">
+    <Id>TestConfigLargenum::perf6_0517_5</Id>
+    <Name>Item_perf6_0517_5</Name>
+    <Level>95</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0517_6">
+    <Id>TestConfigLargenum::perf6_0517_6</Id>
+    <Name>Item_perf6_0517_6</Name>
+    <Level>98</Level>
+    <Tags>5</Tags>
+    <Tags>13</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0517_7">
+    <Id>TestConfigLargenum::perf6_0517_7</Id>
+    <Name>Item_perf6_0517_7</Name>
+    <Level>54</Level>
+    <Tags>9</Tags>
+    <Tags>12</Tags>
+    <Tags>7</Tags>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0517_8">
+    <Id>TestConfigLargenum::perf6_0517_8</Id>
+    <Name>Item_perf6_0517_8</Name>
+    <Level>7</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0517_9">
+    <Id>TestConfigLargenum::perf6_0517_9</Id>
+    <Name>Item_perf6_0517_9</Name>
+    <Level>40</Level>
+    <Tags>9</Tags>
+    <Tags>6</Tags>
+  </ConfigItem>
+</Root>

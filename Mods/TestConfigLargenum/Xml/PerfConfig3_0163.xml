@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig3" id="perf3_0163_0">
+    <Id>TestConfigLargenum::perf3_0163_0</Id>
+    <Name>Item_perf3_0163_0</Name>
+    <Level>47</Level>
+    <Tags>13</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0163_1">
+    <Id>TestConfigLargenum::perf3_0163_1</Id>
+    <Name>Item_perf3_0163_1</Name>
+    <Level>8</Level>
+    <Tags>3</Tags>
+    <Tags>18</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0163_2">
+    <Id>TestConfigLargenum::perf3_0163_2</Id>
+    <Name>Item_perf3_0163_2</Name>
+    <Level>24</Level>
+    <Tags>11</Tags>
+    <Tags>3</Tags>
+    <Tags>10</Tags>
+    <Tags>17</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0163_3">
+    <Id>TestConfigLargenum::perf3_0163_3</Id>
+    <Name>Item_perf3_0163_3</Name>
+    <Level>6</Level>
+    <Tags>18</Tags>
+    <Tags>6</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0163_4">
+    <Id>TestConfigLargenum::perf3_0163_4</Id>
+    <Name>Item_perf3_0163_4</Name>
+    <Level>58</Level>
+    <Tags>14</Tags>
+    <Tags>10</Tags>
+    <Tags>5</Tags>
+    <Tags>2</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0163_5">
+    <Id>TestConfigLargenum::perf3_0163_5</Id>
+    <Name>Item_perf3_0163_5</Name>
+    <Level>76</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0163_6">
+    <Id>TestConfigLargenum::perf3_0163_6</Id>
+    <Name>Item_perf3_0163_6</Name>
+    <Level>93</Level>
+    <Tags>19</Tags>
+    <Tags>15</Tags>
+    <Tags>17</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0163_7">
+    <Id>TestConfigLargenum::perf3_0163_7</Id>
+    <Name>Item_perf3_0163_7</Name>
+    <Level>29</Level>
+    <Tags>2</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0163_8">
+    <Id>TestConfigLargenum::perf3_0163_8</Id>
+    <Name>Item_perf3_0163_8</Name>
+    <Level>71</Level>
+    <Tags>12</Tags>
+  </ConfigItem>
+</Root>

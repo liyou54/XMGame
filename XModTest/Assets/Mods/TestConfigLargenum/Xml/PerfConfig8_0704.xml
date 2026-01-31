@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig8" id="perf8_0704_0">
+    <Id>TestConfigLargenum::perf8_0704_0</Id>
+    <Name>Item_perf8_0704_0</Name>
+    <Level>70</Level>
+    <Tags>6</Tags>
+    <Tags>19</Tags>
+    <Tags>17</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0704_1">
+    <Id>TestConfigLargenum::perf8_0704_1</Id>
+    <Name>Item_perf8_0704_1</Name>
+    <Level>92</Level>
+    <Tags>7</Tags>
+    <Tags>18</Tags>
+    <Tags>11</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0704_2">
+    <Id>TestConfigLargenum::perf8_0704_2</Id>
+    <Name>Item_perf8_0704_2</Name>
+    <Level>50</Level>
+    <Tags>8</Tags>
+    <Tags>4</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0704_3">
+    <Id>TestConfigLargenum::perf8_0704_3</Id>
+    <Name>Item_perf8_0704_3</Name>
+    <Level>73</Level>
+    <Tags>6</Tags>
+    <Tags>19</Tags>
+    <Tags>13</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0704_4">
+    <Id>TestConfigLargenum::perf8_0704_4</Id>
+    <Name>Item_perf8_0704_4</Name>
+    <Level>70</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+</Root>

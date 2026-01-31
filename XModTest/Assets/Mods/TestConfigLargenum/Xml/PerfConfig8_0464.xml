@@ -1,0 +1,98 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_0">
+    <Id>TestConfigLargenum::perf8_0464_0</Id>
+    <Name>Item_perf8_0464_0</Name>
+    <Level>100</Level>
+    <Tags>19</Tags>
+    <Tags>11</Tags>
+    <Tags>2</Tags>
+    <Tags>17</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_1">
+    <Id>TestConfigLargenum::perf8_0464_1</Id>
+    <Name>Item_perf8_0464_1</Name>
+    <Level>25</Level>
+    <Tags>3</Tags>
+    <Tags>11</Tags>
+    <Tags>14</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_2">
+    <Id>TestConfigLargenum::perf8_0464_2</Id>
+    <Name>Item_perf8_0464_2</Name>
+    <Level>30</Level>
+    <Tags>16</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_3">
+    <Id>TestConfigLargenum::perf8_0464_3</Id>
+    <Name>Item_perf8_0464_3</Name>
+    <Level>85</Level>
+    <Tags>12</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_4">
+    <Id>TestConfigLargenum::perf8_0464_4</Id>
+    <Name>Item_perf8_0464_4</Name>
+    <Level>15</Level>
+    <Tags>15</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_5">
+    <Id>TestConfigLargenum::perf8_0464_5</Id>
+    <Name>Item_perf8_0464_5</Name>
+    <Level>97</Level>
+    <Tags>4</Tags>
+    <Tags>2</Tags>
+    <Tags>17</Tags>
+    <Tags>11</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_6">
+    <Id>TestConfigLargenum::perf8_0464_6</Id>
+    <Name>Item_perf8_0464_6</Name>
+    <Level>78</Level>
+    <Tags>17</Tags>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_7">
+    <Id>TestConfigLargenum::perf8_0464_7</Id>
+    <Name>Item_perf8_0464_7</Name>
+    <Level>2</Level>
+    <Tags>3</Tags>
+    <Tags>2</Tags>
+    <Tags>8</Tags>
+    <Tags>18</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_8">
+    <Id>TestConfigLargenum::perf8_0464_8</Id>
+    <Name>Item_perf8_0464_8</Name>
+    <Level>21</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_9">
+    <Id>TestConfigLargenum::perf8_0464_9</Id>
+    <Name>Item_perf8_0464_9</Name>
+    <Level>75</Level>
+    <Tags>8</Tags>
+    <Tags>7</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_10">
+    <Id>TestConfigLargenum::perf8_0464_10</Id>
+    <Name>Item_perf8_0464_10</Name>
+    <Level>38</Level>
+    <Tags>11</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_11">
+    <Id>TestConfigLargenum::perf8_0464_11</Id>
+    <Name>Item_perf8_0464_11</Name>
+    <Level>86</Level>
+    <Tags>3</Tags>
+    <Tags>7</Tags>
+    <Tags>5</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig8" id="perf8_0464_12">
+    <Id>TestConfigLargenum::perf8_0464_12</Id>
+    <Name>Item_perf8_0464_12</Name>
+    <Level>26</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+</Root>

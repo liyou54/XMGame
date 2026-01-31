@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig3" id="perf3_0902_0">
+    <Id>TestConfigLargenum::perf3_0902_0</Id>
+    <Name>Item_perf3_0902_0</Name>
+    <Level>48</Level>
+    <Tags>16</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0902_1">
+    <Id>TestConfigLargenum::perf3_0902_1</Id>
+    <Name>Item_perf3_0902_1</Name>
+    <Level>54</Level>
+    <Tags>5</Tags>
+    <Tags>14</Tags>
+  </ConfigItem>
+</Root>

@@ -65,6 +65,14 @@ namespace XM.Contracts.Config
         }
 
         /// <summary>
+        /// 将 ReWrite 解析出的新配置 src 合并到已有配置 dst（原地修改 dst）。子类可重写以实现按字段合并；默认不操作。
+        /// </summary>
+        public virtual void MergeConfig(IXConfig src, IXConfig dst)
+        {
+            // 默认不合并；子类重写以实现将 src 的字段合并/覆盖到 dst
+        }
+
+        /// <summary>
         /// 从 XML 节点获取字段值：优先取同名子元素 InnerText，否则取同名属性。供生成代码调用。
         /// </summary>
         protected static string GetXmlFieldValue(XmlElement parent, string fieldName)

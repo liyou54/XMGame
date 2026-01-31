@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig2" id="perf2_0987_0">
+    <Id>TestConfigLargenum::perf2_0987_0</Id>
+    <Name>Item_perf2_0987_0</Name>
+    <Level>4</Level>
+    <Tags>17</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0987_1">
+    <Id>TestConfigLargenum::perf2_0987_1</Id>
+    <Name>Item_perf2_0987_1</Name>
+    <Level>98</Level>
+    <Tags>14</Tags>
+    <Tags>17</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0987_2">
+    <Id>TestConfigLargenum::perf2_0987_2</Id>
+    <Name>Item_perf2_0987_2</Name>
+    <Level>19</Level>
+    <Tags>13</Tags>
+    <Tags>11</Tags>
+    <Tags>3</Tags>
+    <Tags>2</Tags>
+  </ConfigItem>
+</Root>

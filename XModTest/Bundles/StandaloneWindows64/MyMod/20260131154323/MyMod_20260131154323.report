@@ -1,0 +1,104 @@
+{
+    "Summary": {
+        "YooVersion": "2.3.18",
+        "UnityVersion": "6000.0.29f1",
+        "BuildDate": "2026/1/31 15:43:23",
+        "BuildSeconds": 0,
+        "BuildTarget": 19,
+        "BuildPipeline": "BuiltinBuildPipeline",
+        "BuildBundleType": 2,
+        "BuildPackageName": "MyMod",
+        "BuildPackageVersion": "20260131154323",
+        "BuildPackageNote": "2026/1/31 15:43:23",
+        "UniqueBundleName": true,
+        "EnableAddressable": true,
+        "SupportExtensionless": true,
+        "LocationToLower": false,
+        "IncludeAssetGUID": false,
+        "AutoCollectShaders": true,
+        "IgnoreRuleName": "YooAsset.Editor.NormalIgnoreRule",
+        "ClearBuildCacheFiles": false,
+        "UseAssetDependencyDB": true,
+        "EnableSharePackRule": true,
+        "SingleReferencedPackAlone": true,
+        "EncryptionServicesClassName": "null",
+        "ManifestProcessServicesClassName": "null",
+        "ManifestRestoreServicesClassName": "null",
+        "FileNameStyle": 1,
+        "CompressOption": 2,
+        "DisableWriteTypeTree": false,
+        "IgnoreTypeTreeChanges": true,
+        "ReplaceAssetPathWithAddress": false,
+        "WriteLinkXML": true,
+        "CacheServerHost": "",
+        "CacheServerPort": 0,
+        "BuiltinShadersBundleName": "",
+        "MonoScriptsBundleName": "",
+        "AssetFileTotalCount": 2,
+        "MainAssetTotalCount": 1,
+        "AllBundleTotalCount": 2,
+        "AllBundleTotalSize": 54495,
+        "EncryptedBundleTotalCount": 0,
+        "EncryptedBundleTotalSize": 0
+    },
+    "AssetInfos": [
+        {
+            "Address": "New Material",
+            "AssetPath": "Assets/Mods/MyMod/Asset/New Material.mat",
+            "AssetGUID": "c0da91f4c9a872a4f9e4f6000a765278",
+            "AssetTags": [],
+            "MainBundleName": "mymod_assets_mods_mymod_asset.bundle",
+            "MainBundleSize": 2977,
+            "DependAssets": [
+                {
+                    "AssetPath": "Packages/com.unity.render-pipelines.universal/Shaders/Lit.shader",
+                    "AssetGUID": "933532a4fcc9baf4fa0491de14d08ed7"
+                }
+            ],
+            "DependBundles": [
+                "mymod_unityshaders.bundle"
+            ]
+        }
+    ],
+    "BundleInfos": [
+        {
+            "BundleName": "mymod_assets_mods_mymod_asset.bundle",
+            "FileName": "mymod_assets_mods_mymod_asset.bundle",
+            "FileHash": "28e640dc96397e5ca2d0c73725aee774",
+            "FileCRC": 2003279893,
+            "FileSize": 2977,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [
+                "mymod_unityshaders.bundle"
+            ],
+            "ReferenceBundles": [],
+            "BundleContents": [
+                {
+                    "AssetPath": "Assets/Mods/MyMod/Asset/New Material.mat",
+                    "AssetGUID": "c0da91f4c9a872a4f9e4f6000a765278"
+                }
+            ]
+        },
+        {
+            "BundleName": "mymod_unityshaders.bundle",
+            "FileName": "mymod_unityshaders.bundle",
+            "FileHash": "44c88096934f35ebad889f32adf15aa2",
+            "FileCRC": 3123334476,
+            "FileSize": 51518,
+            "Encrypted": false,
+            "Tags": [],
+            "DependBundles": [],
+            "ReferenceBundles": [
+                "mymod_assets_mods_mymod_asset.bundle"
+            ],
+            "BundleContents": [
+                {
+                    "AssetPath": "Packages/com.unity.render-pipelines.universal/Shaders/Lit.shader",
+                    "AssetGUID": "933532a4fcc9baf4fa0491de14d08ed7"
+                }
+            ]
+        }
+    ],
+    "IndependAssets": []
+}

@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig2" id="perf2_0128_0">
+    <Id>TestConfigLargenum::perf2_0128_0</Id>
+    <Name>Item_perf2_0128_0</Name>
+    <Level>100</Level>
+    <Tags>5</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0128_1">
+    <Id>TestConfigLargenum::perf2_0128_1</Id>
+    <Name>Item_perf2_0128_1</Name>
+    <Level>62</Level>
+    <Tags>17</Tags>
+    <Tags>14</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0128_2">
+    <Id>TestConfigLargenum::perf2_0128_2</Id>
+    <Name>Item_perf2_0128_2</Name>
+    <Level>43</Level>
+    <Tags>1</Tags>
+    <Tags>18</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0128_3">
+    <Id>TestConfigLargenum::perf2_0128_3</Id>
+    <Name>Item_perf2_0128_3</Name>
+    <Level>85</Level>
+    <Tags>15</Tags>
+    <Tags>10</Tags>
+    <Tags>13</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0128_4">
+    <Id>TestConfigLargenum::perf2_0128_4</Id>
+    <Name>Item_perf2_0128_4</Name>
+    <Level>12</Level>
+    <Tags>18</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0128_5">
+    <Id>TestConfigLargenum::perf2_0128_5</Id>
+    <Name>Item_perf2_0128_5</Name>
+    <Level>79</Level>
+    <Tags>8</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0128_6">
+    <Id>TestConfigLargenum::perf2_0128_6</Id>
+    <Name>Item_perf2_0128_6</Name>
+    <Level>87</Level>
+    <Tags>17</Tags>
+    <Tags>1</Tags>
+    <Tags>17</Tags>
+    <Tags>7</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0128_7">
+    <Id>TestConfigLargenum::perf2_0128_7</Id>
+    <Name>Item_perf2_0128_7</Name>
+    <Level>8</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0128_8">
+    <Id>TestConfigLargenum::perf2_0128_8</Id>
+    <Name>Item_perf2_0128_8</Name>
+    <Level>32</Level>
+    <Tags>4</Tags>
+    <Tags>7</Tags>
+    <Tags>13</Tags>
+    <Tags>4</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0128_9">
+    <Id>TestConfigLargenum::perf2_0128_9</Id>
+    <Name>Item_perf2_0128_9</Name>
+    <Level>85</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0128_10">
+    <Id>TestConfigLargenum::perf2_0128_10</Id>
+    <Name>Item_perf2_0128_10</Name>
+    <Level>36</Level>
+    <Tags>19</Tags>
+    <Tags>1</Tags>
+    <Tags>10</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+</Root>

@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig10" id="perf10_0127_0">
+    <Id>TestConfigLargenum::perf10_0127_0</Id>
+    <Name>Item_perf10_0127_0</Name>
+    <Level>70</Level>
+    <Tags>5</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0127_1">
+    <Id>TestConfigLargenum::perf10_0127_1</Id>
+    <Name>Item_perf10_0127_1</Name>
+    <Level>74</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0127_2">
+    <Id>TestConfigLargenum::perf10_0127_2</Id>
+    <Name>Item_perf10_0127_2</Name>
+    <Level>76</Level>
+    <Tags>2</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0127_3">
+    <Id>TestConfigLargenum::perf10_0127_3</Id>
+    <Name>Item_perf10_0127_3</Name>
+    <Level>51</Level>
+    <Tags>3</Tags>
+    <Tags>17</Tags>
+    <Tags>8</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0127_4">
+    <Id>TestConfigLargenum::perf10_0127_4</Id>
+    <Name>Item_perf10_0127_4</Name>
+    <Level>71</Level>
+    <Tags>6</Tags>
+    <Tags>10</Tags>
+    <Tags>17</Tags>
+    <Tags>10</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0127_5">
+    <Id>TestConfigLargenum::perf10_0127_5</Id>
+    <Name>Item_perf10_0127_5</Name>
+    <Level>52</Level>
+    <Tags>18</Tags>
+    <Tags>16</Tags>
+  </ConfigItem>
+</Root>

@@ -945,6 +945,8 @@ namespace XM
                 case LogLevel.Fatal:
                     UnityEngine.Debug.LogError(message);
                     break;
+                case LogLevel.PerformanceTest:
+                    break; // 性能测试级别不输出
             }
         }
 

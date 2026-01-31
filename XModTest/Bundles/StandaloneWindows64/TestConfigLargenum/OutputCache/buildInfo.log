@@ -1,0 +1,15 @@
+﻿2026-01-31 16:32:29.419 [INFO] Begin to build package : TestConfigLargenum by BuiltinBuildPipeline
+2026-01-31 16:32:29.419 [INFO] --------------------------------------------->TaskPrepare<--------------------------------------------
+2026-01-31 16:32:29.423 [INFO] Create pipeline output directory: D:/Project/unity/XMGame/XModTest/Bundles/StandaloneWindows64/TestConfigLargenum/OutputCache
+2026-01-31 16:32:29.424 [WARN] [ErrorCode130] Starting with UnityEngine2021, recommend use script build pipeline (SBP) !
+2026-01-31 16:32:29.424 [INFO] TaskPrepare It takes 0 seconds in total
+2026-01-31 16:32:29.424 [INFO] --------------------------------------------->TaskGetBuildMap<--------------------------------------------
+2026-01-31 16:32:29.427 [INFO] Total build process time: 0 seconds
+2026-01-31 16:32:29.427 [ERROR] BuiltinBuildPipeline build failed !
+2026-01-31 16:32:29.428 [ERROR] An error occurred in build task TaskGetBuildMap_BBP
+2026-01-31 16:32:29.428 [ERROR] System.Exception: Not found package : TestConfigLargenum
+  at YooAsset.Editor.AssetBundleCollectorSetting.GetPackage (System.String packageName) [0x00048] in .\Library\PackageCache\com.tuyoogame.yooasset\Editor\AssetBundleCollector\AssetBundleCollectorSetting.cs:135 
+  at YooAsset.Editor.AssetBundleCollectorSetting.BeginCollect (System.String packageName, System.Boolean simulateBuild, System.Boolean useAssetDependencyDB) [0x00018] in .\Library\PackageCache\com.tuyoogame.yooasset\Editor\AssetBundleCollector\AssetBundleCollectorSetting.cs:104 
+  at YooAsset.Editor.TaskGetBuildMap.CreateBuildMap (System.Boolean simulateBuild, YooAsset.Editor.BuildParameters buildParameters) [0x00020] in .\Library\PackageCache\com.tuyoogame.yooasset\Editor\AssetBundleBuilder\BuildPipeline\BaseTasks\TaskGetBuildMap.cs:24 
+  at YooAsset.Editor.TaskGetBuildMap_BBP.YooAsset.Editor.IBuildTask.Run (YooAsset.Editor.BuildContext context) [0x00008] in .\Library\PackageCache\com.tuyoogame.yooasset\Editor\AssetBundleBuilder\BuildPipeline\BuiltinBuildPipeline\BuildTasks\TaskGetBuildMap_BBP.cs:15 
+  at YooAsset.Editor.BuildRunner.Run (System.Collections.Generic.List`1[T] pipeline, YooAsset.Editor.BuildContext context) [0x00085] in .\Library\PackageCache\com.tuyoogame.yooasset\Editor\AssetBundleBuilder\BuildSystem\BuildRunner.cs:41 

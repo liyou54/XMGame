@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_0">
+    <Id>TestConfigLargenum::perf7_0024_0</Id>
+    <Name>Item_perf7_0024_0</Name>
+    <Level>12</Level>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_1">
+    <Id>TestConfigLargenum::perf7_0024_1</Id>
+    <Name>Item_perf7_0024_1</Name>
+    <Level>79</Level>
+    <Tags>1</Tags>
+    <Tags>10</Tags>
+    <Tags>9</Tags>
+    <Tags>5</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_2">
+    <Id>TestConfigLargenum::perf7_0024_2</Id>
+    <Name>Item_perf7_0024_2</Name>
+    <Level>3</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_3">
+    <Id>TestConfigLargenum::perf7_0024_3</Id>
+    <Name>Item_perf7_0024_3</Name>
+    <Level>32</Level>
+    <Tags>10</Tags>
+    <Tags>15</Tags>
+    <Tags>7</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_4">
+    <Id>TestConfigLargenum::perf7_0024_4</Id>
+    <Name>Item_perf7_0024_4</Name>
+    <Level>40</Level>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_5">
+    <Id>TestConfigLargenum::perf7_0024_5</Id>
+    <Name>Item_perf7_0024_5</Name>
+    <Level>94</Level>
+    <Tags>8</Tags>
+    <Tags>11</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_6">
+    <Id>TestConfigLargenum::perf7_0024_6</Id>
+    <Name>Item_perf7_0024_6</Name>
+    <Level>18</Level>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_7">
+    <Id>TestConfigLargenum::perf7_0024_7</Id>
+    <Name>Item_perf7_0024_7</Name>
+    <Level>66</Level>
+    <Tags>4</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_8">
+    <Id>TestConfigLargenum::perf7_0024_8</Id>
+    <Name>Item_perf7_0024_8</Name>
+    <Level>44</Level>
+    <Tags>15</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_9">
+    <Id>TestConfigLargenum::perf7_0024_9</Id>
+    <Name>Item_perf7_0024_9</Name>
+    <Level>6</Level>
+    <Tags>8</Tags>
+    <Tags>1</Tags>
+    <Tags>5</Tags>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_10">
+    <Id>TestConfigLargenum::perf7_0024_10</Id>
+    <Name>Item_perf7_0024_10</Name>
+    <Level>8</Level>
+    <Tags>17</Tags>
+    <Tags>9</Tags>
+    <Tags>7</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_11">
+    <Id>TestConfigLargenum::perf7_0024_11</Id>
+    <Name>Item_perf7_0024_11</Name>
+    <Level>44</Level>
+    <Tags>15</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_12">
+    <Id>TestConfigLargenum::perf7_0024_12</Id>
+    <Name>Item_perf7_0024_12</Name>
+    <Level>77</Level>
+    <Tags>16</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_13">
+    <Id>TestConfigLargenum::perf7_0024_13</Id>
+    <Name>Item_perf7_0024_13</Name>
+    <Level>75</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_14">
+    <Id>TestConfigLargenum::perf7_0024_14</Id>
+    <Name>Item_perf7_0024_14</Name>
+    <Level>51</Level>
+    <Tags>8</Tags>
+    <Tags>17</Tags>
+    <Tags>17</Tags>
+    <Tags>12</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_15">
+    <Id>TestConfigLargenum::perf7_0024_15</Id>
+    <Name>Item_perf7_0024_15</Name>
+    <Level>77</Level>
+    <Tags>8</Tags>
+    <Tags>15</Tags>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_16">
+    <Id>TestConfigLargenum::perf7_0024_16</Id>
+    <Name>Item_perf7_0024_16</Name>
+    <Level>83</Level>
+    <Tags>2</Tags>
+    <Tags>1</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0024_17">
+    <Id>TestConfigLargenum::perf7_0024_17</Id>
+    <Name>Item_perf7_0024_17</Name>
+    <Level>83</Level>
+    <Tags>9</Tags>
+    <Tags>4</Tags>
+    <Tags>5</Tags>
+    <Tags>8</Tags>
+  </ConfigItem>
+</Root>

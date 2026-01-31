@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig3" id="perf3_0482_0">
+    <Id>TestConfigLargenum::perf3_0482_0</Id>
+    <Name>Item_perf3_0482_0</Name>
+    <Level>31</Level>
+    <Tags>6</Tags>
+    <Tags>18</Tags>
+    <Tags>3</Tags>
+    <Tags>11</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0482_1">
+    <Id>TestConfigLargenum::perf3_0482_1</Id>
+    <Name>Item_perf3_0482_1</Name>
+    <Level>21</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0482_2">
+    <Id>TestConfigLargenum::perf3_0482_2</Id>
+    <Name>Item_perf3_0482_2</Name>
+    <Level>54</Level>
+    <Tags>15</Tags>
+    <Tags>13</Tags>
+    <Tags>14</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0482_3">
+    <Id>TestConfigLargenum::perf3_0482_3</Id>
+    <Name>Item_perf3_0482_3</Name>
+    <Level>66</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0482_4">
+    <Id>TestConfigLargenum::perf3_0482_4</Id>
+    <Name>Item_perf3_0482_4</Name>
+    <Level>84</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0482_5">
+    <Id>TestConfigLargenum::perf3_0482_5</Id>
+    <Name>Item_perf3_0482_5</Name>
+    <Level>77</Level>
+    <Tags>7</Tags>
+    <Tags>13</Tags>
+    <Tags>14</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0482_6">
+    <Id>TestConfigLargenum::perf3_0482_6</Id>
+    <Name>Item_perf3_0482_6</Name>
+    <Level>63</Level>
+    <Tags>12</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0482_7">
+    <Id>TestConfigLargenum::perf3_0482_7</Id>
+    <Name>Item_perf3_0482_7</Name>
+    <Level>40</Level>
+    <Tags>15</Tags>
+  </ConfigItem>
+</Root>

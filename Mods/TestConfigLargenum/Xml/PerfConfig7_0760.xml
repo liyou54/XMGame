@@ -1,0 +1,121 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_0">
+    <Id>TestConfigLargenum::perf7_0760_0</Id>
+    <Name>Item_perf7_0760_0</Name>
+    <Level>57</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_1">
+    <Id>TestConfigLargenum::perf7_0760_1</Id>
+    <Name>Item_perf7_0760_1</Name>
+    <Level>53</Level>
+    <Tags>13</Tags>
+    <Tags>7</Tags>
+    <Tags>11</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_2">
+    <Id>TestConfigLargenum::perf7_0760_2</Id>
+    <Name>Item_perf7_0760_2</Name>
+    <Level>24</Level>
+    <Tags>13</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_3">
+    <Id>TestConfigLargenum::perf7_0760_3</Id>
+    <Name>Item_perf7_0760_3</Name>
+    <Level>30</Level>
+    <Tags>7</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_4">
+    <Id>TestConfigLargenum::perf7_0760_4</Id>
+    <Name>Item_perf7_0760_4</Name>
+    <Level>62</Level>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_5">
+    <Id>TestConfigLargenum::perf7_0760_5</Id>
+    <Name>Item_perf7_0760_5</Name>
+    <Level>29</Level>
+    <Tags>7</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_6">
+    <Id>TestConfigLargenum::perf7_0760_6</Id>
+    <Name>Item_perf7_0760_6</Name>
+    <Level>35</Level>
+    <Tags>6</Tags>
+    <Tags>17</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_7">
+    <Id>TestConfigLargenum::perf7_0760_7</Id>
+    <Name>Item_perf7_0760_7</Name>
+    <Level>57</Level>
+    <Tags>12</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_8">
+    <Id>TestConfigLargenum::perf7_0760_8</Id>
+    <Name>Item_perf7_0760_8</Name>
+    <Level>5</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_9">
+    <Id>TestConfigLargenum::perf7_0760_9</Id>
+    <Name>Item_perf7_0760_9</Name>
+    <Level>39</Level>
+    <Tags>19</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_10">
+    <Id>TestConfigLargenum::perf7_0760_10</Id>
+    <Name>Item_perf7_0760_10</Name>
+    <Level>44</Level>
+    <Tags>12</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_11">
+    <Id>TestConfigLargenum::perf7_0760_11</Id>
+    <Name>Item_perf7_0760_11</Name>
+    <Level>2</Level>
+    <Tags>9</Tags>
+    <Tags>13</Tags>
+    <Tags>12</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_12">
+    <Id>TestConfigLargenum::perf7_0760_12</Id>
+    <Name>Item_perf7_0760_12</Name>
+    <Level>29</Level>
+    <Tags>11</Tags>
+    <Tags>14</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_13">
+    <Id>TestConfigLargenum::perf7_0760_13</Id>
+    <Name>Item_perf7_0760_13</Name>
+    <Level>93</Level>
+    <Tags>12</Tags>
+    <Tags>11</Tags>
+    <Tags>17</Tags>
+    <Tags>15</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_14">
+    <Id>TestConfigLargenum::perf7_0760_14</Id>
+    <Name>Item_perf7_0760_14</Name>
+    <Level>18</Level>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_15">
+    <Id>TestConfigLargenum::perf7_0760_15</Id>
+    <Name>Item_perf7_0760_15</Name>
+    <Level>49</Level>
+    <Tags>15</Tags>
+    <Tags>13</Tags>
+    <Tags>4</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig7" id="perf7_0760_16">
+    <Id>TestConfigLargenum::perf7_0760_16</Id>
+    <Name>Item_perf7_0760_16</Name>
+    <Level>74</Level>
+    <Tags>4</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+</Root>

@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig5" id="perf5_0679_0">
+    <Id>TestConfigLargenum::perf5_0679_0</Id>
+    <Name>Item_perf5_0679_0</Name>
+    <Level>63</Level>
+    <Tags>6</Tags>
+    <Tags>12</Tags>
+    <Tags>18</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0679_1">
+    <Id>TestConfigLargenum::perf5_0679_1</Id>
+    <Name>Item_perf5_0679_1</Name>
+    <Level>92</Level>
+    <Tags>1</Tags>
+    <Tags>5</Tags>
+    <Tags>11</Tags>
+    <Tags>13</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0679_2">
+    <Id>TestConfigLargenum::perf5_0679_2</Id>
+    <Name>Item_perf5_0679_2</Name>
+    <Level>68</Level>
+    <Tags>6</Tags>
+    <Tags>8</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0679_3">
+    <Id>TestConfigLargenum::perf5_0679_3</Id>
+    <Name>Item_perf5_0679_3</Name>
+    <Level>55</Level>
+    <Tags>13</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0679_4">
+    <Id>TestConfigLargenum::perf5_0679_4</Id>
+    <Name>Item_perf5_0679_4</Name>
+    <Level>96</Level>
+    <Tags>14</Tags>
+    <Tags>6</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0679_5">
+    <Id>TestConfigLargenum::perf5_0679_5</Id>
+    <Name>Item_perf5_0679_5</Name>
+    <Level>52</Level>
+    <Tags>10</Tags>
+    <Tags>18</Tags>
+    <Tags>4</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0679_6">
+    <Id>TestConfigLargenum::perf5_0679_6</Id>
+    <Name>Item_perf5_0679_6</Name>
+    <Level>96</Level>
+    <Tags>19</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0679_7">
+    <Id>TestConfigLargenum::perf5_0679_7</Id>
+    <Name>Item_perf5_0679_7</Name>
+    <Level>40</Level>
+    <Tags>9</Tags>
+    <Tags>19</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0679_8">
+    <Id>TestConfigLargenum::perf5_0679_8</Id>
+    <Name>Item_perf5_0679_8</Name>
+    <Level>6</Level>
+    <Tags>18</Tags>
+  </ConfigItem>
+</Root>

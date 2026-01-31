@@ -1,0 +1,91 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_0">
+    <Id>TestConfigLargenum::perf9_0838_0</Id>
+    <Name>Item_perf9_0838_0</Name>
+    <Level>73</Level>
+    <Tags>8</Tags>
+    <Tags>19</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_1">
+    <Id>TestConfigLargenum::perf9_0838_1</Id>
+    <Name>Item_perf9_0838_1</Name>
+    <Level>22</Level>
+    <Tags>18</Tags>
+    <Tags>10</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_2">
+    <Id>TestConfigLargenum::perf9_0838_2</Id>
+    <Name>Item_perf9_0838_2</Name>
+    <Level>38</Level>
+    <Tags>16</Tags>
+    <Tags>19</Tags>
+    <Tags>2</Tags>
+    <Tags>19</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_3">
+    <Id>TestConfigLargenum::perf9_0838_3</Id>
+    <Name>Item_perf9_0838_3</Name>
+    <Level>43</Level>
+    <Tags>13</Tags>
+    <Tags>9</Tags>
+    <Tags>16</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_4">
+    <Id>TestConfigLargenum::perf9_0838_4</Id>
+    <Name>Item_perf9_0838_4</Name>
+    <Level>62</Level>
+    <Tags>16</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_5">
+    <Id>TestConfigLargenum::perf9_0838_5</Id>
+    <Name>Item_perf9_0838_5</Name>
+    <Level>23</Level>
+    <Tags>8</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_6">
+    <Id>TestConfigLargenum::perf9_0838_6</Id>
+    <Name>Item_perf9_0838_6</Name>
+    <Level>27</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_7">
+    <Id>TestConfigLargenum::perf9_0838_7</Id>
+    <Name>Item_perf9_0838_7</Name>
+    <Level>14</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_8">
+    <Id>TestConfigLargenum::perf9_0838_8</Id>
+    <Name>Item_perf9_0838_8</Name>
+    <Level>92</Level>
+    <Tags>5</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_9">
+    <Id>TestConfigLargenum::perf9_0838_9</Id>
+    <Name>Item_perf9_0838_9</Name>
+    <Level>37</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_10">
+    <Id>TestConfigLargenum::perf9_0838_10</Id>
+    <Name>Item_perf9_0838_10</Name>
+    <Level>53</Level>
+    <Tags>18</Tags>
+    <Tags>15</Tags>
+    <Tags>18</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_11">
+    <Id>TestConfigLargenum::perf9_0838_11</Id>
+    <Name>Item_perf9_0838_11</Name>
+    <Level>36</Level>
+    <Tags>13</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig9" id="perf9_0838_12">
+    <Id>TestConfigLargenum::perf9_0838_12</Id>
+    <Name>Item_perf9_0838_12</Name>
+    <Level>91</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+</Root>

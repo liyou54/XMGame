@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig1" id="perf1_0699_0">
+    <Id>TestConfigLargenum::perf1_0699_0</Id>
+    <Name>Item_perf1_0699_0</Name>
+    <Level>67</Level>
+    <Tags>19</Tags>
+    <Tags>4</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig1" id="perf1_0699_1">
+    <Id>TestConfigLargenum::perf1_0699_1</Id>
+    <Name>Item_perf1_0699_1</Name>
+    <Level>31</Level>
+    <Tags>13</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig1" id="perf1_0699_2">
+    <Id>TestConfigLargenum::perf1_0699_2</Id>
+    <Name>Item_perf1_0699_2</Name>
+    <Level>55</Level>
+    <Tags>18</Tags>
+    <Tags>2</Tags>
+    <Tags>2</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig1" id="perf1_0699_3">
+    <Id>TestConfigLargenum::perf1_0699_3</Id>
+    <Name>Item_perf1_0699_3</Name>
+    <Level>93</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig1" id="perf1_0699_4">
+    <Id>TestConfigLargenum::perf1_0699_4</Id>
+    <Name>Item_perf1_0699_4</Name>
+    <Level>18</Level>
+    <Tags>13</Tags>
+    <Tags>12</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig1" id="perf1_0699_5">
+    <Id>TestConfigLargenum::perf1_0699_5</Id>
+    <Name>Item_perf1_0699_5</Name>
+    <Level>61</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig1" id="perf1_0699_6">
+    <Id>TestConfigLargenum::perf1_0699_6</Id>
+    <Name>Item_perf1_0699_6</Name>
+    <Level>61</Level>
+    <Tags>4</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig1" id="perf1_0699_7">
+    <Id>TestConfigLargenum::perf1_0699_7</Id>
+    <Name>Item_perf1_0699_7</Name>
+    <Level>8</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+</Root>

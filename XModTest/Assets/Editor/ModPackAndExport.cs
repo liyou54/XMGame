@@ -179,7 +179,7 @@ namespace XMod.Editor
         }
 
         /// <summary>
-        /// 同步执行 YooAsset 打包，打包结束后直接导出。
+        /// 同步执行 YooAsset 打包，打包结束后直接导出。若未配置 YooAsset 包则跳过打包，仅拷贝 Xml/DLL 等。
         /// </summary>
         private static void TriggerYooAssetBuildThenExport(string modName)
         {
@@ -187,6 +187,14 @@ namespace XMod.Editor
             definePath = Path.Combine(definePath, ModDefineXmlName);
             string packageName = File.Exists(definePath) ? GetPackageNameFromModDefine(definePath, modName) : modName;
             string assetName = File.Exists(definePath) ? GetAssetNameFromModDefine(definePath) : "Asset";
+
+            if (!HasYooAssetPackage(packageName))
+            {
+                Debug.Log($"[ModPackAndExport] 未找到 YooAsset 包 \"{packageName}\"，跳过打包，仅执行拷贝（Xml/DLL/ModDefine 等）。");
+                DoPackAndExportWithDialog(modName);
+                return;
+            }
+
             Debug.Log($"[ModPackAndExport] 开始 YooAsset 打包: {modName}, 包名: {packageName}, 资源根: Assets/{ModsFolderName}/{modName}/{assetName}");
             try
             {
@@ -200,6 +208,29 @@ namespace XMod.Editor
             }
             Debug.Log($"[ModPackAndExport] 打包结束，直接导出: {modName}");
             DoPackAndExportWithDialog(modName);
+        }
+
+        /// <summary>
+        /// 检测 YooAsset 收集器配置中是否存在指定包名。若不存在则不进行 YooAsset 打包，仅拷贝。
+        /// </summary>
+        private static bool HasYooAssetPackage(string packageName)
+        {
+            if (string.IsNullOrEmpty(packageName)) return false;
+            try
+            {
+                var setting = AssetBundleCollectorSettingData.Setting;
+                if (setting?.Packages == null) return false;
+                foreach (var pkg in setting.Packages)
+                {
+                    if (string.Equals(pkg.PackageName, packageName, StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static void DoPackAndExportWithDialog(string modName)
@@ -490,6 +521,16 @@ namespace XMod.Editor
             _selectedIndex = EditorGUILayout.Popup("选择 Mod", _selectedIndex, _modNames);
             string modName = _modNames[_selectedIndex];
 
+            // 是否有 YooAsset 包：无包则不打包、不拷贝 YooAssetPackage.xml 与 Asset；有包则打包并添加 Asset
+            string definePathForMod = Path.Combine(Application.dataPath, ModsFolderName, modName, ModDefineXmlName);
+            string packageNameForMod = File.Exists(definePathForMod) ? GetPackageNameFromModDefine(definePathForMod, modName) : modName;
+            bool hasYooPackage = HasYooAssetPackage(packageNameForMod);
+            GUI.enabled = false;
+            EditorGUILayout.Toggle("是否有 YooAsset 包", hasYooPackage);
+            GUI.enabled = true;
+            if (!hasYooPackage)
+                EditorGUILayout.HelpBox("未配置 YooAsset 包时：不执行打包，导出时不拷贝 YooAssetPackage.xml 与 Asset 文件夹。", MessageType.None);
+
             EditorGUILayout.Space(8);
             EditorGUILayout.LabelField("导出目标", EditorStyles.miniLabel);
             string mainModsPath = GetMainProjectModsPath();
@@ -625,39 +666,55 @@ namespace XMod.Editor
                 File.Copy(definePath, Path.Combine(targetRoot, ModDefineXmlName));
                 Debug.Log($"[ModPackAndExport] 已拷贝 {ModDefineXmlName} -> {targetRoot}");
 
-                // YooAssetPackage.xml
-                string yooPath = Path.Combine(modRoot, YooAssetPackageXmlName);
-                if (File.Exists(yooPath))
+                bool hasYooPackage = HasYooAssetPackage(packageName);
+
+                // YooAssetPackage.xml：仅当存在对应 YooAsset 包时才拷贝，否则去掉
+                if (hasYooPackage)
                 {
-                    File.Copy(yooPath, Path.Combine(targetRoot, YooAssetPackageXmlName));
-                    Debug.Log($"[ModPackAndExport] 已拷贝 {YooAssetPackageXmlName} -> {targetRoot}");
+                    string yooPath = Path.Combine(modRoot, YooAssetPackageXmlName);
+                    if (File.Exists(yooPath))
+                    {
+                        File.Copy(yooPath, Path.Combine(targetRoot, YooAssetPackageXmlName));
+                        Debug.Log($"[ModPackAndExport] 已拷贝 {YooAssetPackageXmlName} -> {targetRoot}");
+                    }
+                }
+                else
+                {
+                    Debug.Log($"[ModPackAndExport] 无 YooAsset 包，不拷贝 {YooAssetPackageXmlName}");
                 }
 
-                // Xml 文件夹
+                // Xml 文件夹（配置用，与 YooAsset 包无关，始终拷贝；复制时去掉 .meta 文件）
                 string xmlSrc = Path.Combine(modRoot, XmlFolderName);
                 string xmlDst = Path.Combine(targetRoot, XmlFolderName);
                 if (Directory.Exists(xmlSrc))
                 {
-                    CopyDirectory(xmlSrc, xmlDst);
-                    Debug.Log($"[ModPackAndExport] 已拷贝文件夹 {XmlFolderName} -> {xmlDst}");
+                    CopyDirectory(xmlSrc, xmlDst, excludeMetaFiles: true);
+                    Debug.Log($"[ModPackAndExport] 已拷贝文件夹 {XmlFolderName} -> {xmlDst}（不含 .meta）");
                 }
 
-                // Bundles：将 YooAsset 构建输出（Bundles/.../包名/版本号）拷贝到 Mods/<modName>/Asset 下
-                string buildOutputDir = GetModBuildOutputDirectory(packageName);
-                string assetDst = Path.Combine(targetRoot, AssetFolderName);
-                if (!string.IsNullOrEmpty(buildOutputDir) && Directory.Exists(buildOutputDir))
+                // Asset（Bundles）：仅当存在 YooAsset 包时才拷贝/创建，否则去掉 Asset 项
+                if (hasYooPackage)
                 {
-                    CopyDirectory(buildOutputDir, assetDst);
-                    Debug.Log($"[ModPackAndExport] 已拷贝 Bundles 到 Mods 对应文件夹: {buildOutputDir} -> {assetDst}");
+                    string buildOutputDir = GetModBuildOutputDirectory(packageName);
+                    string assetDst = Path.Combine(targetRoot, AssetFolderName);
+                    if (!string.IsNullOrEmpty(buildOutputDir) && Directory.Exists(buildOutputDir))
+                    {
+                        CopyDirectory(buildOutputDir, assetDst);
+                        Debug.Log($"[ModPackAndExport] 已拷贝 Bundles 到 Mods 对应文件夹: {buildOutputDir} -> {assetDst}");
+                    }
+                    else
+                    {
+                        if (!Directory.Exists(assetDst))
+                            Directory.CreateDirectory(assetDst);
+                        if (string.IsNullOrEmpty(buildOutputDir))
+                            Debug.LogWarning($"[ModPackAndExport] 未找到构建输出目录，跳过 Bundles 拷贝。请先执行 YooAsset 打包。");
+                        else
+                            Debug.LogWarning($"[ModPackAndExport] 构建输出目录不存在: {buildOutputDir}，跳过 Bundles 拷贝。");
+                    }
                 }
                 else
                 {
-                    if (!Directory.Exists(assetDst))
-                        Directory.CreateDirectory(assetDst);
-                    if (string.IsNullOrEmpty(buildOutputDir))
-                        Debug.LogWarning($"[ModPackAndExport] 未找到构建输出目录，跳过 Bundles 拷贝。请先执行 YooAsset 打包。");
-                    else
-                        Debug.LogWarning($"[ModPackAndExport] 构建输出目录不存在: {buildOutputDir}，跳过 Bundles 拷贝。");
+                    Debug.Log($"[ModPackAndExport] 无 YooAsset 包，不创建/拷贝 Asset 文件夹");
                 }
 
                 // DLL（DllPath 为相对 Mod 根目录的文件名，如 MyMod.dll）
@@ -769,19 +826,21 @@ namespace XMod.Editor
             }
         }
 
-        private static void CopyDirectory(string sourceDir, string targetDir)
+        private static void CopyDirectory(string sourceDir, string targetDir, bool excludeMetaFiles = false)
         {
             if (!Directory.Exists(targetDir))
                 Directory.CreateDirectory(targetDir);
             foreach (string file in Directory.GetFiles(sourceDir))
             {
                 string name = Path.GetFileName(file);
+                if (excludeMetaFiles && name.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))
+                    continue;
                 File.Copy(file, Path.Combine(targetDir, name));
             }
             foreach (string sub in Directory.GetDirectories(sourceDir))
             {
                 string name = Path.GetFileName(sub);
-                CopyDirectory(sub, Path.Combine(targetDir, name));
+                CopyDirectory(sub, Path.Combine(targetDir, name), excludeMetaFiles);
             }
         }
     }

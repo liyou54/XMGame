@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig10" id="perf10_0753_0">
+    <Id>TestConfigLargenum::perf10_0753_0</Id>
+    <Name>Item_perf10_0753_0</Name>
+    <Level>84</Level>
+    <Tags>18</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0753_1">
+    <Id>TestConfigLargenum::perf10_0753_1</Id>
+    <Name>Item_perf10_0753_1</Name>
+    <Level>22</Level>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0753_2">
+    <Id>TestConfigLargenum::perf10_0753_2</Id>
+    <Name>Item_perf10_0753_2</Name>
+    <Level>73</Level>
+    <Tags>16</Tags>
+    <Tags>19</Tags>
+    <Tags>11</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0753_3">
+    <Id>TestConfigLargenum::perf10_0753_3</Id>
+    <Name>Item_perf10_0753_3</Name>
+    <Level>92</Level>
+    <Tags>12</Tags>
+    <Tags>19</Tags>
+    <Tags>10</Tags>
+    <Tags>19</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0753_4">
+    <Id>TestConfigLargenum::perf10_0753_4</Id>
+    <Name>Item_perf10_0753_4</Name>
+    <Level>25</Level>
+    <Tags>18</Tags>
+    <Tags>18</Tags>
+    <Tags>8</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0753_5">
+    <Id>TestConfigLargenum::perf10_0753_5</Id>
+    <Name>Item_perf10_0753_5</Name>
+    <Level>44</Level>
+    <Tags>17</Tags>
+    <Tags>6</Tags>
+    <Tags>1</Tags>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0753_6">
+    <Id>TestConfigLargenum::perf10_0753_6</Id>
+    <Name>Item_perf10_0753_6</Name>
+    <Level>37</Level>
+    <Tags>7</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0753_7">
+    <Id>TestConfigLargenum::perf10_0753_7</Id>
+    <Name>Item_perf10_0753_7</Name>
+    <Level>72</Level>
+    <Tags>10</Tags>
+    <Tags>18</Tags>
+    <Tags>12</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0753_8">
+    <Id>TestConfigLargenum::perf10_0753_8</Id>
+    <Name>Item_perf10_0753_8</Name>
+    <Level>58</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0753_9">
+    <Id>TestConfigLargenum::perf10_0753_9</Id>
+    <Name>Item_perf10_0753_9</Name>
+    <Level>2</Level>
+    <Tags>4</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig10" id="perf10_0753_10">
+    <Id>TestConfigLargenum::perf10_0753_10</Id>
+    <Name>Item_perf10_0753_10</Name>
+    <Level>36</Level>
+    <Tags>16</Tags>
+    <Tags>1</Tags>
+    <Tags>15</Tags>
+  </ConfigItem>
+</Root>

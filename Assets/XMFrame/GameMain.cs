@@ -45,6 +45,9 @@ namespace XM
     /// </summary>
     public async UniTask OnAwake()
     {
+        // 常规测试：打开日志；性能测试时可改为 LogLevel.PerformanceTest 以关闭输出
+        XLog.CurrentLogLevel = LogLevel.Debug;
+
         if (_isInitialized)
         {
             XLog.Warning("GameMain 已经初始化，跳过重复初始化");

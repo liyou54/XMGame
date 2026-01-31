@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig5" id="perf5_0606_0">
+    <Id>TestConfigLargenum::perf5_0606_0</Id>
+    <Name>Item_perf5_0606_0</Name>
+    <Level>16</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0606_1">
+    <Id>TestConfigLargenum::perf5_0606_1</Id>
+    <Name>Item_perf5_0606_1</Name>
+    <Level>92</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0606_2">
+    <Id>TestConfigLargenum::perf5_0606_2</Id>
+    <Name>Item_perf5_0606_2</Name>
+    <Level>100</Level>
+    <Tags>18</Tags>
+    <Tags>12</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0606_3">
+    <Id>TestConfigLargenum::perf5_0606_3</Id>
+    <Name>Item_perf5_0606_3</Name>
+    <Level>15</Level>
+    <Tags>19</Tags>
+    <Tags>15</Tags>
+    <Tags>8</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0606_4">
+    <Id>TestConfigLargenum::perf5_0606_4</Id>
+    <Name>Item_perf5_0606_4</Name>
+    <Level>31</Level>
+    <Tags>15</Tags>
+    <Tags>7</Tags>
+    <Tags>11</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0606_5">
+    <Id>TestConfigLargenum::perf5_0606_5</Id>
+    <Name>Item_perf5_0606_5</Name>
+    <Level>68</Level>
+    <Tags>3</Tags>
+    <Tags>19</Tags>
+    <Tags>11</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0606_6">
+    <Id>TestConfigLargenum::perf5_0606_6</Id>
+    <Name>Item_perf5_0606_6</Name>
+    <Level>60</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0606_7">
+    <Id>TestConfigLargenum::perf5_0606_7</Id>
+    <Name>Item_perf5_0606_7</Name>
+    <Level>59</Level>
+    <Tags>18</Tags>
+    <Tags>9</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig5" id="perf5_0606_8">
+    <Id>TestConfigLargenum::perf5_0606_8</Id>
+    <Name>Item_perf5_0606_8</Name>
+    <Level>81</Level>
+    <Tags>19</Tags>
+    <Tags>6</Tags>
+  </ConfigItem>
+</Root>

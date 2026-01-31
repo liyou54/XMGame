@@ -22,8 +22,7 @@ namespace XM
         public const string ModsFolder = "../Mods";
         public const string ModDefineXmlName = "ModDefine.xml";
 
-        public MultiKeyDictionary<string, int, ModConfig> ModConfigDict =
-            new MultiKeyDictionary<string, int, ModConfig>();
+        public Dictionary<string, ModConfig> ModConfigDict = new Dictionary<string, ModConfig>();
 
         public BidirectionalDictionary<int, ModS> ModStaticToRuntimeDict = new BidirectionalDictionary<int, ModS>();
 
@@ -66,9 +65,10 @@ namespace XM
                         var modConfig = ReadModDefineXml(xmlFile, subFolder);
                         if (modConfig != null)
                         {
-                            // 使用ModName作为第一个键，版本号哈希作为第二个键
-                            int versionHash = modConfig.Version?.GetHashCode() ?? 0;
-                            ModConfigDict.Set(modConfig, modConfig.ModName, versionHash);
+                            if (!ModConfigDict.TryAdd(modConfig.ModName, modConfig))
+                            {
+                                XLog.WarningFormat("跳过重复的 Mod 配置: {0}（ModName 已存在）", modConfig.ModName);
+                            }
 
                             // 建立ModName到ModS的映射
                             var modKey = new ModS(modConfig.ModName);
@@ -101,7 +101,7 @@ namespace XM
         }
 
         /// <summary>
-        /// 遍历 Mod 目录下 Xml 文件夹中的文件，返回配置文件名列表（仅 .xml）。
+        /// 遍历 Mod 目录下 Xml 文件夹中的文件，返回配置文件的完整路径列表（仅 .xml），便于多线程加载时不受当前工作目录影响。
         /// </summary>
         private List<string> GetXmlConfigFilesList(string modFolder)
         {
@@ -111,10 +111,10 @@ namespace XM
                 return list;
             foreach (string filePath in Directory.GetFiles(xmlDir, "*.xml"))
             {
-                string fileName = Path.GetFileName(filePath);
-                if (!string.IsNullOrEmpty(fileName))
-                    list.Add(fileName);
+                if (!string.IsNullOrEmpty(filePath))
+                    list.Add(Path.GetFullPath(filePath));
             }
+
             return list;
         }
 
@@ -219,7 +219,7 @@ namespace XM
             }
 
             // 查找Mod配置
-            if (!ModConfigDict.TryGetValueByKey1(modName, out var modConfig))
+            if (!ModConfigDict.TryGetValue(modName, out var modConfig))
             {
                 XLog.ErrorFormat("未找到Mod配置: {0}", modName);
                 return false;
@@ -262,7 +262,7 @@ namespace XM
 
                     // 如果没有找到ModBase实现类也允许正常继续，不视为错误，只做调试提示 
                     if (modBaseTypes.Count == 0)
-                    { 
+                    {
                         XLog.DebugFormat("Mod程序集中未找到ModBase实现类（可正常继续）: {0}", modName);
                     }
                     else if (modBaseTypes.Count > 1)
@@ -287,7 +287,8 @@ namespace XM
                 }
                 catch (Exception ex)
                 {
-                    XLog.ErrorFormat("创建Mod入口点失败: {0}, 错误: {1}", modName, XM.Utils.ExceptionUtil.GetMessageWithInner(ex));
+                    XLog.ErrorFormat("创建Mod入口点失败: {0}, 错误: {1}", modName,
+                        XM.Utils.ExceptionUtil.GetMessageWithInner(ex));
                 }
 
                 // 创建ModS
@@ -385,8 +386,8 @@ namespace XM
                 bool isEnabled = false;
                 if (_isInitialized)
                 {
-                    var existingConfig = _sortedModConfigs.FirstOrDefault(sc => 
-                        sc.ModConfig.ModName == modConfig.ModName && 
+                    var existingConfig = _sortedModConfigs.FirstOrDefault(sc =>
+                        sc.ModConfig.ModName == modConfig.ModName &&
                         sc.ModConfig.Version == modConfig.Version);
                     isEnabled = existingConfig?.IsEnabled ?? false;
                 }
@@ -434,7 +435,7 @@ namespace XM
 
             // 从存档读取已保存的Mod配置
             List<SavedModInfo> savedModInfos = null;
-            if ( ISaveManager.I != null)
+            if (ISaveManager.I != null)
             {
                 try
                 {
@@ -447,36 +448,43 @@ namespace XM
                 }
             }
 
+            // 无存档时默认启用所有发现的 Mod，避免 enabledMods 为空导致配置无法注册
+            bool defaultEnabledWhenNoSave = savedModInfos == null || savedModInfos.Count == 0;
+
             // 从ModConfigDict创建SortedModConfig列表
-            foreach (var kvp in ModConfigDict)
+            foreach (var modConfig in ModConfigDict.Values)
             {
-                bool isEnabled = false;
+                bool isEnabled = defaultEnabledWhenNoSave;
 
                 // 如果存档中有该Mod的配置，使用存档中的启用状态
-                if (savedModInfos != null)
+                if (savedModInfos != null && savedModInfos.Count > 0)
                 {
-                    var savedInfo = savedModInfos.FirstOrDefault(s => 
-                        s.ModName == kvp.ModName && s.Version == kvp.Version);
+                    var savedInfo = savedModInfos.FirstOrDefault(s =>
+                        s.ModName == modConfig.ModName && s.Version == modConfig.Version);
                     if (savedInfo != null)
                     {
                         isEnabled = savedInfo.IsEnabled;
                     }
                 }
 
-                var sortedConfig = new SortedModConfig(kvp, isEnabled);
+                var sortedConfig = new SortedModConfig(modConfig, isEnabled);
                 _sortedModConfigs.Add(sortedConfig);
             }
 
-            // 按Mod名称排序
+            // 按启用状态排序（启用的在前），再按 Mod 名称
             _sortedModConfigs.Sort((a, b) =>
-                string.Compare(a.ModConfig.ModName, b.ModConfig.ModName, StringComparison.Ordinal));
+            {
+                int enableCompare = b.IsEnabled.CompareTo(a.IsEnabled); // true 在前
+                if (enableCompare != 0) return enableCompare;
+                return string.Compare(a.ModConfig.ModName, b.ModConfig.ModName, StringComparison.Ordinal);
+            });
 
             _isInitialized = true;
             XLog.InfoFormat("已初始化SortedModConfig，共 {0} 个Mod", _sortedModConfigs.Count);
         }
 
         /// <summary>
-        /// 根据排序后的配置启用Mod
+        /// 根据排序后的配置启用Mod。当前假设所有 Mod 都打开，全部启用。
         /// </summary>
         private void EnableModsFromSortedConfig()
         {
@@ -487,7 +495,6 @@ namespace XM
                     EnableMod(sortedConfig.ModConfig.ModName);
                 }
             }
-            
         }
 
         /// <summary>
@@ -669,20 +676,7 @@ namespace XM
 
             // 获取Mod配置
             var modConfig = modRuntime.Config;
-
-            // 获取Mod文件夹路径（从ModDefine.xml的路径推断）
-            var modsFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ModsFolder);
-            var modFolder = Path.Combine(modsFolderPath, modConfig.ModName);
-
-            // 如果Mod文件夹不存在，返回空列表
-            if (!Directory.Exists(modFolder))
-            {
-                return Enumerable.Empty<string>();
-            }
-
-            // 查找所有XML文件（递归搜索）
-            var xmlFiles = Directory.GetFiles(modFolder, "*.xml", SearchOption.AllDirectories);
-            return xmlFiles;
+            return modConfig.ConfigFiles;
         }
 
         public override UniTask OnCreate()

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModDefine>
+  <Name>TestConfigLargenum</Name>
+  <Version>1.0.0</Version>
+  <Author></Author>
+  <Description>测时配置加载性能</Description>
+  <DllPath>TestConfigLargenum.dll</DllPath>
+  <PackageName>TestConfigLargenum</PackageName>
+  <AssetName>Asset</AssetName>
+  <IconPath></IconPath>
+  <HomePageLink></HomePageLink>
+  <ImagePath></ImagePath>
+</ModDefine>

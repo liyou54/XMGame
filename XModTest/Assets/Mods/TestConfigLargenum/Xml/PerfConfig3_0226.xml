@@ -1,0 +1,136 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_0">
+    <Id>TestConfigLargenum::perf3_0226_0</Id>
+    <Name>Item_perf3_0226_0</Name>
+    <Level>32</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_1">
+    <Id>TestConfigLargenum::perf3_0226_1</Id>
+    <Name>Item_perf3_0226_1</Name>
+    <Level>49</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_2">
+    <Id>TestConfigLargenum::perf3_0226_2</Id>
+    <Name>Item_perf3_0226_2</Name>
+    <Level>95</Level>
+    <Tags>8</Tags>
+    <Tags>19</Tags>
+    <Tags>9</Tags>
+    <Tags>17</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_3">
+    <Id>TestConfigLargenum::perf3_0226_3</Id>
+    <Name>Item_perf3_0226_3</Name>
+    <Level>24</Level>
+    <Tags>7</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_4">
+    <Id>TestConfigLargenum::perf3_0226_4</Id>
+    <Name>Item_perf3_0226_4</Name>
+    <Level>59</Level>
+    <Tags>6</Tags>
+    <Tags>4</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_5">
+    <Id>TestConfigLargenum::perf3_0226_5</Id>
+    <Name>Item_perf3_0226_5</Name>
+    <Level>51</Level>
+    <Tags>3</Tags>
+    <Tags>14</Tags>
+    <Tags>9</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_6">
+    <Id>TestConfigLargenum::perf3_0226_6</Id>
+    <Name>Item_perf3_0226_6</Name>
+    <Level>5</Level>
+    <Tags>2</Tags>
+    <Tags>18</Tags>
+    <Tags>2</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_7">
+    <Id>TestConfigLargenum::perf3_0226_7</Id>
+    <Name>Item_perf3_0226_7</Name>
+    <Level>96</Level>
+    <Tags>2</Tags>
+    <Tags>1</Tags>
+    <Tags>15</Tags>
+    <Tags>7</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_8">
+    <Id>TestConfigLargenum::perf3_0226_8</Id>
+    <Name>Item_perf3_0226_8</Name>
+    <Level>30</Level>
+    <Tags>16</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_9">
+    <Id>TestConfigLargenum::perf3_0226_9</Id>
+    <Name>Item_perf3_0226_9</Name>
+    <Level>97</Level>
+    <Tags>6</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_10">
+    <Id>TestConfigLargenum::perf3_0226_10</Id>
+    <Name>Item_perf3_0226_10</Name>
+    <Level>44</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_11">
+    <Id>TestConfigLargenum::perf3_0226_11</Id>
+    <Name>Item_perf3_0226_11</Name>
+    <Level>41</Level>
+    <Tags>13</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_12">
+    <Id>TestConfigLargenum::perf3_0226_12</Id>
+    <Name>Item_perf3_0226_12</Name>
+    <Level>68</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_13">
+    <Id>TestConfigLargenum::perf3_0226_13</Id>
+    <Name>Item_perf3_0226_13</Name>
+    <Level>70</Level>
+    <Tags>18</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_14">
+    <Id>TestConfigLargenum::perf3_0226_14</Id>
+    <Name>Item_perf3_0226_14</Name>
+    <Level>83</Level>
+    <Tags>4</Tags>
+    <Tags>16</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_15">
+    <Id>TestConfigLargenum::perf3_0226_15</Id>
+    <Name>Item_perf3_0226_15</Name>
+    <Level>60</Level>
+    <Tags>7</Tags>
+    <Tags>1</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_16">
+    <Id>TestConfigLargenum::perf3_0226_16</Id>
+    <Name>Item_perf3_0226_16</Name>
+    <Level>81</Level>
+    <Tags>18</Tags>
+    <Tags>10</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_17">
+    <Id>TestConfigLargenum::perf3_0226_17</Id>
+    <Name>Item_perf3_0226_17</Name>
+    <Level>94</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig3" id="perf3_0226_18">
+    <Id>TestConfigLargenum::perf3_0226_18</Id>
+    <Name>Item_perf3_0226_18</Name>
+    <Level>42</Level>
+    <Tags>16</Tags>
+    <Tags>6</Tags>
+  </ConfigItem>
+</Root>

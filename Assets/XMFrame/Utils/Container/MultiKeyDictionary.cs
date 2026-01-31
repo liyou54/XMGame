@@ -376,6 +376,53 @@ namespace XM.Utils
         }
 
         /// <summary>
+        /// 添加 (value, key1, key2)。添加前检查 key1、key2 是否已存在，若任一已存在则抛出 InvalidOperationException。
+        /// </summary>
+        public void Add(TValue value, TKey1 key1, TKey2 key2)
+        {
+            if (ContainsKey1(key1))
+                throw new InvalidOperationException($"MultiKeyDictionary 已存在 key1: {key1}");
+            if (ContainsKey2(key2))
+                throw new InvalidOperationException($"MultiKeyDictionary 已存在 key2: {key2}");
+            int h1 = _comparer1.GetHashCode(key1);
+            int h2 = _comparer2.GetHashCode(key2);
+            int vi = AllocValue();
+            int i1 = AllocEntry1();
+            int i2 = AllocEntry2();
+            try
+            {
+                _values[vi] = value;
+                ref var e1 = ref _entries1[i1];
+                e1.next = -1;
+                e1.linkTo1 = i1;
+                e1.linkTo2 = i2;
+                e1.hashCode = h1;
+                e1.key = key1;
+                e1.valueIndex = vi;
+                ref var e2 = ref _entries2[i2];
+                e2.next = -1;
+                e2.linkTo1 = i1;
+                e2.linkTo2 = i2;
+                e2.hashCode = h2;
+                e2.key = key2;
+                e2.valueIndex = vi;
+                int x = B1(h1);
+                e1.link = _buckets1[x] - 1;
+                _buckets1[x] = i1 + 1;
+                x = B2(h2);
+                e2.link = _buckets2[x] - 1;
+                _buckets2[x] = i2 + 1;
+            }
+            catch
+            {
+                FreeEntry1(i1);
+                FreeEntry2(i2);
+                FreeValue(vi);
+                throw;
+            }
+        }
+
+        /// <summary>
         /// 按完整 key 组设置：先按 key1/key2 移除可能冲突的项，再添加 (value, key1, key2)。对同一 (key1, key2) 多次调用结果一致（幂等）。
         /// </summary>
         public void Set(TValue value, TKey1 key1, TKey2 key2)

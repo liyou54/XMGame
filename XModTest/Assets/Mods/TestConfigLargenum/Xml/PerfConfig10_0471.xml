@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig10" id="perf10_0471_0">
+    <Id>TestConfigLargenum::perf10_0471_0</Id>
+    <Name>Item_perf10_0471_0</Name>
+    <Level>89</Level>
+    <Tags>19</Tags>
+    <Tags>1</Tags>
+  </ConfigItem>
+</Root>

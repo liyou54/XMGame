@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig6" id="perf6_0219_0">
+    <Id>TestConfigLargenum::perf6_0219_0</Id>
+    <Name>Item_perf6_0219_0</Name>
+    <Level>93</Level>
+    <Tags>6</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0219_1">
+    <Id>TestConfigLargenum::perf6_0219_1</Id>
+    <Name>Item_perf6_0219_1</Name>
+    <Level>9</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0219_2">
+    <Id>TestConfigLargenum::perf6_0219_2</Id>
+    <Name>Item_perf6_0219_2</Name>
+    <Level>12</Level>
+    <Tags>2</Tags>
+    <Tags>11</Tags>
+    <Tags>10</Tags>
+    <Tags>2</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0219_3">
+    <Id>TestConfigLargenum::perf6_0219_3</Id>
+    <Name>Item_perf6_0219_3</Name>
+    <Level>80</Level>
+    <Tags>12</Tags>
+    <Tags>10</Tags>
+    <Tags>5</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0219_4">
+    <Id>TestConfigLargenum::perf6_0219_4</Id>
+    <Name>Item_perf6_0219_4</Name>
+    <Level>89</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0219_5">
+    <Id>TestConfigLargenum::perf6_0219_5</Id>
+    <Name>Item_perf6_0219_5</Name>
+    <Level>78</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0219_6">
+    <Id>TestConfigLargenum::perf6_0219_6</Id>
+    <Name>Item_perf6_0219_6</Name>
+    <Level>1</Level>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0219_7">
+    <Id>TestConfigLargenum::perf6_0219_7</Id>
+    <Name>Item_perf6_0219_7</Name>
+    <Level>82</Level>
+    <Tags>7</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0219_8">
+    <Id>TestConfigLargenum::perf6_0219_8</Id>
+    <Name>Item_perf6_0219_8</Name>
+    <Level>71</Level>
+    <Tags>2</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0219_9">
+    <Id>TestConfigLargenum::perf6_0219_9</Id>
+    <Name>Item_perf6_0219_9</Name>
+    <Level>45</Level>
+    <Tags>4</Tags>
+    <Tags>7</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0219_10">
+    <Id>TestConfigLargenum::perf6_0219_10</Id>
+    <Name>Item_perf6_0219_10</Name>
+    <Level>89</Level>
+    <Tags>19</Tags>
+  </ConfigItem>
+</Root>

@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig2" id="perf2_0388_0">
+    <Id>TestConfigLargenum::perf2_0388_0</Id>
+    <Name>Item_perf2_0388_0</Name>
+    <Level>6</Level>
+    <Tags>15</Tags>
+    <Tags>10</Tags>
+    <Tags>19</Tags>
+    <Tags>13</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0388_1">
+    <Id>TestConfigLargenum::perf2_0388_1</Id>
+    <Name>Item_perf2_0388_1</Name>
+    <Level>20</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0388_2">
+    <Id>TestConfigLargenum::perf2_0388_2</Id>
+    <Name>Item_perf2_0388_2</Name>
+    <Level>48</Level>
+    <Tags>11</Tags>
+    <Tags>9</Tags>
+    <Tags>15</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0388_3">
+    <Id>TestConfigLargenum::perf2_0388_3</Id>
+    <Name>Item_perf2_0388_3</Name>
+    <Level>33</Level>
+    <Tags>1</Tags>
+    <Tags>17</Tags>
+    <Tags>9</Tags>
+    <Tags>4</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0388_4">
+    <Id>TestConfigLargenum::perf2_0388_4</Id>
+    <Name>Item_perf2_0388_4</Name>
+    <Level>65</Level>
+    <Tags>5</Tags>
+    <Tags>2</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0388_5">
+    <Id>TestConfigLargenum::perf2_0388_5</Id>
+    <Name>Item_perf2_0388_5</Name>
+    <Level>46</Level>
+    <Tags>5</Tags>
+    <Tags>7</Tags>
+    <Tags>16</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0388_6">
+    <Id>TestConfigLargenum::perf2_0388_6</Id>
+    <Name>Item_perf2_0388_6</Name>
+    <Level>31</Level>
+    <Tags>2</Tags>
+    <Tags>12</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0388_7">
+    <Id>TestConfigLargenum::perf2_0388_7</Id>
+    <Name>Item_perf2_0388_7</Name>
+    <Level>56</Level>
+    <Tags>6</Tags>
+    <Tags>8</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig2" id="perf2_0388_8">
+    <Id>TestConfigLargenum::perf2_0388_8</Id>
+    <Name>Item_perf2_0388_8</Name>
+    <Level>12</Level>
+    <Tags>1</Tags>
+    <Tags>13</Tags>
+    <Tags>11</Tags>
+  </ConfigItem>
+</Root>

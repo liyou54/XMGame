@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 性能测试用批量配置 -->
+<Root>
+  <ConfigItem cls="PerfConfig6" id="perf6_0987_0">
+    <Id>TestConfigLargenum::perf6_0987_0</Id>
+    <Name>Item_perf6_0987_0</Name>
+    <Level>31</Level>
+    <Tags>19</Tags>
+    <Tags>1</Tags>
+    <Tags>5</Tags>
+    <Tags>4</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0987_1">
+    <Id>TestConfigLargenum::perf6_0987_1</Id>
+    <Name>Item_perf6_0987_1</Name>
+    <Level>97</Level>
+    <Tags>5</Tags>
+    <Tags>3</Tags>
+    <Tags>10</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0987_2">
+    <Id>TestConfigLargenum::perf6_0987_2</Id>
+    <Name>Item_perf6_0987_2</Name>
+    <Level>60</Level>
+    <Tags>16</Tags>
+    <Tags>5</Tags>
+    <Tags>1</Tags>
+    <Tags>11</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0987_3">
+    <Id>TestConfigLargenum::perf6_0987_3</Id>
+    <Name>Item_perf6_0987_3</Name>
+    <Level>88</Level>
+    <Tags>11</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0987_4">
+    <Id>TestConfigLargenum::perf6_0987_4</Id>
+    <Name>Item_perf6_0987_4</Name>
+    <Level>96</Level>
+    <Tags>12</Tags>
+    <Tags>13</Tags>
+    <Tags>19</Tags>
+    <Tags>14</Tags>
+  </ConfigItem>
+  <ConfigItem cls="PerfConfig6" id="perf6_0987_5">
+    <Id>TestConfigLargenum::perf6_0987_5</Id>
+    <Name>Item_perf6_0987_5</Name>
+    <Level>34</Level>
+    <Tags>14</Tags>
+    <Tags>8</Tags>
+    <Tags>3</Tags>
+  </ConfigItem>
+</Root>
