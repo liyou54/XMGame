@@ -121,7 +121,7 @@ public partial struct {{ unmanaged_type_name }}
     public static {{ field.target_type }} Convert{{ field.name }}({{ field.source_type }} source)
     {
         var c = global::XM.Contracts.IConfigDataCenter.I?.GetConverter<{{ field.source_type }}, {{ field.target_type }}>(""{{ field.converter_domain_escaped }}"");
-        return c != null ? c.Convert(source) : default;
+        return c != null && c.Convert(source, out var result) ? result : default;
     }
 }
 {{~ end ~}}

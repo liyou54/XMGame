@@ -30,7 +30,7 @@ public partial struct NestedConfigUnManaged : global::XM.IConfigUnManaged<Nested
     public static int2 ConvertTestCustom(String source)
     {
         var c = global::XM.Contracts.IConfigDataCenter.I?.GetConverter<String, int2>("");
-        return c != null ? c.Convert(source) : default;
+        return c != null && c.Convert(source, out var result) ? result : default;
     }
 }
 public partial struct NestedConfigUnManaged
@@ -41,7 +41,7 @@ public partial struct NestedConfigUnManaged
     public static int2 ConvertTestGlobalConvert(String source)
     {
         var c = global::XM.Contracts.IConfigDataCenter.I?.GetConverter<String, int2>("global");
-        return c != null ? c.Convert(source) : default;
+        return c != null && c.Convert(source, out var result) ? result : default;
     }
 }
 

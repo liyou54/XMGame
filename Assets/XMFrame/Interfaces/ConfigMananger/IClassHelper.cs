@@ -39,7 +39,7 @@ namespace XM.Contracts.Config
             get => ConfigParseHelper.OnParseError;
             set => ConfigParseHelper.OnParseError = value;
         }
-        
+
         public abstract TblS GetTblS();
         public abstract IXConfig Create();
 
@@ -79,7 +79,8 @@ namespace XM.Contracts.Config
         public abstract void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName,
             in ConfigParseContext context);
 
-        public abstract void AllocUnManagedAndInitHeadVal(TblI table,ConcurrentDictionary<CfgS, IXConfig> kvValue, object configHolder);
+        public abstract void AllocUnManagedAndInitHeadVal(TblI table, ConcurrentDictionary<CfgS, IXConfig> kvValue,
+            object configHolder);
 
         /// <summary>
         /// 获取“链接到本表”的 ClassHelper 列表（其 LinkHelperType 指向本 Helper 类型）。由 ConfigDataCenter 在初始化时通过 RegisterSubLinkHelper 填充。
@@ -96,10 +97,14 @@ namespace XM.Contracts.Config
             if (sub != null && !_subLinkHelpers.Contains(sub))
                 _subLinkHelpers.Add(sub);
         }
+
         public abstract Type GetLinkHelperType();
+
+        public abstract void FillBasicData(TblI tblI, ConcurrentDictionary<CfgS, IXConfig> kvValue,
+            object configHolder);
+
+        public abstract void AllocContainerWithoutFill(TblI tblI,TblS tblS, ConcurrentDictionary<CfgS, IXConfig> kvValue,
+            ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> allData,
+            object configHolder);
     }
-
-
-
-
 }

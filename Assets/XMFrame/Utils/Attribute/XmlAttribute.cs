@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace XM.Utils.Attribute
 {
@@ -56,6 +57,7 @@ namespace XM.Utils.Attribute
         }
     }
 
+    [AttributeUsage(AttributeTargets.All, AllowMultiple = true)]
     public class XmlGlobalConvertAttribute : System.Attribute
     {
         public Type ConverterType;

@@ -41,6 +41,9 @@ namespace XM
         /// <summary>TblS 与 TblI 双向映射</summary>
         private readonly BidirectionalDictionary<TblS, TblI> _typeLookUp = new();
 
+        /// <summary>TblS 与 TblI 双向映射</summary>
+        private readonly BidirectionalDictionary<CfgS, CfgI> _cfgLookUp = new();
+        
         /// <summary>配置数据容器持有者</summary>
         private readonly ConfigDataHolder _configHolder = new();
 
@@ -137,12 +140,117 @@ namespace XM
             await RegisterModConfig();
             // 预留：解析配置间引用
             SolveConfigReference();
-        }
+        } 
 
         /// <summary>解析配置间引用（预留）</summary>
         private void SolveConfigReference()
         {
             // 先预注册
+        }
+
+        /// <summary>为每个表分配 Unmanaged 内存并初始化</summary>
+        /// <remarks>主要步骤：1. 遍历所有表的待添加配置；2. 获取对应的 ClassHelper；3. 调用 AllocUnManagedAndInitHeadVal 分配内存并初始化。</remarks>
+        private async UniTask FillUnmanagedData(ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> pendingAdds)
+        {
+            foreach (var tableEntry in pendingAdds)
+            {
+                var tbls = tableEntry.Key;
+                var kvValue = tableEntry.Value;
+
+                // 获取该表对应的 ClassHelper
+                var helper = GetClassHelperByTable(tbls);
+                if (helper == null)
+                {
+                    XLog.Error($"[Config] FillUnmanagedData: 未找到表 {tbls} 的 ClassHelper");
+                    continue;
+                }
+
+                // 获取该表的 TblI
+                var tblI = GetTblI(tbls);
+                if (!tblI.Valid)
+                {
+                    XLog.Error($"[Config] FillUnmanagedData: 表 {tbls} 的 TblI 无效");
+                    continue;
+                }
+
+                // 调用 Helper 分配 Unmanaged 内存并初始化
+                helper.AllocUnManagedAndInitHeadVal(tblI, kvValue, _configHolder);
+            }
+            
+            foreach (var tableEntry in pendingAdds)
+            {
+                var tbls = tableEntry.Key;
+                var kvValue = tableEntry.Value;
+
+                // 获取该表对应的 ClassHelper
+                var helper = GetClassHelperByTable(tbls);
+                if (helper == null)
+                {
+                    XLog.Error($"[Config] FillUnmanagedData: 未找到表 {tbls} 的 ClassHelper");
+                    continue;
+                }
+
+                // 获取该表的 TblI
+                var tblI = GetTblI(tbls);
+                if (!tblI.Valid)
+                {
+                    XLog.Error($"[Config] FillUnmanagedData: 表 {tbls} 的 TblI 无效");
+                    continue;
+                }
+
+                // 调用 Helper 分配 Unmanaged 内存并初始化
+                helper.AllocContainerWithoutFill(tblI,tbls, kvValue, pendingAdds, _configHolder);
+            }
+            
+            foreach (var tableEntry in pendingAdds)
+            {
+                var tbls = tableEntry.Key;
+                var kvValue = tableEntry.Value;
+
+                // 获取该表对应的 ClassHelper
+                var helper = GetClassHelperByTable(tbls);
+                if (helper == null)
+                {
+                    XLog.Error($"[Config] FillUnmanagedData: 未找到表 {tbls} 的 ClassHelper");
+                    continue;
+                }
+
+                // 获取该表的 TblI
+                var tblI = GetTblI(tbls);
+                if (!tblI.Valid)
+                {
+                    XLog.Error($"[Config] FillUnmanagedData: 表 {tbls} 的 TblI 无效");
+                    continue;
+                }
+
+                // 调用 Helper 分配 Unmanaged 内存并初始化
+                helper.AllocUnManagedAndInitHeadVal(tblI, kvValue, _configHolder);
+            }
+
+
+            foreach (var tableEntry in pendingAdds)
+            {
+                var tbls = tableEntry.Key;
+                var kvValue = tableEntry.Value;
+                // 获取该表的 TblI
+                var tblI = GetTblI(tbls);
+                if (!tblI.Valid)
+                {
+                    XLog.Error($"[Config] FillUnmanagedData: 表 {tbls} 的 TblI 无效");
+                    continue;
+                }
+                var helper = GetClassHelperByTable(tbls);
+                // 多线程
+                helper.FillBasicData(tblI, kvValue, _configHolder);
+            }
+            
+            foreach (var tableEntry in pendingAdds)
+            {
+                var tbls = tableEntry.Key;
+                var kvValue = tableEntry.Value;
+                var helper = GetClassHelperByTable(tbls);
+                // helper.FillContainData();
+            }
         }
 
         /// <remarks>主要步骤：1. 注册 Mod 内 Helper；2. 构建 SubLink 反向表；3. 注册动态配置类型（TblI）；4. 异步读 XML 并应用。</remarks>
@@ -155,7 +263,9 @@ namespace XM
             // 为每个 Helper 分配 TblI 并写入 _typeLookUp
             RegisterDynamicConfigType();
             // 多文件并行解析 XML，结果写入 pending 容器后统一应用
-            await ReadConfigFromXmlAsync();
+            var paddingAdd = await ReadConfigFromXmlAsync();
+            // 为每个表分配 Unmanaged 内存并初始化头部值
+            FillUnmanagedData(paddingAdd);
         }
 
         /// <summary>
@@ -185,7 +295,7 @@ namespace XM
 
         /// <summary>从 XML 读取配置。每个文件在线程池执行，结果写入并发容器，减少 GC。</summary>
         /// <remarks>主要步骤：1. 收集所有 Mod 的 XML 文件信息；2. 创建 pending 并发容器；3. 线程池并行解析每个文件；4. 切回主线程；5. 输出解析错误；6. 应用待处理配置。</remarks>
-        private async UniTask ReadConfigFromXmlAsync()
+        private async UniTask<ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>>> ReadConfigFromXmlAsync()
         {
             // 按 Mod 顺序收集 (ModName, ModId, XmlFilePath)
             var fileInfos = new List<(string ModName, ModI ModId, string XmlFilePath)>();
@@ -226,6 +336,7 @@ namespace XM
                 pendingAdds.Sum(t => t.Value.Count), pendingModifies.Count, pendingDeletes.Count);
             // 将 pending 结果应用到 ConfigData 与 Helper（删除、Modify、Add 顺序已处理）
             ApplyPendingConfigs(pendingAdds, pendingDeletes, pendingModifies);
+            return pendingAdds;
         }
 
         /// <summary>单文件在线程池执行：加载 XML、解析 ConfigItem，结果写入 pendingAdds / pendingDeletes / pendingModifies。</summary>
@@ -342,7 +453,12 @@ namespace XM
             {
                 var tbls = GetTblSFromCfgS(modifyEntry.Key);
                 var helper = GetClassHelperByTable(tbls);
-                if (pendingAdds.TryRemove(tbls, out var tableDict) && tableDict.TryGetValue(modifyEntry.Key, out var sourceConfig))
+                if (helper == null)
+                {
+                    XLog.Error($"[Config] Modify 未找到 Helper: tbls={tbls}, key={modifyEntry.Key}");
+                    continue;
+                }
+                if (pendingAdds.TryGetValue(tbls, out var tableDict) && tableDict.TryGetValue(modifyEntry.Key, out var sourceConfig))
                 {
                     helper.ParseAndFillFromXml(sourceConfig, modifyEntry.Value, modifyEntry.Key.ConfigInMod, modifyEntry.Key.ConfigName);
                 }
@@ -484,15 +600,50 @@ namespace XM
             return TypeConverterRegistry.GetConverterByType<TSource, TTarget>() != null;
         }
 
-        /// <remarks>主要步骤：根据表定义、Mod、配置名解析 CfgI（当前未实现）。</remarks>
+        /// <remarks>主要步骤：根据表定义、Mod、配置名构造 CfgS，然后从 _cfgLookUp 查询 CfgI。</remarks>
         public bool TryGetCfgI(TblS tableDefine, ModS mod, string configName, out CfgI cfgI)
         {
-            var tbl = _typeLookUp.TryGetValueByKey(tableDefine, out var tableHandle);
-            throw new NotImplementedException();
+            // 构造 CfgS 作为查询键
+            var cfgS = new CfgS(mod, tableDefine, configName);
+            
+            // 从双向字典中查询
+            return _cfgLookUp.TryGetValueByKey(cfgS, out cfgI);
+        }
+
+        /// <summary>从 CfgS 查询 CfgI</summary>
+        /// <remarks>主要步骤：直接用 CfgS 从 _cfgLookUp 查询 CfgI。</remarks>
+        public bool TryGetCfgI(CfgS cfgS, out CfgI cfgI)
+        {
+            return _cfgLookUp.TryGetValueByKey(cfgS, out cfgI);
+        }
+
+        /// <remarks>主要步骤：根据表句柄、Mod、配置名构造查询键，检查 ConfigData 中是否存在该配置。</remarks>
+        public bool TryExistsConfig(TblI table, ModS mod, string configName)
+        {
+            // 从 TblI 反查 TblS（使用双向字典的正确方法）
+            if (!_typeLookUp.TryGetKeyByValue(table, out var tableDefine))
+                return false;
+
+            // 构造 CfgS 查询键
+            var cfgS = new CfgS(mod, tableDefine, configName);
+            
+            // 检查是否在 _cfgLookUp 中存在
+            if (_cfgLookUp.TryGetValueByKey(cfgS, out var cfgI))
+            {
+                // 进一步检查 ConfigData 中是否真实存在该配置
+                return _configHolder.Data.IsConfigExist(cfgI);
+            }
+
+            return false;
         }
 
         /// <remarks>主要步骤：预留接口，当前无实现。</remarks>
         public void UpdateData<T>(T data) where T : IXConfig
+        {
+        }
+
+        /// <remarks>主要步骤：预留接口，当前无实现。</remarks>
+        public void RegisterData<T>(T data) where T : IXConfig
         {
         }
 
@@ -537,6 +688,33 @@ namespace XM
             if (_typeLookUp.TryGetValueByKey(tableDefine, out var tableHandle))
                 return tableHandle;
             return default;
+        }
+
+        /// <summary>为配置分配唯一的 CfgI 索引</summary>
+        /// <remarks>主要步骤：1. 从 CfgS 获取 ModI；2. 查询或初始化该(表,Mod)的下一个ID；3. 构造并返回 CfgI；4. 递增计数器；5. 注册到 _cfgLookUp。</remarks>
+        public CfgI AllocCfgIndex(CfgS cfgS, TblI table)
+        {
+            // 从配置键获取 Mod 名并转为 ModI
+            var modName = cfgS.ConfigInMod.Name;
+            var modHandle = IModManager.I.GetModId(modName);
+
+            // 获取该 (表, Mod) 组合的下一个可用 ID
+            var key = (table, modHandle);
+            if (!_nextCfgIByTableMod.TryGetValue(key, out var nextId))
+            {
+                nextId = 1; // 从 1 开始分配（0 通常表示无效）
+            }
+
+            // 构造 CfgI
+            var cfgI = new CfgI(nextId, modHandle, table);
+
+            // 递增并保存下一个 ID
+            _nextCfgIByTableMod[key] = (short)(nextId + 1);
+
+            // 将 CfgS 和 CfgI 的映射关系注册到双向字典
+            _cfgLookUp.AddOrUpdate(cfgS, cfgI);
+
+            return cfgI;
         }
 
         #endregion

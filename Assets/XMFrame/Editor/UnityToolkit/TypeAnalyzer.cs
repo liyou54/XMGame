@@ -396,6 +396,10 @@ namespace UnityToolkit
         }
 
         private static readonly Dictionary<Assembly, Dictionary<Type, string>> ConverterTargetCache = new Dictionary<Assembly, Dictionary<Type, string>>();
+        
+        /// <summary>缓存：程序集 -> (源类型 -> (目标类型, 域))</summary>
+        private static readonly Dictionary<Assembly, Dictionary<Type, (Type targetType, string domain)>> ConverterSourceTargetCache = 
+            new Dictionary<Assembly, Dictionary<Type, (Type, string)>>();
 
         public static Type GetTargetTypeFromConverterType(Type converterType)
         {
@@ -411,6 +415,21 @@ namespace UnityToolkit
             return null;
         }
 
+        /// <summary>从转换器类型获取源类型和目标类型对</summary>
+        public static (Type sourceType, Type targetType) GetConverterTypePair(Type converterType)
+        {
+            if (converterType == null) return (null, null);
+            foreach (var i in converterType.GetInterfaces())
+            {
+                if (!i.IsGenericType || i.GetGenericArguments().Length < 2) continue;
+                var def = i.GetGenericTypeDefinition();
+                if (def.Name != "ITypeConverter`2") continue;
+                var args = i.GetGenericArguments();
+                return (args[0], args[1]);
+            }
+            return (null, null);
+        }
+
         public static string GetConverterDomainForType(Assembly assembly, Type targetType)
         {
             if (assembly == null || targetType == null) return null;
@@ -422,20 +441,70 @@ namespace UnityToolkit
             return dict.TryGetValue(targetType, out var domain) ? domain : null;
         }
 
+        /// <summary>根据源类型获取目标类型和域</summary>
+        public static bool TryGetConverterTargetBySourceType(Assembly assembly, Type sourceType, out Type targetType, out string domain)
+        {
+            targetType = null;
+            domain = null;
+            
+            if (assembly == null || sourceType == null) return false;
+            
+            // 确保缓存已构建
+            if (!ConverterTargetCache.ContainsKey(assembly))
+            {
+                BuildConverterTargetMap(assembly);
+            }
+            
+            // 从源类型->目标类型缓存中查询
+            if (ConverterSourceTargetCache.TryGetValue(assembly, out var sourceTargetDict))
+            {
+                if (sourceTargetDict.TryGetValue(sourceType, out var result))
+                {
+                    targetType = result.targetType;
+                    domain = result.domain;
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
         private static Dictionary<Type, string> BuildConverterTargetMap(Assembly asm)
         {
             var dict = new Dictionary<Type, string>();
+            var sourceTargetDict = new Dictionary<Type, (Type, string)>();
+            
             try
             {
                 foreach (var attr in asm.GetCustomAttributes(typeof(XmlGlobalConvertAttribute), false))
                 {
                     if (!(attr is XmlGlobalConvertAttribute ga) || ga.ConverterType == null) continue;
-                    var targetType = GetTargetTypeFromConverterType(ga.ConverterType);
-                    if (targetType != null && !dict.ContainsKey(targetType))
-                        dict[targetType] = ga.Domain ?? "";
+                    
+                    // 获取转换器的源类型和目标类型对
+                    var (sourceType, targetType) = GetConverterTypePair(ga.ConverterType);
+                    UnityEngine.Debug.Log($"[UnityToolkit.TypeAnalyzer] 程序集 {asm.GetName().Name}: 转换器 {ga.ConverterType.Name}, 源={sourceType?.Name}, 目标={targetType?.Name}");
+                    
+                    if (targetType != null)
+                    {
+                        var domain = ga.Domain ?? "";
+                        
+                        // 如果源类型是 string，添加到原有缓存（向后兼容）
+                        if (sourceType == typeof(string) && !dict.ContainsKey(targetType))
+                        {
+                            dict[targetType] = domain;
+                        }
+                        
+                        // 同时添加到源类型->目标类型缓存（支持所有类型对）
+                        if (sourceType != null && !sourceTargetDict.ContainsKey(sourceType))
+                        {
+                            sourceTargetDict[sourceType] = (targetType, domain);
+                            UnityEngine.Debug.Log($"[UnityToolkit.TypeAnalyzer] 注册转换器: {sourceType.Name} -> {targetType.Name}, 域={domain}");
+                        }
+                    }
                 }
             }
             catch { }
+            
             try
             {
                 foreach (var type in asm.GetTypes())
@@ -448,17 +517,40 @@ namespace UnityToolkit
                             var ga = field.GetCustomAttribute<XmlGlobalConvertAttribute>();
                             var ta = field.GetCustomAttribute<XmlTypeConverterAttribute>();
                             Type targetType = null;
+                            Type sourceType = null;
                             string domain = null;
-                            if (ga != null && ga.ConverterType != null) { targetType = field.FieldType; domain = ga.Domain ?? ""; }
-                            else if (ta != null && ta.ConverterType != null) { targetType = GetTargetTypeFromConverterType(ta.ConverterType) ?? field.FieldType; domain = ta.Domain ?? ""; }
+                            
+                            if (ga != null && ga.ConverterType != null) 
+                            { 
+                                targetType = field.FieldType; 
+                                sourceType = typeof(string);
+                                domain = ga.Domain ?? ""; 
+                            }
+                            else if (ta != null && ta.ConverterType != null) 
+                            { 
+                                targetType = GetTargetTypeFromConverterType(ta.ConverterType) ?? field.FieldType; 
+                                sourceType = typeof(string);
+                                domain = ta.Domain ?? ""; 
+                            }
+                            
                             if (targetType != null && !dict.ContainsKey(targetType))
                                 dict[targetType] = domain ?? "";
+                            
+                            if (sourceType != null && targetType != null && !sourceTargetDict.ContainsKey(sourceType))
+                                sourceTargetDict[sourceType] = (targetType, domain ?? "");
                         }
                     }
                     catch { }
                 }
             }
             catch (ReflectionTypeLoadException) { }
+            
+            // 保存源类型->目标类型缓存
+            lock (ConverterSourceTargetCache)
+            {
+                ConverterSourceTargetCache[asm] = sourceTargetDict;
+            }
+            
             return dict;
         }
 

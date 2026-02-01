@@ -438,6 +438,17 @@ namespace XM.Editor
             {
                 throw new NotImplementedException();
             }
+
+            public override void FillBasicData(TblI tblI, ConcurrentDictionary<CfgS, IXConfig> kvValue, object configHolder)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void AllocContainerWithoutFill(TblI tblI, TblS tblS, ConcurrentDictionary<CfgS, IXConfig> kvValue, ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> allData,
+                object configHolder)
+            {
+                throw new NotImplementedException();
+            }
         }
 
         private sealed class MockIXConfig : IXConfig

@@ -100,18 +100,6 @@ namespace XM.Utils
             return null;
         }
 
-        /// <summary>
-        /// 执行转换
-        /// </summary>
-        public static TTarget Convert<TSource, TTarget>(TSource source, string domain = "")
-        {
-            var converter = GetConverter<TSource, TTarget>(domain);
-            if (converter == null)
-            {
-                throw new InvalidOperationException($"未找到从 {typeof(TSource).Name} 到 {typeof(TTarget).Name} 的转换器（域: {domain ?? "全局"}）");
-            }
-            return converter.Convert(source);
-        }
 
         /// <summary>
         /// 检查是否存在转换器

@@ -67,7 +67,7 @@ namespace XM
         }
 
         /// <inheritdoc />
-        /// <remarks>主要步骤：1. 校验 configHolder 为 ConfigDataHolder；2. 在 ConfigData 中为该表分配 Unmanaged Map；3. 遍历 kvValue 为每条配置分配 TUnmanaged 并写入（当前实现未完成写入）。</remarks>
+        /// <remarks>主要步骤：1. 校验 configHolder 为 ConfigDataHolder；2. 在 ConfigData 中为该表分配 Unmanaged Map；3. 遍历 kvValue 为每条配置分配 TUnmanaged 并写入。</remarks>
         public override void AllocUnManagedAndInitHeadVal(TblI table, ConcurrentDictionary<CfgS, IXConfig> kvValue,
             object configHolder)
         {
@@ -80,15 +80,70 @@ namespace XM
 
             // 在 ConfigData 中为该表分配 Unmanaged Map，容量与待写入条数一致
             var tableMap = configHolderData.Data.AllocTableMap<TUnmanaged>(table, kvValue.Count);
-            var container = configHolderData.Data;
-            var index = 1;
-            // 遍历已解析的配置，为每条创建 TUnmanaged 并写入 Map（当前未完成 AddOrUpdate 调用）
+
+            // 校验 tableMap 是否分配成功（Offset 为 0 表示无效）
+            if (!tableMap.Vaild)
+            {
+                XLog.Error($"ConfigClassHelper.AllocUnManaged: 为表 {table} 分配 TableMap 失败");
+                return;
+            }
+
+            // 遍历已解析的配置，为每条创建 TUnmanaged 并写入 Map
             foreach (var keyValuePair in kvValue)
             {
-                var unmanagedValue = new TUnmanaged();
-                // mapData.AddOrUpdate(container, , unmanagedValue);
+                // 为该配置分配 CfgI 索引
+                CfgI cfgI = _configDataCenter.AllocCfgIndex(keyValuePair.Key, table);
+                // 将配置 ID 写回托管对象
+                keyValuePair.Value.Data = cfgI;
+                // 将 unmanaged 数据添加到 ConfigData（使用 AddPrimaryKeyOnly 先占位，后续 FillToUnmanaged 完整填充）
+                configHolderData.Data.AddPrimaryKeyOnly<TUnmanaged>(table, cfgI);
             }
         }
+
+        public override void AllocContainerWithoutFill(TblI table, TblS tblS,
+            ConcurrentDictionary<CfgS, IXConfig> kvValue,
+            ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> allData,
+            object configHolder)
+        {
+            // 校验持有者类型，确保能访问 ConfigData
+            if (configHolder is not XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+            {
+                XLog.Error("ConfigClassHelper.AllocUnManaged: configHolder is not XM.ConfigDataHolder");
+                return;
+            }
+            // 遍历已解析的配置，为每条分配容器
+            foreach (var keyValuePair in kvValue)
+            {
+                AllocContainerWithoutFillImpl(keyValuePair.Value, table, keyValuePair.Value.Data, allData, configHolderData);
+            }
+        }
+
+        protected abstract void AllocContainerWithoutFillImpl(
+            IXConfig value,
+            TblI tbli,
+            CfgI cfgi,
+            System.Collections.Concurrent.ConcurrentDictionary<TblS, System.Collections.Concurrent.ConcurrentDictionary<CfgS, IXConfig>> allData,
+            XM.ConfigDataCenter.ConfigDataHolder configHolderData);
+        public override void FillBasicData(TblI tblI, ConcurrentDictionary<CfgS, IXConfig> kvValue,
+            object configHolder)
+        {
+            // 校验持有者类型，确保能访问 ConfigData
+            if (configHolder is not XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+            {
+                XLog.Error("ConfigClassHelper.AllocUnManaged: configHolder is not XM.ConfigDataHolder");
+                return;
+            }
+
+            // var tableMap = configHolderData.Data.GetMap<CfgI, TUnmanaged>(tblI, kvValue.Count);
+            // foreach (var keyValuePair in kvValue)
+            // {
+            //     FillBasicDataImpl(configHolderData,keyValuePair.Key, keyValuePair.Value,tableMap);
+            // }
+        }
+
+        public abstract void FillBasicDataImpl(ConfigDataCenter.ConfigDataHolder configHolderData, CfgS key,
+            IXConfig value,
+            XBlobMap<CfgI, TUnmanaged> tableMap);
 
         #endregion
     }

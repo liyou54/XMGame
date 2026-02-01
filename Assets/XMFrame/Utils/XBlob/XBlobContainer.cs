@@ -40,7 +40,7 @@ public unsafe struct XBlobContainer : IDisposable
         Data->Initialize(allocator, capacity);
     }
     
-    public T Get<T>(int offset) where T : unmanaged
+    public readonly T Get<T>(int offset) where T : unmanaged
     {
         ThrowIfInvalid();
         return Data->Get<T>(offset);
@@ -58,7 +58,7 @@ public unsafe struct XBlobContainer : IDisposable
         return Data->GetArrayView<T>(offset);
     }
 
-    internal byte* GetDataPointer(int offset)
+    internal readonly byte* GetDataPointer(int offset)
     {
         ThrowIfInvalid();
         return Data->GetDataPointer(offset);
@@ -71,7 +71,7 @@ public unsafe struct XBlobContainer : IDisposable
         return new XBlobPtr<T>(offset);
     }
 
-    internal XBlobArray<T> AllocArray<T>(int capacity) where T : unmanaged
+    public XBlobArray<T> AllocArray<T>(int capacity) where T : unmanaged
     {
         ThrowIfInvalid();
         if (capacity < 0)
@@ -88,7 +88,7 @@ public unsafe struct XBlobContainer : IDisposable
         return new XBlobArray<T>(offset);
     }
 
-    internal readonly XBlobMap<TKey, TValue> AllocMap<TKey, TValue>(int capacity) 
+    public XBlobMap<TKey, TValue> AllocMap<TKey, TValue>(int capacity) 
         where TKey : unmanaged, IEquatable<TKey>
         where TValue : unmanaged
     {
@@ -132,7 +132,7 @@ public unsafe struct XBlobContainer : IDisposable
         return (int)offsetField.GetValue(map);
     }
 
-    internal XBlobSet<T> AllocSet<T>(int capacity) 
+    public XBlobSet<T> AllocSet<T>(int capacity) 
         where T : unmanaged, IEquatable<T>
     {
         ThrowIfInvalid();

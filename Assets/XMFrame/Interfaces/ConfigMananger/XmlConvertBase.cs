@@ -10,9 +10,11 @@ namespace XM.Contracts.Config
 
         public abstract bool TryGetData(string str, out T data);
 
-        public T Convert(string source)
+        public bool Convert(string source, out T target)
         {
-            return TryGetData(source, out var data) ? data : default;
+            return TryGetData(source, out target);
         }
     }
+    
+
 }

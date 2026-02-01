@@ -19,31 +19,32 @@ namespace XModToolkit
             scriptObject["managed_type_name"] = dto.ManagedTypeName ?? "";
             scriptObject["unmanaged_type_name"] = dto.UnmanagedTypeName ?? "";
             scriptObject["helper_class_name"] = (dto.ManagedTypeName ?? "") + "ClassHelper";
-            scriptObject["table_name"] = !string.IsNullOrEmpty(dto.TableName) ? dto.TableName : (dto.ManagedTypeName ?? "");
-            scriptObject["mod_name"] = !string.IsNullOrEmpty(dto.ModName) ? dto.ModName : "Default";
-            scriptObject["link_helper_class_name"] = dto.LinkHelperClassName ?? "";
+            scriptObject["table_name"] = dto.TableName ?? "";
+            scriptObject["mod_name"] = dto.ModName ?? "Default";
+            scriptObject["container_alloc_code"] = dto.ContainerAllocCode ?? "";
+            scriptObject["container_alloc_helper_methods"] = dto.ContainerAllocHelperMethods ?? "";
             scriptObject["required_usings"] = dto.RequiredUsings ?? new List<string>();
 
             var fieldAssigns = new List<ScriptObject>();
-            foreach (var a in dto.FieldAssigns ?? new List<FieldAssignDto>())
+            foreach (var f in dto.FieldAssigns ?? new List<FieldAssignDto>())
             {
                 fieldAssigns.Add(new ScriptObject
                 {
-                    ["call_code"] = a.CallCode ?? "",
-                    ["method_code"] = a.MethodCode ?? ""
+                    ["call_code"] = f.CallCode ?? "",
+                    ["method_code"] = f.MethodCode ?? ""
                 });
             }
             scriptObject["field_assigns"] = fieldAssigns;
 
             var converterRegistrations = new List<ScriptObject>();
-            foreach (var r in dto.ConverterRegistrations ?? new List<ConverterRegistrationDto>())
+            foreach (var c in dto.ConverterRegistrations ?? new List<ConverterRegistrationDto>())
             {
                 converterRegistrations.Add(new ScriptObject
                 {
-                    ["source_type"] = r.SourceType ?? "string",
-                    ["target_type"] = r.TargetType ?? "",
-                    ["domain_escaped"] = r.DomainEscaped ?? "",
-                    ["converter_type_name"] = r.ConverterTypeName ?? ""
+                    ["source_type"] = c.SourceType ?? "",
+                    ["target_type"] = c.TargetType ?? "",
+                    ["domain_escaped"] = c.DomainEscaped ?? "",
+                    ["converter_type_name"] = c.ConverterTypeName ?? ""
                 });
             }
             scriptObject["converter_registrations"] = converterRegistrations;

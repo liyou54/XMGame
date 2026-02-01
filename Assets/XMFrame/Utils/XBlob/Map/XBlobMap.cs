@@ -67,11 +67,18 @@ public struct XBlobMap<TKey, TValue>
     where TValue : unmanaged
 {
     internal readonly int Offset;
-    internal XBlobMap(int offset) => Offset = offset;
+    private TValue _nullValue; // 实例字段，用于GetRef找不到键时返回的默认值引用
+    
+    public XBlobMap(int offset)
+    {
+        Offset = offset;
+        _nullValue = default;
+    }
 
     private const int CountOffset = 0;
     private const int BucketCountOffset = sizeof(int);
     private const int BucketsOffset = sizeof(int) * 2; // 布局: [Count][BucketCount][Buckets][Entries][Keys][Values]
+    public bool Vaild => CountOffset > 0;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int GetBucketCount(in XBlobContainer container)
@@ -230,6 +237,43 @@ public struct XBlobMap<TKey, TValue>
     {
         var view = GetView(container);
         return view.Values.Slice(0, view.Count);
+    }
+
+    /// <summary>
+    /// 获取指定键对应值的引用，通过 out exists 参数指示键是否存在
+    /// </summary>
+    /// <param name="exists">输出参数，指示键是否存在</param>
+    /// <returns>如果键存在返回其引用，否则返回结构体实例的 _nullValue 字段引用</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public unsafe ref TValue GetRef(in XBlobContainer container, in TKey key, out bool exists)
+    {
+        int bucketCount = container.Get<int>(Offset + BucketCountOffset);
+        int hashCode = GetHashCode(key);
+        int bi = hashCode % bucketCount;
+        if (bi < 0) bi += bucketCount;
+
+        int bucketsOffset = Offset + BucketsOffset;
+        byte* basePtr = container.GetDataPointer(bucketsOffset);
+        int* buckets = (int*)basePtr;
+        int entrySize = sizeof(int) + sizeof(int);
+        int bucketsSize = bucketCount * sizeof(int);
+        XBlobHashMapEntry<TKey, TValue>* entries = (XBlobHashMapEntry<TKey, TValue>*)(basePtr + bucketsSize);
+        TKey* keys = (TKey*)((byte*)entries + bucketCount * entrySize);
+        TValue* values = (TValue*)((byte*)keys + bucketCount * UnsafeUtility.SizeOf<TKey>());
+
+        // 查找键
+        for (int i = buckets[bi]; i >= 0; i = entries[i].Next)
+        {
+            if (entries[i].HashCode == hashCode && keys[i].Equals(key))
+            {
+                exists = true;
+                return ref values[i];
+            }
+        }
+
+        // 键不存在，返回结构体实例的默认值字段引用
+        exists = false;
+        return ref _nullValue;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

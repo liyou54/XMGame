@@ -16,6 +16,7 @@ public partial struct TestConfigUnManaged : global::XM.IConfigUnManaged<TestConf
     public XBlobMap<Int32, Int32> TestDictSample;
     public XBlobArray<CfgI<TestConfigUnManaged>> TestKeyList;
     public XBlobMap<Int32, XBlobArray<XBlobArray<CfgI<TestConfigUnManaged>>>> TestKeyList1;
+    public XBlobMap<CfgI<TestConfigUnManaged>, XBlobArray<XBlobArray<CfgI<TestConfigUnManaged>>>> TestKeyList2;
     public XBlobSet<Int32> TestKeyHashSet;
     public XBlobMap<CfgI<TestConfigUnManaged>, CfgI<TestConfigUnManaged>> TestKeyDict;
     public XBlobSet<CfgI<TestConfigUnManaged>> TestSetKey;
@@ -25,6 +26,7 @@ public partial struct TestConfigUnManaged : global::XM.IConfigUnManaged<TestConf
     public CfgI<TestConfigUnManaged> Foreign;
     public global::XBlobPtr<TestConfigUnManaged> Foreign_Ref;
     public TypeI ConfigType;
+    public XBlobMap<TypeI, XBlobMap<TypeI, XBlobArray<NestedConfigUnManaged>>> ConfigDict;
     public Int32 TestIndex1;
     public CfgI<TestConfigUnManaged> TestIndex2;
     public global::XBlobPtr<TestConfigUnManaged> TestIndex2_Ref;

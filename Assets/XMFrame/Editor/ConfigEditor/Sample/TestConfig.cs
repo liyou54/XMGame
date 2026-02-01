@@ -4,14 +4,23 @@ using JetBrains.Annotations;
 using Unity.Collections;
 using Unity.Mathematics;
 using XM;
+using XM.Contracts;
 using XM.Utils;
 using XM.Utils.Attribute;
 using XM.Contracts.Config;
 
 [assembly: XmlGlobalConvert(typeof(TestGlobalInt2Convert), "global")]
+[assembly: XmlGlobalConvert(typeof(TestGlobalInt2Convert), "global")]
+[assembly: XmlGlobalConvert(typeof(TestGlobalTypeConvert), "global")]
 
 
-
+public class TestGlobalTypeConvert : ITypeConverter<Type,TypeI>
+{
+    public bool Convert(Type source, out TypeI target)
+    {
+        throw new NotImplementedException();
+    }
+}
 
 public class TestGlobalInt2Convert : XmlConvertBase<int2, TestInt2Convert>
 {
@@ -77,6 +86,7 @@ public class TestConfig : IXConfig<TestConfig, TestConfigUnManaged>
     public Dictionary<int, int> TestDictSample;
     public List<CfgS<TestConfigUnManaged>> TestKeyList;
     public Dictionary<int, List<List<CfgS<TestConfigUnManaged>>>> TestKeyList1;
+    public Dictionary<CfgS<TestConfigUnManaged>, List<List<CfgS<TestConfigUnManaged>>>> TestKeyList2;
     public HashSet<int> TestKeyHashSet;
     public Dictionary<CfgS<TestConfigUnManaged>, CfgS<TestConfigUnManaged>> TestKeyDict;
     public HashSet<CfgS<TestConfigUnManaged>> TestSetKey;
@@ -85,7 +95,9 @@ public class TestConfig : IXConfig<TestConfig, TestConfigUnManaged>
     public List<NestedConfig> TestNestedConfig;
     public CfgS<TestConfigUnManaged> Foreign;
     public Type ConfigType;
-
+    
+    public Dictionary<Type, Dictionary<Type, List<NestedConfig>>> ConfigDict;
+    
     [XmlIndex("Index1", false, 0)] public int TestIndex1;
     [XmlIndex("Index1", false, 1)] public CfgS<TestConfigUnManaged> TestIndex2;
     [XmlIndex("Index2", true, 0)] public CfgS<TestConfigUnManaged> TestIndex3;

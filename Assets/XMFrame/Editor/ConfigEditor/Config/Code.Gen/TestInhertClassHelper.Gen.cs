@@ -22,7 +22,6 @@ public sealed class TestInhertClassHelper : ConfigClassHelper<TestInhert, TestIn
         const string __modName = "Default";
         CfgS<TestInhertUnmanaged>.Table = new TblS(new ModS(__modName), __tableName);
         TblS = new TblS(new ModS(__modName), __tableName);
-        LinkHelperType = typeof(TestConfigClassHelper);
     }
 
     public TestInhertClassHelper(IConfigDataCenter dataCenter)
@@ -32,25 +31,12 @@ public sealed class TestInhertClassHelper : ConfigClassHelper<TestInhert, TestIn
 
     public override TblS GetTblS()
     {
-        return TblS;
+        return new TblS(new ModS("Default"), "TestInhert");
     }
 
-    /// <summary>由 TblI 分配时一并确定，无需单独字段。</summary>
-    public static ModI DefinedInMod => TblI.DefinedMod;
-
-    public override void SetTblIDefinedInMod(TblI c)
+    public override void SetTblIDefinedInMod(TblI tbl)
     {
-        TblI = c;
-    }
-
-    public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
-    {
-        return DeserializeConfigFromXml(configItem, mod, configName, default);
-    }
-
-    public override void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName)
-    {
-        ParseAndFillFromXml(target, configItem, mod, configName, default);
+        _definedInMod = tbl;
     }
 
     public override void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
@@ -62,30 +48,55 @@ public sealed class TestInhertClassHelper : ConfigClassHelper<TestInhert, TestIn
 
     #region 字段解析 (ParseXXX)
 
-    private static CfgS<TestConfig> ParseLink(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
+    private static CfgS<TestConfig> ParseLink(XmlElement configItem, ModS mod, string configName,
+        in ConfigParseContext context)
+    {
+        try
         {
-            try
-            {
-                var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Link");
+            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Link");
             if (string.IsNullOrEmpty(s)) return default;
-            if (!ConfigParseHelper.TryParseCfgSString(s, "Link", out var modName, out var cfgName)) return default;
-            return new CfgS<TestConfig>(new ModS(modName), cfgName);
-            }
-            catch (Exception ex)
-            {
-                if (ConfigParseHelper.IsStrictMode(context)) ConfigParseHelper.LogParseError(context, "Link", ex); else ConfigParseHelper.LogParseWarning("Link", ConfigParseHelper.GetXmlFieldValue(configItem, "Link"), ex);
+            if (!ConfigParseHelper.TryParseCfgSString(s, "Link", out var modName, out var cfgName))
                 return default;
-            }
+            return new CfgS<TestConfig>(new ModS(modName), cfgName);
         }
-
-    private static int Parsexxxx(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
+        catch (Exception ex)
         {
-            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "xxxx");
-            if (string.IsNullOrEmpty(s)) return default;
-            return ConfigParseHelper.TryParseInt(s, "xxxx", out var v) ? v : default;
+            if (ConfigParseHelper.IsStrictMode(context))
+                ConfigParseHelper.LogParseError(context, "Link", ex);
+            else
+                ConfigParseHelper.LogParseWarning("Link",
+                    ConfigParseHelper.GetXmlFieldValue(configItem, "Link"), ex);
+            return default;
         }
+    }
+
+    private static int Parsexxxx(XmlElement configItem, ModS mod, string configName,
+        in ConfigParseContext context)
+    {
+        var s = ConfigParseHelper.GetXmlFieldValue(configItem, "xxxx");
+        if (string.IsNullOrEmpty(s)) return default;
+        return ConfigParseHelper.TryParseInt(s, "xxxx", out var v) ? v : default;
+    }
 
     #endregion
+
+    protected override void AllocContainerWithoutFillImpl(
+        IXConfig value,
+        TblI tbli,
+        CfgI cfgi,
+        System.Collections.Concurrent.ConcurrentDictionary<TblS, System.Collections.Concurrent.ConcurrentDictionary<CfgS, IXConfig>> allData,
+        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        // 无容器字段需要分配
+    }
+
+
+    public override void FillBasicDataImpl(XM.ConfigDataCenter.ConfigDataHolder configHolderData, CfgS key, IXConfig value, XBlobMap<CfgI, TestInhertUnmanaged> tableMap)
+    {
+        // TODO: 实现基础数据填充逻辑
+    }
+
+    private TblI _definedInMod;
 }
 
 }

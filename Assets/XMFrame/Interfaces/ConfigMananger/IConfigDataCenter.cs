@@ -10,7 +10,7 @@ namespace XM.Contracts
         /// <summary>
         /// 将源类型转换为目标类型
         /// </summary>
-        TTarget Convert(TSource source);
+       bool  Convert(TSource source,out TTarget target);
     }
 
     public interface IConfigDataCenter : IManager<IConfigDataCenter>
@@ -22,12 +22,12 @@ namespace XM.Contracts
         bool TryGetConfig<T>(out T data) where T : unmanaged, IConfigUnManaged<T>;
 
         /// <summary>
-        /// 从配置中心获取转换器（按域）
+        /// 从配置中心获取转换器
         /// </summary>
         ITypeConverter<TSource, TTarget> GetConverter<TSource, TTarget>(string domain = "");
 
         /// <summary>
-        /// 仅按类型获取转换器：先全局再任意域，返回第一个匹配。供生成代码直接通过类型获取正确转换器，无需传 domain。
+        /// 根据类型获取转换器（不需要domain）
         /// </summary>
         ITypeConverter<TSource, TTarget> GetConverterByType<TSource, TTarget>();
 
@@ -37,7 +37,7 @@ namespace XM.Contracts
         bool HasConverter<TSource, TTarget>(string domain = "");
 
         /// <summary>
-        /// 检查是否存在转换器（按类型，任意域）
+        /// 根据类型检查是否存在转换器
         /// </summary>
         bool HasConverterByType<TSource, TTarget>();
 
@@ -52,16 +52,12 @@ namespace XM.Contracts
         ConfigClassHelper GetClassHelper(System.Type configType);
 
         /// <summary>
-        /// 通过 Type 获取 ClassHelper 实例（非泛型版本）
-        /// </summary>
-        ConfigClassHelper GetClassHelperByHelpType(System.Type configType);
-        
-        /// <summary>
         /// 通过 TblS 获取 ClassHelper 实例
         /// </summary>
         ConfigClassHelper GetClassHelperByTable(TblS tableDefine);
 
-        public void UpdateData<T>(T data) where T : IXConfig;
+        public void RegisterData<T>(T data) where T : IXConfig;
+
 
         /// <summary>
         /// 根据 (TblS, ModS, ConfigName) 解析已分配的 CfgI，供 FillToUnmanaged 外键解析。
@@ -69,9 +65,26 @@ namespace XM.Contracts
         bool TryGetCfgI(TblS tableDefine, ModS mod, string configName, out CfgI cfgI);
 
         /// <summary>
+        /// 从 CfgS 查询 CfgI
+        /// </summary>
+        bool TryGetCfgI(CfgS cfgS, out CfgI cfgI);
+        
+        /// <summary>
+        /// 检查指定表中是否存在指定配置（供 Helper 的递归判断父类是否存在使用）
+        /// </summary>
+        bool TryExistsConfig(TblI table, ModS mod, string configName);
+
+        /// <summary>
         /// 从 TblS 获取 TblI
         /// </summary>
         TblI GetTblI(TblS tableDefine);
 
+        /// <summary>
+        /// 为配置分配唯一的 CfgI 索引
+        /// </summary>
+        /// <param name="cfgS">配置键</param>
+        /// <param name="table">表句柄</param>
+        /// <returns>分配的配置索引</returns>
+        CfgI AllocCfgIndex(CfgS cfgS, TblI table);
     }
 }
