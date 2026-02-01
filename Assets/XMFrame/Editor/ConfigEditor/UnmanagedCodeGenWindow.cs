@@ -35,7 +35,7 @@ namespace XM.Editor
             }
         }
 
-        [MenuItem("XM/Config/Generate Code (Select Assemblies)")]
+        [MenuItem("XMFrame/Config/Generate Code (Select Assemblies)")]
         [MenuItem("UnityToolkit/Config/Generate Code (Select Assemblies)")]
         public static void ShowWindow()
         {
