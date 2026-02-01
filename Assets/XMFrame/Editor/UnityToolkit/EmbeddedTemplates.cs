@@ -42,27 +42,18 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
         return TblS;
     }
 
-    /// <summary>由 TblI 分配时一并确定，无需单独字段。</summary>
-    public static ModI DefinedInMod => TblI.DefinedMod;
-
-    public override void SetTblIDefinedInMod(TblI c)
+    public override void SetTblIDefinedInMod(TblI tbl)
     {
-        TblI = c;
-    }
-
-    public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
-    {
-        return DeserializeConfigFromXml(configItem, mod, configName, default);
-    }
-
-    public override void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName)
-    {
-        ParseAndFillFromXml(target, configItem, mod, configName, default);
+        _definedInMod = tbl;
     }
 
     public override void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
     {
         var config = ({{ managed_type_name }})target;
+{{~ if has_base ~}}
+        var baseHelper = ConfigDataCenter.GetClassHelper(typeof({{ base_managed_type_name }}));
+        if (baseHelper != null) baseHelper.ParseAndFillFromXml(target, configItem, mod, configName, context);
+{{~ end ~}}
 {{~ for assign in field_assigns ~}}
         {{ assign.call_code }}
 {{~ end ~}}
@@ -75,6 +66,36 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
 
 {{~ end ~}}
     #endregion
+
+    protected override void AllocContainerWithoutFillImpl(
+        IXConfig value,
+        TblI tbli,
+        CfgI cfgi,
+        System.Collections.Concurrent.ConcurrentDictionary<TblS, System.Collections.Concurrent.ConcurrentDictionary<CfgS, IXConfig>> allData,
+        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+{{~ if container_alloc_code != """" ~}}
+        var config = ({{ managed_type_name }})value;
+{{ container_alloc_code }}
+{{~ else ~}}
+        // 无容器字段需要分配
+{{~ end ~}}
+    }
+
+{{~ if container_alloc_helper_methods != """" ~}}
+    #region 容器分配辅助方法
+
+{{ container_alloc_helper_methods }}
+
+    #endregion
+{{~ end ~}}
+
+    public override void FillBasicDataImpl(XM.ConfigDataCenter.ConfigDataHolder configHolderData, CfgS key, IXConfig value, XBlobMap<CfgI, {{ unmanaged_type_name }}> tableMap)
+    {
+        // TODO: 实现基础数据填充逻辑
+    }
+
+    private TblI _definedInMod;
 }
 
 {{~ if namespace != """" ~}}

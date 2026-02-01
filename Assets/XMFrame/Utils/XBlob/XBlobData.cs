@@ -6,6 +6,8 @@ public unsafe struct XBlobData : IDisposable
 {
     private const int MinInitialCapacity = 64;
     private const int GrowthFactor = 2;
+    /// <summary>预留的起始偏移量，确保所有有效指针的 offset > 0，可以用 0 表示 null/无效指针</summary>
+    private const int ReservedOffset = 4;
 
     private byte* _data;
     private Allocator _allocator;
@@ -25,7 +27,8 @@ public unsafe struct XBlobData : IDisposable
         }
         _allocator = allocator;
         Capacity = capacity;
-        UsedSize = 0;
+        // 预留前 4 字节，确保所有有效的 offset > 0，可以用 offset == 0 表示 null/无效指针
+        UsedSize = ReservedOffset;
         _data = (byte*)UnsafeUtility.Malloc(capacity, UnsafeUtility.AlignOf<byte>(), allocator);
     }
 
@@ -128,7 +131,7 @@ public unsafe struct XBlobData : IDisposable
             UnsafeUtility.Free(_data, _allocator);
             _data = null;
             Capacity = 0;
-            UsedSize = 0;
+            UsedSize = 0; // Dispose 时重置为 0
             _allocator = Allocator.Invalid;
         }
     }

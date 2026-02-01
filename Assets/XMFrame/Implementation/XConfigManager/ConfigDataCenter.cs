@@ -201,32 +201,6 @@ namespace XM
                 // 调用 Helper 分配 Unmanaged 内存并初始化
                 helper.AllocContainerWithoutFill(tblI,tbls, kvValue, pendingAdds, _configHolder);
             }
-            
-            foreach (var tableEntry in pendingAdds)
-            {
-                var tbls = tableEntry.Key;
-                var kvValue = tableEntry.Value;
-
-                // 获取该表对应的 ClassHelper
-                var helper = GetClassHelperByTable(tbls);
-                if (helper == null)
-                {
-                    XLog.Error($"[Config] FillUnmanagedData: 未找到表 {tbls} 的 ClassHelper");
-                    continue;
-                }
-
-                // 获取该表的 TblI
-                var tblI = GetTblI(tbls);
-                if (!tblI.Valid)
-                {
-                    XLog.Error($"[Config] FillUnmanagedData: 表 {tbls} 的 TblI 无效");
-                    continue;
-                }
-
-                // 调用 Helper 分配 Unmanaged 内存并初始化
-                helper.AllocUnManagedAndInitHeadVal(tblI, kvValue, _configHolder);
-            }
-
 
             foreach (var tableEntry in pendingAdds)
             {
@@ -243,14 +217,6 @@ namespace XM
                 // 多线程
                 helper.FillBasicData(tblI, kvValue, _configHolder);
             }
-            
-            foreach (var tableEntry in pendingAdds)
-            {
-                var tbls = tableEntry.Key;
-                var kvValue = tableEntry.Value;
-                var helper = GetClassHelperByTable(tbls);
-                // helper.FillContainData();
-            }
         }
 
         /// <remarks>主要步骤：1. 注册 Mod 内 Helper；2. 构建 SubLink 反向表；3. 注册动态配置类型（TblI）；4. 异步读 XML 并应用。</remarks>
@@ -265,7 +231,7 @@ namespace XM
             // 多文件并行解析 XML，结果写入 pending 容器后统一应用
             var paddingAdd = await ReadConfigFromXmlAsync();
             // 为每个表分配 Unmanaged 内存并初始化头部值
-            FillUnmanagedData(paddingAdd);
+            await FillUnmanagedData(paddingAdd);
         }
 
         /// <summary>

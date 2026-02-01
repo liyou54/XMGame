@@ -117,7 +117,7 @@ namespace XM
 
             if (helper == null)
             {
-                XLog.DebugFormat("[Config] 未解析到 Helper: cls={0}, mod={1}, id={2}", cls, modName, configName);
+                XLog.ErrorFormat("[Config] 未解析到 Helper: cls={0}, mod={1}, id={2}", cls, modName, configName);
                 return;
             }
 
@@ -125,19 +125,17 @@ namespace XM
             var tbls = helper.GetTblS();
             var modKey = new ModS(idModName);
             var cfgKey = new CfgS(modKey, tbls, configName);
-            XLog.DebugFormat("[Config] ProcessConfigItem: key={0}, override={1}", cfgKey, overrideMode);
 
             // 5. Modify：仅记录 XmlElement，后续 FillFromXml
             if (overrideMode == OverrideMode.Modify)
             {
                 if (!_context.HasTable(tbls))
                 {
-                    XLog.DebugFormat("[Config] Modify 未找到表跳过: tbls={0}, key={1}", tbls, cfgKey);
+                    XLog.ErrorFormat("[Config] Modify 未找到表跳过: tbls={0}, key={1}", tbls, cfgKey);
                     return;
                 }
 
                 pendingModifies[cfgKey] = configItem;
-                XLog.DebugFormat("[Config] pending Modify(Xml): {0}", cfgKey);
                 return;
             }
 

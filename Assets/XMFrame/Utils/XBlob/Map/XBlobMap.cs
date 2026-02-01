@@ -78,7 +78,7 @@ public struct XBlobMap<TKey, TValue>
     private const int CountOffset = 0;
     private const int BucketCountOffset = sizeof(int);
     private const int BucketsOffset = sizeof(int) * 2; // 布局: [Count][BucketCount][Buckets][Entries][Keys][Values]
-    public bool Vaild => CountOffset > 0;
+    public bool Vaild => Offset > 0;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int GetBucketCount(in XBlobContainer container)

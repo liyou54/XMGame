@@ -28,7 +28,7 @@ namespace XM
         public List<SavedModInfo> LoadGameMetaSave()
         {
             var saveMod = new SavedModInfo("MyMod", "1.0.0", true);
-            var saveMod1 = new SavedModInfo("TestConfigLargenum", "1.0.0", true);
+            var saveMod1 = new SavedModInfo("TestConfigLargenum", "1.0.0", false);
             return new List<SavedModInfo> { saveMod ,saveMod1};
         }
 
