@@ -13,6 +13,7 @@ namespace XM.Contracts
         public IEnumerable<SortedModConfig> GetSortedModConfigs();
         public IEnumerable<ModRuntime> GetModRuntime();
         public IEnumerable<string> GetModXmlFilePathByModId(ModI modId);
+        int GetModSortIndex(string modName);
     }
     
 

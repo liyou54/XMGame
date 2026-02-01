@@ -127,9 +127,7 @@ namespace XMFrame.Editor.ConfigEditor
             scriptObject["unmanaged_type_name"] = typeInfo.UnmanagedTypeName;
             scriptObject["table_name"] = !string.IsNullOrEmpty(typeInfo.TableName) ? typeInfo.TableName : typeInfo.ManagedTypeName;
             scriptObject["mod_name"] = GetModNameFromAssembly(configType.Assembly);
-            scriptObject["has_base"] = typeInfo.HasBase;
-            scriptObject["base_managed_type_name"] = typeInfo.BaseManagedTypeName ?? "";
-            scriptObject["base_unmanaged_type_name"] = typeInfo.BaseUnmanagedTypeName ?? "";
+            scriptObject["helper_class_name"] = typeInfo.ManagedTypeName + "ClassHelper";
 
             // 收集所需的 using 语句
             var requiredUsings = new HashSet<string>(typeInfo.RequiredUsings)

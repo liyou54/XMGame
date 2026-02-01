@@ -20,15 +20,8 @@ public sealed class PerfConfig7ClassHelper : ConfigClassHelper<PerfConfig7, Perf
     static PerfConfig7ClassHelper()
     {
         const string __tableName = "PerfConfig7";
-        CfgS<PerfConfig7UnManaged>.TableName = __tableName;
-        try
-        {
-            var __cfgSType = typeof(CfgS<>).MakeGenericType(typeof(PerfConfig7UnManaged));
-            var __prop = __cfgSType.GetProperty("TableName", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-            __prop?.SetValue(null, __tableName);
-        }
-        catch { }
         const string __modName = "TestConfigLargenum";
+        CfgS<PerfConfig7UnManaged>.Table = new TblS(new ModS(__modName), __tableName);
         TblS = new TblS(new ModS(__modName), __tableName);
     }
 
@@ -43,7 +36,7 @@ public sealed class PerfConfig7ClassHelper : ConfigClassHelper<PerfConfig7, Perf
     }
 
     /// <summary>由 TblI 分配时一并确定，无需单独字段。</summary>
-    public static ModI DefinedInMod => TblI.Mod;
+    public static ModI DefinedInMod => TblI.DefinedMod;
 
     public override void SetTblIDefinedInMod(TblI c)
     {
@@ -52,80 +45,68 @@ public sealed class PerfConfig7ClassHelper : ConfigClassHelper<PerfConfig7, Perf
 
     public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
     {
-        return DeserializeConfigFromXml(configItem, mod, configName, OverrideMode.None);
+        return DeserializeConfigFromXml(configItem, mod, configName, default);
     }
 
-    public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName, OverrideMode overrideMode)
+    public override void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName)
     {
-        var config = (PerfConfig7)Create();
-        try
-        {
-            FillFromXml(config, configItem, mod, configName);
-        }
-        catch (Exception ex)
-        {
-            if (overrideMode == OverrideMode.None || overrideMode == OverrideMode.ReWrite)
-                ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "(整体)", ex);
-            else
-                ConfigClassHelper.LogParseWarning("(整体)", configName, ex);
-        }
-        return config;
+        ParseAndFillFromXml(target, configItem, mod, configName, default);
     }
 
-    public override void FillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName)
+    public override void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
     {
         var config = (PerfConfig7)target;
-        config.Id = ParseId(configItem, mod, configName);
-        config.Name = ParseName(configItem, mod, configName);
-        config.Level = ParseLevel(configItem, mod, configName);
-        config.Tags = ParseTags(configItem, mod, configName);
+        config.Id = ParseId(configItem, mod, configName, context);
+        config.Name = ParseName(configItem, mod, configName, context);
+        config.Level = ParseLevel(configItem, mod, configName, context);
+        config.Tags = ParseTags(configItem, mod, configName, context);
     }
 
     #region 字段解析 (ParseXXX)
 
-    private static CfgS<PerfConfig7UnManaged> ParseId(XmlElement configItem, ModS mod, string configName)
+    private static CfgS<PerfConfig7UnManaged> ParseId(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
         {
             try
             {
-                var s = ConfigClassHelper.GetXmlFieldValue(configItem, "Id");
+                var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Id");
             if (string.IsNullOrEmpty(s)) return default;
-            if (!ConfigClassHelper.TryParseCfgSString(s, "Id", out var modName, out var cfgName)) return default;
+            if (!ConfigParseHelper.TryParseCfgSString(s, "Id", out var modName, out var cfgName)) return default;
             return new CfgS<PerfConfig7UnManaged>(new ModS(modName), cfgName);
             }
             catch (Exception ex)
             {
-                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "Id", ex); else ConfigClassHelper.LogParseWarning("Id", ConfigClassHelper.GetXmlFieldValue(configItem, "Id"), ex);
+                if (ConfigParseHelper.IsStrictMode(context)) ConfigParseHelper.LogParseError(context, "Id", ex); else ConfigParseHelper.LogParseWarning("Id", ConfigParseHelper.GetXmlFieldValue(configItem, "Id"), ex);
                 return default;
             }
         }
 
-    private static string ParseName(XmlElement configItem, ModS mod, string configName)
+    private static string ParseName(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
         {
-            var s = ConfigClassHelper.GetXmlFieldValue(configItem, "Name");
+            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Name");
             return s ?? "";
         }
 
-    private static int ParseLevel(XmlElement configItem, ModS mod, string configName)
+    private static int ParseLevel(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
         {
-            var s = ConfigClassHelper.GetXmlFieldValue(configItem, "Level");
+            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Level");
             if (string.IsNullOrEmpty(s)) return default;
-            return ConfigClassHelper.TryParseInt(s, "Level", out var v) ? v : default;
+            return ConfigParseHelper.TryParseInt(s, "Level", out var v) ? v : default;
         }
 
-    private static List<int> ParseTags(XmlElement configItem, ModS mod, string configName)
+    private static List<int> ParseTags(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
         {
             try
             {
                 var list = new List<int>();
             var nodes = configItem.SelectNodes("Tags");
             if (nodes != null)
-            foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigClassHelper.TryParseInt(t, "Tags", out var vi)) list.Add(vi); }
-            if (list.Count == 0) { var csv = ConfigClassHelper.GetXmlFieldValue(configItem, "Tags"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigClassHelper.TryParseInt(p.Trim(), "Tags", out var vi)) list.Add(vi); }
+            foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigParseHelper.TryParseInt(t, "Tags", out var vi)) list.Add(vi); }
+            if (list.Count == 0) { var csv = ConfigParseHelper.GetXmlFieldValue(configItem, "Tags"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigParseHelper.TryParseInt(p.Trim(), "Tags", out var vi)) list.Add(vi); }
             return list;
             }
             catch (Exception ex)
             {
-                if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, "Tags", ex); else ConfigClassHelper.LogParseWarning("Tags", null, ex);
+                if (ConfigParseHelper.IsStrictMode(context)) ConfigParseHelper.LogParseError(context, "Tags", ex); else ConfigParseHelper.LogParseWarning("Tags", null, ex);
                 return new List<int>();
             }
         }

@@ -52,11 +52,14 @@ namespace XM.Contracts
         ConfigClassHelper GetClassHelper(System.Type configType);
 
         /// <summary>
+        /// 通过 Type 获取 ClassHelper 实例（非泛型版本）
+        /// </summary>
+        ConfigClassHelper GetClassHelperByHelpType(System.Type configType);
+        
+        /// <summary>
         /// 通过 TblS 获取 ClassHelper 实例
         /// </summary>
         ConfigClassHelper GetClassHelperByTable(TblS tableDefine);
-
-        public void RegisterData<T>(T data) where T : IXConfig;
 
         public void UpdateData<T>(T data) where T : IXConfig;
 
@@ -66,13 +69,9 @@ namespace XM.Contracts
         bool TryGetCfgI(TblS tableDefine, ModS mod, string configName, out CfgI cfgI);
 
         /// <summary>
-        /// 检查指定表中是否存在指定配置（供 Helper 的递归判断父类是否存在使用）
-        /// </summary>
-        bool TryExistsConfig(TblI table, ModS mod, string configName);
-
-        /// <summary>
         /// 从 TblS 获取 TblI
         /// </summary>
         TblI GetTblI(TblS tableDefine);
+
     }
 }

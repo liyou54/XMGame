@@ -124,31 +124,32 @@ namespace UnityToolkit
                 Namespace = typeInfo.Namespace ?? "",
                 ManagedTypeName = typeInfo.ManagedTypeName,
                 UnmanagedTypeName = typeInfo.UnmanagedTypeName,
-                HasBase = typeInfo.HasBase,
-                BaseManagedTypeName = typeInfo.BaseManagedTypeName ?? "",
-                BaseUnmanagedTypeName = typeInfo.BaseUnmanagedTypeName ?? "",
                 RequiredUsings = typeInfo.RequiredUsings?.OrderBy(x => x).ToList() ?? new List<string>()
             };
 
-            if (typeInfo.HasBase && !string.IsNullOrEmpty(typeInfo.BaseUnmanagedTypeName))
-            {
-                var baseName = typeInfo.BaseUnmanagedTypeName;
-                dto.Fields.Add(new UnmanagedFieldDto { Name = "Id_Base", UnmanagedType = $"CfgI<{baseName}>" });
-                dto.Fields.Add(new UnmanagedFieldDto { Name = "IdBase_Ref", UnmanagedType = $"XBlobPtr<{baseName}>" });
-            }
+            var currentUnmanaged = typeInfo.UnmanagedTypeName ?? "";
             foreach (var field in typeInfo.Fields ?? new List<FieldInfo>())
             {
-                dto.Fields.Add(new UnmanagedFieldDto
+                if (field.IsXmlLink && !string.IsNullOrEmpty(field.XmlLinkDstUnmanagedType))
                 {
-                    Name = field.Name,
-                    UnmanagedType = field.UnmanagedType ?? "",
-                    NeedsRefField = field.NeedsRefField,
-                    RefFieldName = field.RefFieldName ?? "",
-                    NeedsConverter = field.NeedsConverter,
-                    SourceType = field.SourceType ?? "",
-                    TargetType = field.TargetType ?? "",
-                    ConverterDomainEscaped = (field.ConverterDomain ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"")
-                });
+                    dto.Fields.Add(new UnmanagedFieldDto { Name = field.Name + "_Dst", UnmanagedType = $"CfgI<{field.XmlLinkDstUnmanagedType}>", NeedsRefField = false, RefFieldName = "", NeedsConverter = false, SourceType = "", TargetType = "", ConverterDomainEscaped = "" });
+                    dto.Fields.Add(new UnmanagedFieldDto { Name = field.Name + "_Ref", UnmanagedType = $"CfgI<{field.XmlLinkDstUnmanagedType}>", NeedsRefField = false, RefFieldName = "", NeedsConverter = false, SourceType = "", TargetType = "", ConverterDomainEscaped = "" });
+                    dto.Fields.Add(new UnmanagedFieldDto { Name = field.Name, UnmanagedType = $"CfgI<{currentUnmanaged}>", NeedsRefField = false, RefFieldName = "", NeedsConverter = false, SourceType = "", TargetType = "", ConverterDomainEscaped = "" });
+                }
+                else
+                {
+                    dto.Fields.Add(new UnmanagedFieldDto
+                    {
+                        Name = field.Name,
+                        UnmanagedType = field.UnmanagedType ?? "",
+                        NeedsRefField = field.NeedsRefField,
+                        RefFieldName = field.RefFieldName ?? "",
+                        NeedsConverter = field.NeedsConverter,
+                        SourceType = field.SourceType ?? "",
+                        TargetType = field.TargetType ?? "",
+                        ConverterDomainEscaped = (field.ConverterDomain ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"")
+                    });
+                }
             }
             foreach (var indexGroup in typeInfo.IndexGroups ?? new List<IndexGroupInfo>())
             {

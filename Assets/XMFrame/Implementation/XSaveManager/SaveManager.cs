@@ -24,10 +24,12 @@ namespace XM
             return UniTask.CompletedTask;
         }
 
+        // TODO 读取存档
         public List<SavedModInfo> LoadGameMetaSave()
         {
             var saveMod = new SavedModInfo("MyMod", "1.0.0", true);
-            return new List<SavedModInfo> { saveMod };
+            var saveMod1 = new SavedModInfo("TestConfigLargenum", "1.0.0", true);
+            return new List<SavedModInfo> { saveMod ,saveMod1};
         }
 
         public void SaveModConfigs(List<SavedModInfo> modConfigs)

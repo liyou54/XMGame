@@ -59,24 +59,24 @@ public readonly struct TblI : IEquatable<TblI>
     
     [FieldOffset(0)] public readonly short TableId;
 
-    [FieldOffset(2)] public readonly ModI Mod;
+    [FieldOffset(2)] public readonly ModI DefinedMod;
 
-    public TblI(short tableId, ModI mod)
+    public TblI(short tableId, ModI definedMod)
     {
         TableId = tableId;
-        Mod = mod;
+        DefinedMod = definedMod;
     }
 
-    public bool Valid => Mod.Valid && TableId > 0;
+    public bool Valid => DefinedMod.Valid && TableId > 0;
 
     public TblI<T> As<T>() where T : unmanaged
     {
-        return new TblI<T>(TableId, Mod);
+        return new TblI<T>(TableId, DefinedMod);
     }
 
     public bool Equals(TblI other)
     {
-        return TableId == other.TableId && Mod.Equals(other.Mod);
+        return TableId == other.TableId && DefinedMod.Equals(other.DefinedMod);
     }
 
     public override bool Equals(object obj)
@@ -88,7 +88,7 @@ public readonly struct TblI : IEquatable<TblI>
     {
         unchecked
         {
-            return (TableId.GetHashCode() * 397) ^ Mod.GetHashCode();
+            return (TableId.GetHashCode() * 397) ^ DefinedMod.GetHashCode();
         }
     }
 

@@ -14,9 +14,8 @@ namespace XModToolkit.Config
         public string TableName { get; set; }
         /// <summary>Mod 名称：来自程序集 [ModName] 特性，生成时静态读取后直接赋字符串，供 TblS 使用。</summary>
         public string ModName { get; set; }
-        public bool HasBase { get; set; }
-        public string BaseManagedTypeName { get; set; }
-        public string BaseUnmanagedTypeName { get; set; }
+        /// <summary>[XMLLink] 时，链接目标的 ClassHelper 类名（如 TestConfigClassHelper），用于生成 LinkHelperType = typeof(...)。</summary>
+        public string LinkHelperClassName { get; set; }
         public List<string> RequiredUsings { get; set; } = new List<string>();
 
         /// <summary>ClassHelper 模板：字段赋值与 Parse 方法。</summary>

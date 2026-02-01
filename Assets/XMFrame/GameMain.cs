@@ -6,8 +6,6 @@ using UnityEngine;
 using Cysharp.Threading.Tasks;
 using XM.Contracts;
 using XM.Utils;
-using XM;
-using XM;
 
 namespace XM
 {

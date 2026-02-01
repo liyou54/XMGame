@@ -57,12 +57,6 @@ namespace XM.Editor
         public List<FieldInfo> Fields { get; set; } = new List<FieldInfo>();
         public List<IndexGroupInfo> IndexGroups { get; set; } = new List<IndexGroupInfo>();
         public HashSet<string> RequiredUsings { get; set; } = new HashSet<string>();
-        /// <summary>是否有 XConfig 基类（继承）</summary>
-        public bool HasBase { get; set; }
-        /// <summary>基类托管类型名（如 TestConfig）</summary>
-        public string BaseManagedTypeName { get; set; }
-        /// <summary>基类非托管类型名（如 TestConfigUnManaged）</summary>
-        public string BaseUnmanagedTypeName { get; set; }
     }
 
     /// <summary>
@@ -127,18 +121,6 @@ namespace XM.Editor
                     info.UnmanagedType = genericArgs[1];
                     info.UnmanagedTypeName = info.UnmanagedType.Name;
                     ValidateUnmanagedTypeName(configType, info);
-                }
-            }
-
-            // 继承：若直接基类是 XConfig 类型，则记录基类信息
-            if (baseType != null && baseType != typeof(object) && IsXConfigType(baseType))
-            {
-                info.HasBase = true;
-                info.BaseManagedTypeName = baseType.Name;
-                var baseIx = GetIXConfigInterface(baseType);
-                if (baseIx != null && baseIx.GetGenericArguments().Length >= 2)
-                {
-                    info.BaseUnmanagedTypeName = baseIx.GetGenericArguments()[1].Name;
                 }
             }
 

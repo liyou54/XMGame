@@ -24,15 +24,8 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
     static {{ helper_class_name }}()
     {
         const string __tableName = ""{{ table_name }}"";
-        CfgS<{{ unmanaged_type_name }}>.TableName = __tableName;
-        try
-        {
-            var __cfgSType = typeof(CfgS<>).MakeGenericType(typeof({{ unmanaged_type_name }}));
-            var __prop = __cfgSType.GetProperty(""TableName"", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-            __prop?.SetValue(null, __tableName);
-        }
-        catch { }
         const string __modName = ""{{ mod_name }}"";
+        CfgS<{{ unmanaged_type_name }}>.Table = new TblS(new ModS(__modName), __tableName);
         TblS = new TblS(new ModS(__modName), __tableName);
     }
 
@@ -50,7 +43,7 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
     }
 
     /// <summary>由 TblI 分配时一并确定，无需单独字段。</summary>
-    public static ModI DefinedInMod => TblI.Mod;
+    public static ModI DefinedInMod => TblI.DefinedMod;
 
     public override void SetTblIDefinedInMod(TblI c)
     {
@@ -59,33 +52,17 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
 
     public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
     {
-        return DeserializeConfigFromXml(configItem, mod, configName, OverrideMode.None);
+        return DeserializeConfigFromXml(configItem, mod, configName, default);
     }
 
-    public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName, OverrideMode overrideMode)
+    public override void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName)
     {
-        var config = ({{ managed_type_name }})Create();
-        try
-        {
-            FillFromXml(config, configItem, mod, configName);
-        }
-        catch (Exception ex)
-        {
-            if (overrideMode == OverrideMode.None || overrideMode == OverrideMode.ReWrite)
-                ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, ""(整体)"", ex);
-            else
-                ConfigClassHelper.LogParseWarning(""(整体)"", configName, ex);
-        }
-        return config;
+        ParseAndFillFromXml(target, configItem, mod, configName, default);
     }
 
-    public override void FillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName)
+    public override void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
     {
         var config = ({{ managed_type_name }})target;
-{{~ if has_base ~}}
-        var baseHelper = ConfigDataCenter.GetClassHelper(typeof({{ base_managed_type_name }}));
-        if (baseHelper != null) baseHelper.FillFromXml(target, configItem, mod, configName);
-{{~ end ~}}
 {{~ for assign in field_assigns ~}}
         {{ assign.call_code }}
 {{~ end ~}}

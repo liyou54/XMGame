@@ -14,7 +14,7 @@ public unsafe struct XBlobContainer : IDisposable
 
     internal XBlobData* Data;
     
-    public bool IsValid => Data != null;
+    public readonly bool IsValid => Data != null;
     
     private Allocator _allocator;
 
@@ -46,7 +46,7 @@ public unsafe struct XBlobContainer : IDisposable
         return Data->Get<T>(offset);
     }
 
-    public ref T GetRef<T>(int offset) where T : unmanaged
+    public readonly ref T GetRef<T>(int offset) where T : unmanaged
     {
         ThrowIfInvalid();
         return ref Data->GetRef<T>(offset);
@@ -88,7 +88,7 @@ public unsafe struct XBlobContainer : IDisposable
         return new XBlobArray<T>(offset);
     }
 
-    internal XBlobMap<TKey, TValue> AllocMap<TKey, TValue>(int capacity) 
+    internal readonly XBlobMap<TKey, TValue> AllocMap<TKey, TValue>(int capacity) 
         where TKey : unmanaged, IEquatable<TKey>
         where TValue : unmanaged
     {
@@ -103,7 +103,7 @@ public unsafe struct XBlobContainer : IDisposable
     /// <summary>
     /// 泛型分配 Map 并返回偏移，供 ConfigData 等无反射调用。
     /// </summary>
-    public int AllocMapOffset<TKey, TValue>(int capacity)
+    public readonly int AllocMapOffset<TKey, TValue>(int capacity)
         where TKey : unmanaged, IEquatable<TKey>
         where TValue : unmanaged
     {
@@ -115,7 +115,7 @@ public unsafe struct XBlobContainer : IDisposable
     /// 按运行时类型分配 Map，用于建立 CfgI->TUnmanaged 等映射。
     /// 返回 Map 在容器内的偏移（可用 XBlobPtr.FromOffset 转成指针）。
     /// </summary>
-    public int AllocMapByTypes(Type keyType, Type valueType, int capacity)
+    public readonly int AllocMapByTypes(Type keyType, Type valueType, int capacity)
     {
         ThrowIfInvalid();
         if (capacity <= 0)
@@ -174,13 +174,13 @@ public unsafe struct XBlobContainer : IDisposable
         }
     }
 
-    private void ThrowIfInvalid()
+    private readonly void ThrowIfInvalid()
     {
         if (!IsValid)
             throw new InvalidOperationException("Container is not valid");
     }
 
-    private int AllocHashMap<TKey, TValue>(int bucketCount) 
+    private readonly int AllocHashMap<TKey, TValue>(int bucketCount) 
         where TKey : unmanaged
         where TValue : unmanaged
     {

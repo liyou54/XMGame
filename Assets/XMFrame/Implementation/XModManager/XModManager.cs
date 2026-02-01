@@ -679,6 +679,11 @@ namespace XM
             return modConfig.ConfigFiles;
         }
 
+        public int GetModSortIndex(string modName)
+        {
+            throw new NotImplementedException();
+        }
+
         public override UniTask OnCreate()
         {
             return UniTask.CompletedTask;

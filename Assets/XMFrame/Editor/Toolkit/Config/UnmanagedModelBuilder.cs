@@ -18,8 +18,6 @@ namespace XModToolkit
             scriptObject["namespace"] = dto.Namespace ?? "";
             scriptObject["managed_type_name"] = dto.ManagedTypeName ?? "";
             scriptObject["unmanaged_type_name"] = dto.UnmanagedTypeName ?? "";
-            scriptObject["has_base"] = dto.HasBase;
-            scriptObject["base_unmanaged_type_name"] = dto.BaseUnmanagedTypeName ?? "";
             scriptObject["required_usings"] = dto.RequiredUsings ?? new List<string>();
 
             var fields = new List<ScriptObject>();

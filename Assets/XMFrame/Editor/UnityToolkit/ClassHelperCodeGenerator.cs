@@ -216,9 +216,7 @@ namespace UnityToolkit
                 ManagedTypeName = typeInfo.ManagedTypeName,
                 UnmanagedTypeName = typeInfo.UnmanagedTypeName,
                 TableName = typeInfo.TableName ?? typeInfo.ManagedTypeName,
-                HasBase = typeInfo.HasBase,
-                BaseManagedTypeName = typeInfo.BaseManagedTypeName ?? "",
-                BaseUnmanagedTypeName = typeInfo.BaseUnmanagedTypeName ?? "",
+                LinkHelperClassName = typeInfo.LinkHelperClassName ?? "",
                 RequiredUsings = typeInfo.RequiredUsings?.OrderBy(x => x).ToList() ?? new List<string>()
             };
             foreach (var o in fieldAssigns ?? new List<ScriptObject>())
@@ -255,7 +253,7 @@ namespace UnityToolkit
             var sb = new StringBuilder();
             sb.Append("if (string.IsNullOrEmpty(s)) { ");
             if (field.IsNotNull)
-                sb.Append("ConfigClassHelper.LogParseWarning(\"").Append(fieldName.Replace("\\", "\\\\").Replace("\"", "\\\"")).Append("\", s ?? \"\", null); ");
+                sb.Append("ConfigParseHelper.LogParseWarning(\"").Append(fieldName.Replace("\\", "\\\\").Replace("\"", "\\\"")).Append("\", s ?? \"\", null); ");
             if (!string.IsNullOrEmpty(field.DefaultValueString))
                 sb.Append("s = \"").Append(EscapeForCSharpStringLiteral(field.DefaultValueString)).Append("\"; ");
             sb.Append("}");
@@ -323,15 +321,15 @@ namespace UnityToolkit
                     : fieldType == typeof(float) ? "TryParseFloat" : fieldType == typeof(double) ? "TryParseDouble" : fieldType == typeof(bool) ? "TryParseBool" : "TryParseDecimal";
                 var defaultVal = fieldType == typeof(bool) ? "false" : "default";
                 var emptyBlock = GetEmptyValueBlock(fieldName, field);
-                var body = $"var s = ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\");\n            " + (string.IsNullOrEmpty(emptyBlock) ? "" : emptyBlock + "\n            ") + $"if (string.IsNullOrEmpty(s)) return {defaultVal};\n            return ConfigClassHelper.{tryParse}(s, \"{fieldName}\", out var v) ? v : {defaultVal};";
-                return ($"config.{fieldName} = {parseName}(configItem, mod, configName);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName)\n        {{\n            {body}\n        }}"));
+                var body = $"var s = ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\");\n            " + (string.IsNullOrEmpty(emptyBlock) ? "" : emptyBlock + "\n            ") + $"if (string.IsNullOrEmpty(s)) return {defaultVal};\n            return ConfigParseHelper.{tryParse}(s, \"{fieldName}\", out var v) ? v : {defaultVal};";
+                return ($"config.{fieldName} = {parseName}(configItem, mod, configName, context);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)\n        {{\n            {body}\n        }}"));
             }
 
             if (fieldType == typeof(string))
             {
                 var emptyBlock = GetEmptyValueBlock(fieldName, field);
-                var body = $"var s = ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\");\n            " + (string.IsNullOrEmpty(emptyBlock) ? "" : emptyBlock + "\n            ") + "return s ?? \"\";";
-                return ($"config.{fieldName} = {parseName}(configItem, mod, configName);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName)\n        {{\n            {body}\n        }}"));
+                var body = $"var s = ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\");\n            " + (string.IsNullOrEmpty(emptyBlock) ? "" : emptyBlock + "\n            ") + "return s ?? \"\";";
+                return ($"config.{fieldName} = {parseName}(configItem, mod, configName, context);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)\n        {{\n            {body}\n        }}"));
             }
 
             // CfgS<T>：使用基类 TryParseCfgSString（含 [XmlNotNull]/[XmlDefault]）
@@ -339,8 +337,8 @@ namespace UnityToolkit
             {
                 var tUnmanaged = GetCSharpTypeName(fieldType.GetGenericArguments()[0]);
                 var emptyBlock = GetEmptyValueBlock(fieldName, field);
-                var body = $"var s = ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\");\n            " + (string.IsNullOrEmpty(emptyBlock) ? "" : emptyBlock + "\n            ") + $"if (string.IsNullOrEmpty(s)) return default;\n            if (!ConfigClassHelper.TryParseCfgSString(s, \"{fieldName}\", out var modName, out var cfgName)) return default;\n            return new CfgS<{tUnmanaged}>(new ModS(modName), cfgName);";
-                return ($"config.{fieldName} = {parseName}(configItem, mod, configName);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, $"ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\")")}\n                return default;\n            }}\n        }}"));
+                var body = $"var s = ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\");\n            " + (string.IsNullOrEmpty(emptyBlock) ? "" : emptyBlock + "\n            ") + $"if (string.IsNullOrEmpty(s)) return default;\n            if (!ConfigParseHelper.TryParseCfgSString(s, \"{fieldName}\", out var modName, out var cfgName)) return default;\n            return new CfgS<{tUnmanaged}>(new ModS(modName), cfgName);";
+                return ($"config.{fieldName} = {parseName}(configItem, mod, configName, context);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, $"ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\")")}\n                return default;\n            }}\n        }}"));
             }
 
             // 嵌套 IXConfig：try-catch + 日志；[XmlNotNull] 时子节点缺失打告警
@@ -348,10 +346,10 @@ namespace UnityToolkit
             {
                 var nestedName = GetCSharpTypeName(fieldType);
                 var nullBlock = field != null && field.IsNotNull
-                    ? $"if (el == null) {{ ConfigClassHelper.LogParseWarning(\"{fieldName.Replace("\"", "\\\"")}\", \"\", null); return null; }}"
+                    ? $"if (el == null) {{ ConfigParseHelper.LogParseWarning(\"{fieldName.Replace("\"", "\\\"")}\", \"\", null); return null; }}"
                     : "if (el == null) return null;";
-                var body = $"var el = configItem.SelectSingleNode(\"{fieldName}\") as System.Xml.XmlElement;\n            " + nullBlock + "\n            var helper = XM.Contracts.IConfigDataCenter.I?.GetClassHelper(typeof(" + nestedName + "));\n            return helper != null ? (" + nestedName + ")helper.DeserializeConfigFromXml(el, mod, configName + \"_" + fieldName + "\") : null;";
-                return ($"config.{fieldName} = {parseName}(configItem, mod, configName);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, "null")}\n                return null;\n            }}\n        }}"));
+                var body = $"var el = configItem.SelectSingleNode(\"{fieldName}\") as System.Xml.XmlElement;\n            " + nullBlock + "\n            var helper = XM.Contracts.IConfigDataCenter.I?.GetClassHelper(typeof(" + nestedName + "));\n            return helper != null ? (" + nestedName + ")helper.DeserializeConfigFromXml(el, mod, configName + \"_" + fieldName + "\", in context) : null;";
+                return ($"config.{fieldName} = {parseName}(configItem, mod, configName, context);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, "null")}\n                return null;\n            }}\n        }}"));
             }
 
             // List<T>：try-catch + 日志，类型名由 GetCSharpTypeName 拼接
@@ -361,29 +359,29 @@ namespace UnityToolkit
                 var elemName = GetCSharpTypeName(elemType);
                 string body;
                 if (elemType == typeof(int))
-                    body = $"var list = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigClassHelper.TryParseInt(t, \"{fieldName}\", out var vi)) list.Add(vi); }}\n            if (list.Count == 0) {{ var csv = ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigClassHelper.TryParseInt(p.Trim(), \"{fieldName}\", out var vi)) list.Add(vi); }}\n            return list;";
+                    body = $"var list = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigParseHelper.TryParseInt(t, \"{fieldName}\", out var vi)) list.Add(vi); }}\n            if (list.Count == 0) {{ var csv = ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigParseHelper.TryParseInt(p.Trim(), \"{fieldName}\", out var vi)) list.Add(vi); }}\n            return list;";
                 else if (elemType == typeof(string))
                     body = $"var list = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (t != null) list.Add(t); }}\n            return list;";
                 else if (elemType.IsGenericType && elemType.GetGenericTypeDefinition().Name == "CfgS`1")
                 {
                     var tU = GetCSharpTypeName(elemType.GetGenericArguments()[0]);
-                    body = $"var list = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigClassHelper.TryParseCfgSString(t, \"{fieldName}\", out var mn, out var cn)) list.Add(new CfgS<{tU}>(new ModS(mn), cn)); }}\n            return list;";
+                    body = $"var list = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigParseHelper.TryParseCfgSString(t, \"{fieldName}\", out var mn, out var cn)) list.Add(new CfgS<{tU}>(new ModS(mn), cn)); }}\n            return list;";
                 }
                 else if (IsXConfigType(elemType))
                 {
                     var nestedName = GetCSharpTypeName(elemType);
-                    body = $"var list = new {typeName}();\n            var dc = XM.Contracts.IConfigDataCenter.I; if (dc == null) return list;\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var el = n as System.Xml.XmlElement; if (el == null) continue; var helper = dc.GetClassHelper(typeof({nestedName})); if (helper != null) {{ var item = ({nestedName})helper.DeserializeConfigFromXml(el, mod, configName + \"_{fieldName}_\" + list.Count); if (item != null) list.Add(item); }} }}\n            return list;";
+                    body = $"var list = new {typeName}();\n            var dc = XM.Contracts.IConfigDataCenter.I; if (dc == null) return list;\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var el = n as System.Xml.XmlElement; if (el == null) continue; var helper = dc.GetClassHelper(typeof({nestedName})); if (helper != null) {{ var item = ({nestedName})helper.DeserializeConfigFromXml(el, mod, configName + \"_{fieldName}_\" + list.Count, in context); if (item != null) list.Add(item); }} }}\n            return list;";
                 }
                 else if (TryGetElementConverter(elemType, typeInfo, out var listConvDomain, out var listElemName))
                 {
                     var listDomainEscaped = (listConvDomain ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
-                    body = $"var list = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t)) {{ var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {listElemName}>(); if (converter != null) list.Add(converter.Convert(t)); }} }}\n            if (list.Count == 0) {{ var csv = ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p)) {{ var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {listElemName}>(); if (converter != null) list.Add(converter.Convert(p.Trim())); }} }}\n            return list;";
+                    body = $"var list = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t)) {{ var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {listElemName}>(); if (converter != null) list.Add(converter.Convert(t)); }} }}\n            if (list.Count == 0) {{ var csv = ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p)) {{ var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {listElemName}>(); if (converter != null) list.Add(converter.Convert(p.Trim())); }} }}\n            return list;";
                 }
                 else
                     return (null, null);
                 if (field != null && field.IsNotNull)
-                    body = body.Replace("return list;", "if (list.Count == 0) ConfigClassHelper.LogParseWarning(\"" + fieldName.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\", \"\", null);\n            return list;");
-                return ($"config.{fieldName} = {parseName}(configItem, mod, configName);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, "null")}\n                return new {typeName}();\n            }}\n        }}"));
+                    body = body.Replace("return list;", "if (list.Count == 0) ConfigParseHelper.LogParseWarning(\"" + fieldName.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\", \"\", null);\n            return list;");
+                return ($"config.{fieldName} = {parseName}(configItem, mod, configName, context);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, "null")}\n                return new {typeName}();\n            }}\n        }}"));
             }
 
             // Dictionary<K,V>：try-catch + 日志，类型名由 GetCSharpTypeName 拼接；[XmlNotNull] 时空容器打告警
@@ -393,16 +391,16 @@ namespace UnityToolkit
                 var valType = fieldType.GetGenericArguments()[1];
                 string body;
                 if (keyType == typeof(int) && valType == typeof(int))
-                    body = $"var dict = new {typeName}();\n            var dictNodes = configItem.SelectNodes(\"{fieldName}/Item\");\n            if (dictNodes != null)\n            foreach (System.Xml.XmlNode n in dictNodes) {{ var el = n as System.Xml.XmlElement; if (el == null) continue; var k = el.GetAttribute(\"Key\"); var v = el.InnerText?.Trim(); if (!string.IsNullOrEmpty(k) && !string.IsNullOrEmpty(v) && ConfigClassHelper.TryParseInt(k, \"{fieldName}.Key\", out var kv) && ConfigClassHelper.TryParseInt(v, \"{fieldName}.Value\", out var vv)) dict[kv] = vv; }}\n            return dict;";
+                    body = $"var dict = new {typeName}();\n            var dictNodes = configItem.SelectNodes(\"{fieldName}/Item\");\n            if (dictNodes != null)\n            foreach (System.Xml.XmlNode n in dictNodes) {{ var el = n as System.Xml.XmlElement; if (el == null) continue; var k = el.GetAttribute(\"Key\"); var v = el.InnerText?.Trim(); if (!string.IsNullOrEmpty(k) && !string.IsNullOrEmpty(v) && ConfigParseHelper.TryParseInt(k, \"{fieldName}.Key\", out var kv) && ConfigParseHelper.TryParseInt(v, \"{fieldName}.Value\", out var vv)) dict[kv] = vv; }}\n            return dict;";
                 else if (keyType == typeof(int) && TryGetElementConverter(valType, typeInfo, out var dictValDomain, out var dictValName))
                 {
                     var dictValDomainEscaped = (dictValDomain ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
-                    body = $"var dict = new {typeName}();\n            var dictNodes = configItem.SelectNodes(\"{fieldName}/Item\");\n            if (dictNodes != null)\n            foreach (System.Xml.XmlNode n in dictNodes) {{ var el = n as System.Xml.XmlElement; if (el == null) continue; var k = el.GetAttribute(\"Key\"); var v = el.InnerText?.Trim(); if (!string.IsNullOrEmpty(k) && ConfigClassHelper.TryParseInt(k, \"{fieldName}.Key\", out var kv) && !string.IsNullOrEmpty(v)) {{ var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {dictValName}>(); if (converter != null) dict[kv] = converter.Convert(v); }} }}\n            return dict;";
+                    body = $"var dict = new {typeName}();\n            var dictNodes = configItem.SelectNodes(\"{fieldName}/Item\");\n            if (dictNodes != null)\n            foreach (System.Xml.XmlNode n in dictNodes) {{ var el = n as System.Xml.XmlElement; if (el == null) continue; var k = el.GetAttribute(\"Key\"); var v = el.InnerText?.Trim(); if (!string.IsNullOrEmpty(k) && ConfigParseHelper.TryParseInt(k, \"{fieldName}.Key\", out var kv) && !string.IsNullOrEmpty(v)) {{ var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {dictValName}>(); if (converter != null) dict[kv] = converter.Convert(v); }} }}\n            return dict;";
                 }
                 else if (keyType.IsGenericType && keyType.GetGenericTypeDefinition().Name == "CfgS`1" && valType.IsGenericType && valType.GetGenericTypeDefinition().Name == "CfgS`1")
                 {
                     var tU = GetCSharpTypeName(keyType.GetGenericArguments()[0]);
-                    body = $"var dict = new {typeName}();\n            var dictNodes = configItem.SelectNodes(\"{fieldName}/Item\");\n            if (dictNodes != null)\n            foreach (System.Xml.XmlNode n in dictNodes) {{ var el = n as System.Xml.XmlElement; if (el == null) continue; var kStr = el.GetAttribute(\"Key\") ?? (el.SelectSingleNode(\"Key\") as System.Xml.XmlElement)?.InnerText?.Trim(); var vStr = el.GetAttribute(\"Value\") ?? (el.SelectSingleNode(\"Value\") as System.Xml.XmlElement)?.InnerText?.Trim() ?? el.InnerText?.Trim(); if (!string.IsNullOrEmpty(kStr) && ConfigClassHelper.TryParseCfgSString(kStr, \"{fieldName}.Key\", out var km, out var kc) && !string.IsNullOrEmpty(vStr) && ConfigClassHelper.TryParseCfgSString(vStr, \"{fieldName}.Value\", out var vm, out var vc)) dict[new CfgS<{tU}>(new ModS(km), kc)] = new CfgS<{tU}>(new ModS(vm), vc); }}\n            return dict;";
+                    body = $"var dict = new {typeName}();\n            var dictNodes = configItem.SelectNodes(\"{fieldName}/Item\");\n            if (dictNodes != null)\n            foreach (System.Xml.XmlNode n in dictNodes) {{ var el = n as System.Xml.XmlElement; if (el == null) continue; var kStr = el.GetAttribute(\"Key\") ?? (el.SelectSingleNode(\"Key\") as System.Xml.XmlElement)?.InnerText?.Trim(); var vStr = el.GetAttribute(\"Value\") ?? (el.SelectSingleNode(\"Value\") as System.Xml.XmlElement)?.InnerText?.Trim() ?? el.InnerText?.Trim(); if (!string.IsNullOrEmpty(kStr) && ConfigParseHelper.TryParseCfgSString(kStr, \"{fieldName}.Key\", out var km, out var kc) && !string.IsNullOrEmpty(vStr) && ConfigParseHelper.TryParseCfgSString(vStr, \"{fieldName}.Value\", out var vm, out var vc)) dict[new CfgS<{tU}>(new ModS(km), kc)] = new CfgS<{tU}>(new ModS(vm), vc); }}\n            return dict;";
                 }
                 else if (keyType == typeof(int) && valType.IsGenericType && valType.GetGenericTypeDefinition() == typeof(List<>))
                 {
@@ -415,14 +413,14 @@ namespace UnityToolkit
                             var tU = GetCSharpTypeName(cfgType.GetGenericArguments()[0]);
                             var valTypeName = GetCSharpTypeName(valType);
                             var innerTypeName = GetCSharpTypeName(innerListType);
-                            body = $"var dict = new {typeName}();\n            var dictNodes = configItem.SelectNodes(\"{fieldName}/Item\");\n            if (dictNodes != null)\n            foreach (System.Xml.XmlNode keyNode in dictNodes) {{ var keyEl = keyNode as System.Xml.XmlElement; if (keyEl == null) continue; var kStr = keyEl.GetAttribute(\"Key\"); if (!string.IsNullOrEmpty(kStr) && ConfigClassHelper.TryParseInt(kStr, \"{fieldName}.Key\", out var key)) {{ var outerList = new {valTypeName}(); var midNodes = keyEl.SelectNodes(\"Item\"); if (midNodes != null) foreach (System.Xml.XmlNode midNode in midNodes) {{ var midEl = midNode as System.Xml.XmlElement; if (midEl == null) continue; var innerList = new {innerTypeName}(); var leafNodes = midEl.SelectNodes(\"Item\"); if (leafNodes != null) foreach (System.Xml.XmlNode leafNode in leafNodes) {{ var leafText = (leafNode as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(leafText) && ConfigClassHelper.TryParseCfgSString(leafText, \"{fieldName}\", out var lm, out var lc)) innerList.Add(new CfgS<{tU}>(new ModS(lm), lc)); }} outerList.Add(innerList); }} dict[key] = outerList; }} }}\n            return dict;";
+                            body = $"var dict = new {typeName}();\n            var dictNodes = configItem.SelectNodes(\"{fieldName}/Item\");\n            if (dictNodes != null)\n            foreach (System.Xml.XmlNode keyNode in dictNodes) {{ var keyEl = keyNode as System.Xml.XmlElement; if (keyEl == null) continue; var kStr = keyEl.GetAttribute(\"Key\"); if (!string.IsNullOrEmpty(kStr) && ConfigParseHelper.TryParseInt(kStr, \"{fieldName}.Key\", out var key)) {{ var outerList = new {valTypeName}(); var midNodes = keyEl.SelectNodes(\"Item\"); if (midNodes != null) foreach (System.Xml.XmlNode midNode in midNodes) {{ var midEl = midNode as System.Xml.XmlElement; if (midEl == null) continue; var innerList = new {innerTypeName}(); var leafNodes = midEl.SelectNodes(\"Item\"); if (leafNodes != null) foreach (System.Xml.XmlNode leafNode in leafNodes) {{ var leafText = (leafNode as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(leafText) && ConfigParseHelper.TryParseCfgSString(leafText, \"{fieldName}\", out var lm, out var lc)) innerList.Add(new CfgS<{tU}>(new ModS(lm), lc)); }} outerList.Add(innerList); }} dict[key] = outerList; }} }}\n            return dict;";
                         }
                         else if (TryGetElementConverter(cfgType, typeInfo, out var leafDomain, out var leafTypeName))
                         {
                             var leafDomainEscaped = (leafDomain ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
                             var valTypeName = GetCSharpTypeName(valType);
                             var innerTypeName = GetCSharpTypeName(innerListType);
-                            body = $"var dict = new {typeName}();\n            var dictNodes = configItem.SelectNodes(\"{fieldName}/Item\");\n            if (dictNodes != null)\n            foreach (System.Xml.XmlNode keyNode in dictNodes) {{ var keyEl = keyNode as System.Xml.XmlElement; if (keyEl == null) continue; var kStr = keyEl.GetAttribute(\"Key\"); if (!string.IsNullOrEmpty(kStr) && ConfigClassHelper.TryParseInt(kStr, \"{fieldName}.Key\", out var key)) {{ var outerList = new {valTypeName}(); var midNodes = keyEl.SelectNodes(\"Item\"); if (midNodes != null) foreach (System.Xml.XmlNode midNode in midNodes) {{ var midEl = midNode as System.Xml.XmlElement; if (midEl == null) continue; var innerList = new {innerTypeName}(); var leafNodes = midEl.SelectNodes(\"Item\"); if (leafNodes != null) foreach (System.Xml.XmlNode leafNode in leafNodes) {{ var leafText = (leafNode as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(leafText)) {{ var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {leafTypeName}>(); if (converter != null) innerList.Add(converter.Convert(leafText)); }} }} outerList.Add(innerList); }} dict[key] = outerList; }} }}\n            return dict;";
+                            body = $"var dict = new {typeName}();\n            var dictNodes = configItem.SelectNodes(\"{fieldName}/Item\");\n            if (dictNodes != null)\n            foreach (System.Xml.XmlNode keyNode in dictNodes) {{ var keyEl = keyNode as System.Xml.XmlElement; if (keyEl == null) continue; var kStr = keyEl.GetAttribute(\"Key\"); if (!string.IsNullOrEmpty(kStr) && ConfigParseHelper.TryParseInt(kStr, \"{fieldName}.Key\", out var key)) {{ var outerList = new {valTypeName}(); var midNodes = keyEl.SelectNodes(\"Item\"); if (midNodes != null) foreach (System.Xml.XmlNode midNode in midNodes) {{ var midEl = midNode as System.Xml.XmlElement; if (midEl == null) continue; var innerList = new {innerTypeName}(); var leafNodes = midEl.SelectNodes(\"Item\"); if (leafNodes != null) foreach (System.Xml.XmlNode leafNode in leafNodes) {{ var leafText = (leafNode as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(leafText)) {{ var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {leafTypeName}>(); if (converter != null) innerList.Add(converter.Convert(leafText)); }} }} outerList.Add(innerList); }} dict[key] = outerList; }} }}\n            return dict;";
                         }
                         else
                             return (null, null);
@@ -433,8 +431,8 @@ namespace UnityToolkit
                 else
                     return (null, null);
                 if (field != null && field.IsNotNull)
-                    body = body.Replace("return dict;", "if (dict.Count == 0) ConfigClassHelper.LogParseWarning(\"" + fieldName.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\", \"\", null);\n            return dict;");
-                return ($"config.{fieldName} = {parseName}(configItem, mod, configName);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, "null")}\n                return new {typeName}();\n            }}\n        }}"));
+                    body = body.Replace("return dict;", "if (dict.Count == 0) ConfigParseHelper.LogParseWarning(\"" + fieldName.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\", \"\", null);\n            return dict;");
+                return ($"config.{fieldName} = {parseName}(configItem, mod, configName, context);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, "null")}\n                return new {typeName}();\n            }}\n        }}"));
             }
 
             // HashSet<T>：try-catch + 日志；支持已注册类型的自定义解析器；[XmlNotNull] 时空集合打告警
@@ -443,30 +441,30 @@ namespace UnityToolkit
                 var elemType = fieldType.GetGenericArguments()[0];
                 string body;
                 if (elemType == typeof(int))
-                    body = $"var set = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigClassHelper.TryParseInt(t, \"{fieldName}\", out var vi)) set.Add(vi); }}\n            if (set.Count == 0) {{ var csv = ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigClassHelper.TryParseInt(p.Trim(), \"{fieldName}\", out var vi)) set.Add(vi); }}\n            return set;";
+                    body = $"var set = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigParseHelper.TryParseInt(t, \"{fieldName}\", out var vi)) set.Add(vi); }}\n            if (set.Count == 0) {{ var csv = ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigParseHelper.TryParseInt(p.Trim(), \"{fieldName}\", out var vi)) set.Add(vi); }}\n            return set;";
                 else if (elemType.IsGenericType && elemType.GetGenericTypeDefinition().Name == "CfgS`1")
                 {
                     var tU = GetCSharpTypeName(elemType.GetGenericArguments()[0]);
-                    body = $"var set = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigClassHelper.TryParseCfgSString(t, \"{fieldName}\", out var mn, out var cn)) set.Add(new CfgS<{tU}>(new ModS(mn), cn)); }}\n            return set;";
+                    body = $"var set = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigParseHelper.TryParseCfgSString(t, \"{fieldName}\", out var mn, out var cn)) set.Add(new CfgS<{tU}>(new ModS(mn), cn)); }}\n            return set;";
                 }
                 else if (TryGetElementConverter(elemType, typeInfo, out var setConvDomain, out var setElemName))
                 {
                     var setDomainEscaped = (setConvDomain ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
-                    body = $"var set = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t)) {{ var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {setElemName}>(); if (converter != null) set.Add(converter.Convert(t)); }} }}\n            if (set.Count == 0) {{ var csv = ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p)) {{ var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {setElemName}>(); if (converter != null) set.Add(converter.Convert(p.Trim())); }} }}\n            return set;";
+                    body = $"var set = new {typeName}();\n            var nodes = configItem.SelectNodes(\"{fieldName}\");\n            if (nodes != null)\n            foreach (System.Xml.XmlNode n in nodes) {{ var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t)) {{ var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {setElemName}>(); if (converter != null) set.Add(converter.Convert(t)); }} }}\n            if (set.Count == 0) {{ var csv = ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p)) {{ var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {setElemName}>(); if (converter != null) set.Add(converter.Convert(p.Trim())); }} }}\n            return set;";
                 }
                 else
                     return (null, null);
                 if (field != null && field.IsNotNull)
-                    body = body.Replace("return set;", "if (set.Count == 0) ConfigClassHelper.LogParseWarning(\"" + fieldName.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\", \"\", null);\n            return set;");
-                return ($"config.{fieldName} = {parseName}(configItem, mod, configName);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, $"ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\")")}\n                return new {typeName}();\n            }}\n        }}"));
+                    body = body.Replace("return set;", "if (set.Count == 0) ConfigParseHelper.LogParseWarning(\"" + fieldName.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\", \"\", null);\n            return set;");
+                return ($"config.{fieldName} = {parseName}(configItem, mod, configName, context);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, $"ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\")")}\n                return new {typeName}();\n            }}\n        }}"));
             }
 
             // LabelS：使用基类 TryParseLabelSString（含 [XmlNotNull]/[XmlDefault]）
             if (fieldType.Name == "LabelS")
             {
                 var emptyBlock = GetEmptyValueBlock(fieldName, field);
-                var body = $"var s = ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\");\n            " + (string.IsNullOrEmpty(emptyBlock) ? "" : emptyBlock + "\n            ") + "if (string.IsNullOrEmpty(s)) return default;\n            if (!ConfigClassHelper.TryParseLabelSString(s, \"" + fieldName + "\", out var modName, out var labelName)) return default;\n            return new LabelS { ModName = modName, LabelName = labelName };";
-                return ($"config.{fieldName} = {parseName}(configItem, mod, configName);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, $"ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\")")}\n                return default;\n            }}\n        }}"));
+                var body = $"var s = ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\");\n            " + (string.IsNullOrEmpty(emptyBlock) ? "" : emptyBlock + "\n            ") + "if (string.IsNullOrEmpty(s)) return default;\n            if (!ConfigParseHelper.TryParseLabelSString(s, \"" + fieldName + "\", out var modName, out var labelName)) return default;\n            return new LabelS { ModName = modName, LabelName = labelName };";
+                return ($"config.{fieldName} = {parseName}(configItem, mod, configName, context);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, $"ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\")")}\n                return default;\n            }}\n        }}"));
             }
 
             // 自定义转换器：从 IConfigDataCenter 按域获取转换器（含 [XmlNotNull]/[XmlDefault]）；有 domain 时用 GetConverter(domain)，否则用 GetConverterByType
@@ -478,18 +476,18 @@ namespace UnityToolkit
                     ? $"XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {typeName}>()"
                     : $"XM.Contracts.IConfigDataCenter.I?.GetConverter<string, {typeName}>(\"{domainEscaped}\")";
                 var emptyBlock = GetEmptyValueBlock(fieldName, field);
-                var body = $"var s = ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\");\n            " + (string.IsNullOrEmpty(emptyBlock) ? "" : emptyBlock + "\n            ") + $"if (string.IsNullOrEmpty(s)) return default;\n            var converter = {converterExpr};\n            return converter != null ? converter.Convert(s) : default;";
-                return ($"config.{fieldName} = {parseName}(configItem, mod, configName);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, $"ConfigClassHelper.GetXmlFieldValue(configItem, \"{fieldName}\")")}\n                return default;\n            }}\n        }}"));
+                var body = $"var s = ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\");\n            " + (string.IsNullOrEmpty(emptyBlock) ? "" : emptyBlock + "\n            ") + $"if (string.IsNullOrEmpty(s)) return default;\n            var converter = {converterExpr};\n            return converter != null ? converter.Convert(s) : default;";
+                return ($"config.{fieldName} = {parseName}(configItem, mod, configName, context);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)\n        {{\n            try\n            {{\n                {body}\n            }}\n            catch (Exception ex)\n            {{\n                {GetParseCatchBlock(fieldName, $"ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\")")}\n                return default;\n            }}\n        }}"));
             }
 
             return (null, null);
         }
 
-        /// <summary>生成 ParseXXX 内 catch 块：严格模式 LogParseError(文件,行,字段)，否则 LogParseWarning。</summary>
+        /// <summary>生成 ParseXXX 内 catch 块：严格模式 LogParseError(context, 字段)，否则 LogParseWarning。context 由方法参数传入，避免线程上下文切换。</summary>
         private static string GetParseCatchBlock(string fieldName, string valueExpr)
         {
             var fn = (fieldName ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
-            return $"if (ConfigClassHelper.IsStrictMode) ConfigClassHelper.LogParseError(ConfigClassHelper.CurrentParseContext.FilePath, ConfigClassHelper.CurrentParseContext.Line, \"{fn}\", ex); else ConfigClassHelper.LogParseWarning(\"{fn}\", {valueExpr}, ex);";
+            return $"if (ConfigParseHelper.IsStrictMode(context)) ConfigParseHelper.LogParseError(context, \"{fn}\", ex); else ConfigParseHelper.LogParseWarning(\"{fn}\", {valueExpr}, ex);";
         }
 
         private static bool IsXConfigType(Type type)

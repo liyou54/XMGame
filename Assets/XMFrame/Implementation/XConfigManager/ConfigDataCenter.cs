@@ -16,46 +16,76 @@ using XM.Utils;
 
 namespace XM
 {
+    /// <summary>
+    /// 配置数据中心：管理 Mod 下所有配置类型的注册、XML 解析、待处理配置应用及查询。
+    /// </summary>
     [AutoCreate]
     [ManagerDependency(typeof(IModManager))]
     public class ConfigDataCenter : ManagerBase<IConfigDataCenter>, IConfigDataCenter
     {
-        private sealed class ConfigDataHolder
+        #region 内部类型
+
+        /// <summary>持有 ConfigData，供 ClassHelper 在 AllocUnManaged 时访问 Blob 与表映射</summary>
+        public sealed class ConfigDataHolder
         {
             public ConfigData Data;
         }
 
+        #endregion
+
+        #region 私有字段
+
+        /// <summary>多键缓存：TblS / HelperType / ConfigType / UnmanagedType -> ConfigClassHelper</summary>
         private readonly MultiKeyDictionary<TblS, Type, Type, Type, ConfigClassHelper> _classHelperCache = new();
+
+        /// <summary>TblS 与 TblI 双向映射</summary>
         private readonly BidirectionalDictionary<TblS, TblI> _typeLookUp = new();
 
-        private readonly BidirectionalDictionary<CfgS, CfgI> _configLookUp =
-            new();
+        /// <summary>配置数据容器持有者</summary>
+        private readonly ConfigDataHolder _configHolder = new();
 
-        private readonly ConfigDataHolder _configHolder = new ConfigDataHolder();
-        private readonly Dictionary<TblI, Dictionary<CfgS, IXConfig>> _configsByTable = new();
+        /// <summary>按 (表, Mod) 分配的下一个 CfgI 序号（预留）</summary>
         private readonly Dictionary<(TblI table, ModI mod), short> _nextCfgIByTableMod = new();
 
+        /// <summary>单条 ConfigItem 处理器，懒创建</summary>
+        private ConfigItemProcessor _configItemProcessor;
+
+        private ConfigItemProcessor GetConfigItemProcessor() =>
+            _configItemProcessor ??= new ConfigItemProcessor(new ConfigItemProcessorContextImpl(this));
+
+        #endregion
+
+        #region 生命周期
+
+        /// <remarks>主要步骤：1. 创建 ConfigData；2. 以 Persistent 分配器初始化 Blob（4MB）。</remarks>
         public override UniTask OnCreate()
         {
+            // 创建配置数据容器并初始化 Blob 与表映射
             _configHolder.Data = new ConfigData();
             _configHolder.Data.Create(Allocator.Persistent, 4 * 1024 * 1024);
 
             return UniTask.CompletedTask;
         }
 
+        #endregion
 
+        #region Mod / Helper 注册与解析
+
+        /// <summary>从已加载 Mod 程序集中扫描并注册所有 ConfigClassHelper</summary>
+        /// <remarks>主要步骤：1. 遍历已启用 Mod 的程序集；2. 安全获取程序集内类型；3. 筛选继承 ConfigClassHelper&lt;,&gt; 的类；4. 触发静态构造并创建实例；5. 写入 _classHelperCache。</remarks>
         private void RegisterModHelper()
         {
+            // 获取当前已加载的 Mod 运行时列表
             var enabledMods = IModManager.I.GetModRuntime();
 
             foreach (var modConfig in enabledMods)
             {
                 Assembly assembly = modConfig.Assembly;
 
-                // 从 DllPath 加载程序集
+                // 跳过未加载或无效的程序集
                 if (assembly == null)
                     continue;
-                // 查找所有 XConfig 类型（安全获取类型，避免 ReflectionTypeLoadException 导致整段失败）
+                // 安全获取程序集内所有类型，避免 ReflectionTypeLoadException 导致整段失败
                 Type[] types;
                 try
                 {
@@ -66,10 +96,11 @@ namespace XM
                     types = ex.Types ?? Array.Empty<Type>();
                 }
 
-                // 以 ConfigClassHelper 为最外层驱动：没有 Helper 就无法进行配置解析与注册
+                // 以 ConfigClassHelper<,> 为基准筛选 Helper 类型
                 var helperBaseDef = typeof(ConfigClassHelper<,>);
                 foreach (var helperType in types)
                 {
+                    // 跳过 null、非类、抽象类
                     if (helperType == null || !helperType.IsClass || helperType.IsAbstract)
                         continue;
                     var baseType = helperType.BaseType;
@@ -79,18 +110,16 @@ namespace XM
                     if (args.Length != 2)
                         continue;
 
-                    var typeClass = args[0];
-                    var typeUnmanaged = args[1];
+                    var configType = args[0];
+                    var unmanagedType = args[1];
                     try
                     {
-                        // 先触发 Helper 的静态构造函数，否则 CfgS<T>.TableName 尚未被生成代码赋值，GetTableNameFromUnmanagedType 会得到 null
+                        // 先触发静态构造，保证 CfgS&lt;T&gt;.TableName 等生成代码已赋值
                         RuntimeHelpers.RunClassConstructor(helperType.TypeHandle);
-                        var tableName = GetTableNameFromUnmanagedType(typeUnmanaged);
-                        if (string.IsNullOrEmpty(tableName))
-                            continue;
-                        var tbls = new TblS(modConfig.ModS, tableName);
+                        // 创建 Helper 实例并写入多键缓存
                         var instance = (ConfigClassHelper)Activator.CreateInstance(helperType, (IConfigDataCenter)this);
-                        _classHelperCache.Set(instance, tbls, helperType, typeClass, typeUnmanaged);
+                        var tbls = instance.GetTblS();
+                        _classHelperCache.Set(instance, tbls, helperType, configType, unmanagedType);
                     }
                     catch (Exception ex)
                     {
@@ -101,86 +130,111 @@ namespace XM
             }
         }
 
-
-        private static string GetTableNameFromUnmanagedType(Type unmanagedType)
-        {
-            var configKeyType = typeof(CfgS<>).MakeGenericType(unmanagedType);
-            var tableNameProp =
-                configKeyType.GetProperty(nameof(CfgS.TableName), BindingFlags.Public | BindingFlags.Static);
-            if (tableNameProp != null)
-            {
-                return tableNameProp.GetValue(null) as string;
-            }
-
-            return null;
-        }
-
+        /// <remarks>主要步骤：1. 注册 Mod 配置（Helper、SubLink、动态类型、读 XML）；2. 解析配置间引用（预留）。</remarks>
         public override async UniTask OnInit()
         {
+            // 注册 Helper、构建 SubLink、注册动态类型、从 XML 读取并应用
             await RegisterModConfig();
+            // 预留：解析配置间引用
             SolveConfigReference();
         }
 
+        /// <summary>解析配置间引用（预留）</summary>
         private void SolveConfigReference()
         {
             // 先预注册
         }
 
+        /// <remarks>主要步骤：1. 注册 Mod 内 Helper；2. 构建 SubLink 反向表；3. 注册动态配置类型（TblI）；4. 异步读 XML 并应用。</remarks>
         private async UniTask RegisterModConfig()
         {
+            // 从 Mod 程序集扫描并注册所有 ConfigClassHelper
             RegisterModHelper();
+            // 为每个 Helper 注册“谁链接到我”的 SubLinkHelper
+            BuildSubLinkHelpers();
+            // 为每个 Helper 分配 TblI 并写入 _typeLookUp
             RegisterDynamicConfigType();
+            // 多文件并行解析 XML，结果写入 pending 容器后统一应用
             await ReadConfigFromXmlAsync();
-            InitUnManagedData();
         }
 
+        /// <summary>
+        /// 构建“谁链接到我”的反向表：对每个 Helper，将 LinkHelperType 指向它的其它 Helper 注册为其 SubLinkHelper。
+        /// </summary>
+        /// <remarks>主要步骤：1. 遍历缓存中每个 Helper 作为 target；2. 遍历其它 Helper，若其 LinkHelperType 指向 target；3. 则注册为 target 的 SubLinkHelper。</remarks>
+        private void BuildSubLinkHelpers()
+        {
+            foreach (var entry in _classHelperCache.Pairs)
+            {
+                var targetHelper = entry.value;
+                var targetType = targetHelper.GetType();
+                // 查找所有“链接到 target”的 Helper 并注册为 SubLinkHelper
+                foreach (var otherEntry in _classHelperCache.Pairs)
+                {
+                    if (otherEntry.value == targetHelper) continue;
+                    var linkType = otherEntry.value.GetLinkHelperType();
+                    if (linkType != null && linkType == targetType)
+                        targetHelper.RegisterSubLinkHelper(otherEntry.value);
+                }
+            }
+        }
 
-        /// <summary>从 XML 读取配置。从 xmlDoc.Load 起多线程（一个文件一个线程），传入并发容器直接写入，减少 GC。</summary>
+        #endregion
+
+        #region XML 解析
+
+        /// <summary>从 XML 读取配置。每个文件在线程池执行，结果写入并发容器，减少 GC。</summary>
+        /// <remarks>主要步骤：1. 收集所有 Mod 的 XML 文件信息；2. 创建 pending 并发容器；3. 线程池并行解析每个文件；4. 切回主线程；5. 输出解析错误；6. 应用待处理配置。</remarks>
         private async UniTask ReadConfigFromXmlAsync()
         {
+            // 按 Mod 顺序收集 (ModName, ModId, XmlFilePath)
             var fileInfos = new List<(string ModName, ModI ModId, string XmlFilePath)>();
-            var enableMods = IModManager.I.GetSortedModConfigs();
-            foreach (var modConfig in enableMods)
+            var sortedModConfigs = IModManager.I.GetSortedModConfigs();
+            foreach (var modConfig in sortedModConfigs)
             {
                 var modName = modConfig.ModConfig.ModName;
                 var modId = IModManager.I.GetModId(modConfig.ModConfig.ModName);
-                var files = IModManager.I.GetModXmlFilePathByModId(modId);
-                foreach (var path in files)
+                var xmlFilePaths = IModManager.I.GetModXmlFilePathByModId(modId);
+                foreach (var path in xmlFilePaths)
                     fileInfos.Add((modName, modId, path));
             }
 
             XLog.DebugFormat("[Config] ReadConfigFromXmlAsync 开始, 文件数: {0}", fileInfos.Count);
 
-            var pendingAdds = new ConcurrentDictionary<CfgS, IXConfig>();
-            var pendingReWrite = new ConcurrentDictionary<CfgS, IXConfig>();
+            // 待添加 / 待删除 / 待修改 的并发容器
+            var pendingAdds = new ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>>();
             var pendingDeletes = new ConcurrentDictionary<CfgS, byte>();
             var pendingModifies = new ConcurrentDictionary<CfgS, XmlElement>();
 
+            // 每个文件在线程池执行 ProcessSingleXmlFile，结果写入上述容器
             var parseResults = await UniTask.WhenAll(
                 fileInfos.Select(f => UniTask.RunOnThreadPool(() =>
-                    ProcessSingleXmlFile(f.XmlFilePath, f.ModName, f.ModId, pendingAdds, pendingReWrite,
-                        pendingDeletes, pendingModifies))));
+                    ProcessSingleXmlFile(f.XmlFilePath, f.ModName, f.ModId, pendingAdds, pendingDeletes,
+                        pendingModifies))));
 
+            // 回到主线程后再写日志和应用
             await UniTask.SwitchToMainThread();
 
+            // 输出各文件解析过程中的错误信息
             foreach (var errorMessage in parseResults)
             {
                 if (!string.IsNullOrEmpty(errorMessage))
                     XLog.Error(errorMessage);
             }
 
-            XLog.DebugFormat("[Config] 解析完成 pending: Add={0}, Modify={1}, ReWrite={2}, Delete={3}",
-                pendingAdds.Count, pendingModifies.Count, pendingReWrite.Count, pendingDeletes.Count);
-            ApplyPendingConfigs(pendingAdds, pendingReWrite, pendingDeletes, pendingModifies);
+            XLog.DebugFormat("[Config] 解析完成 pending: Add={0}, Modify={1}, Delete={2}",
+                pendingAdds.Sum(t => t.Value.Count), pendingModifies.Count, pendingDeletes.Count);
+            // 将 pending 结果应用到 ConfigData 与 Helper（删除、Modify、Add 顺序已处理）
+            ApplyPendingConfigs(pendingAdds, pendingDeletes, pendingModifies);
         }
 
-        /// <summary>单文件从 xmlDoc.Load 起在线程池执行：加载 XML、解析 ConfigItem；结果写入 pendingAdds/pendingReWrite/pendingDeletes，Modify 仅写入 pendingModifies(XmlElement) 留待最后合并。多线程仅由外层 WhenAll 保证。</summary>
+        /// <summary>单文件在线程池执行：加载 XML、解析 ConfigItem，结果写入 pendingAdds / pendingDeletes / pendingModifies。</summary>
+        /// <remarks>主要步骤：1. 加载 XML 文档；2. 取根节点与 ConfigItem 列表；3. 逐条交给 ConfigItemProcessor 处理；4. 收集单条异常到 errorBuilder；5. 返回错误字符串（无错误为 null）。</remarks>
         private string ProcessSingleXmlFile(
             string xmlFilePath,
             string modName,
             ModI modId,
-            ConcurrentDictionary<CfgS, IXConfig> pendingAdds,
-            ConcurrentDictionary<CfgS, IXConfig> pendingReWrite,
+            ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> pendingAdds,
             ConcurrentDictionary<CfgS, byte> pendingDeletes,
             ConcurrentDictionary<CfgS, XmlElement> pendingModifies)
         {
@@ -188,6 +242,7 @@ namespace XM
             try
             {
                 XLog.DebugFormat("[Config] ProcessSingleXmlFile 开始: {0}, mod={1}", xmlFilePath, modName);
+                // 加载 XML 文件
                 var xmlDoc = new XmlDocument();
                 xmlDoc.Load(xmlFilePath);
 
@@ -195,6 +250,7 @@ namespace XM
                 if (root == null)
                     return $"XML 文件根节点为空: {xmlFilePath}";
 
+                // 取所有 ConfigItem 子节点
                 var configItems = root.SelectNodes("ConfigItem");
                 if (configItems == null || configItems.Count == 0)
                 {
@@ -204,12 +260,13 @@ namespace XM
 
                 XLog.DebugFormat("[Config] ConfigItem 数量: {0}, 文件: {1}", configItems.Count, xmlFilePath);
 
+                // 逐条解析并写入 pending 容器，单条异常不中断，累积到 errorBuilder
                 foreach (XmlElement configItem in configItems)
                 {
                     try
                     {
-                        ProcessConfigItemToConcurrent(configItem, xmlFilePath ?? "", modName, modId,
-                            pendingAdds, pendingReWrite, pendingDeletes, pendingModifies);
+                        GetConfigItemProcessor().Process(configItem, xmlFilePath ?? "", modName, modId,
+                            pendingAdds, pendingDeletes, pendingModifies);
                     }
                     catch (Exception ex)
                     {
@@ -232,230 +289,62 @@ namespace XM
             }
         }
 
-        /// <summary>与 ProcessConfigItem 逻辑一致。None/ReWrite 解析后写入 pendingAdds/pendingReWrite，Modify 仅写入 pendingModifies(XmlElement) 留待最后合并，Delete 写入 pendingDeletes。</summary>
-        private void ProcessConfigItemToConcurrent(
-            XmlElement configItem,
-            string xmlFilePath,
-            string modName,
-            ModI modId,
-            ConcurrentDictionary<CfgS, IXConfig> pendingAdds,
-            ConcurrentDictionary<CfgS, IXConfig> pendingReWrite,
-            ConcurrentDictionary<CfgS, byte> pendingDeletes,
-            ConcurrentDictionary<CfgS, XmlElement> pendingModifies)
-        {
-            var cls = configItem.GetAttribute("cls");
-            var id = configItem.GetAttribute("id");
-            var overrideAttr = configItem.GetAttribute("override");
+        #endregion
 
-            if (string.IsNullOrEmpty(cls) || string.IsNullOrEmpty(id))
-            {
-                XLog.DebugFormat("[Config] 跳过 ConfigItem cls 或 id 为空: cls={0}, id={1}, file={2}", cls ?? "", id ?? "",
-                    xmlFilePath);
-                return;
-            }
+        #region 待处理配置应用
 
-            var idParts = id.Split(new[] { "::" }, StringSplitOptions.None);
-            string idModName;
-            string configName;
-            if (idParts.Length == 1)
-            {
-                idModName = modName;
-                configName = idParts[0];
-            }
-            else if (idParts.Length == 2)
-            {
-                idModName = idParts[0];
-                configName = idParts[1];
-            }
-            else
-                return;
-
-            if (!string.Equals(idModName, modName, StringComparison.Ordinal) && string.IsNullOrEmpty(overrideAttr))
-                return;
-
-            var overrideMode = ParseOverrideMode(overrideAttr);
-            var helper = ResolveTypeFromCls(cls, modName);
-
-            if (helper == null)
-            {
-                XLog.DebugFormat("[Config] 未解析到 Helper: cls={0}, mod={1}, id={2}", cls, modName, configName);
-                return;
-            }
-
-            var tbls = helper.GetTblS();
-            var modKey = new ModS(idModName);
-            var cfgKey = new CfgS(modKey, tbls.TableName, configName);
-            XLog.DebugFormat("[Config] ProcessConfigItem: key={0}, override={1}", cfgKey, overrideMode);
-
-            if (overrideMode == OverrideMode.Modify)
-            {
-                if (!_typeLookUp.TryGetValueByKey(tbls, out _))
-                {
-                    XLog.DebugFormat("[Config] Modify 未找到表跳过: tbls={0}, key={1}", tbls, cfgKey);
-                    return;
-                }
-                pendingModifies[cfgKey] = configItem;
-                XLog.DebugFormat("[Config] pending Modify(Xml): {0}", cfgKey);
-                return;
-            }
-
-            if (overrideMode == OverrideMode.None || overrideMode == OverrideMode.ReWrite)
-            {
-                if (helper.TryExistsInHierarchy(modKey, configName, out _))
-                {
-                    XLog.DebugFormat("[Config] 已存在跳过: {0}, mode={1}", cfgKey, overrideMode);
-                    return;
-                }
-
-                if (!_typeLookUp.TryGetValueByKey(tbls, out var tableHandle))
-                {
-                    XLog.DebugFormat("[Config] 未找到表跳过: tbls={0}, key={1}", tbls, cfgKey);
-                    return;
-                }
-
-                var context = new ConfigParseContext { FilePath = xmlFilePath ?? "", Line = 0, Mode = overrideMode };
-                var task = new ConfigParseTask(context, configItem, helper, modKey, configName, overrideMode,
-                    tableHandle, xmlFilePath ?? "");
-                var res = task.Execute();
-                if (res.IsValid)
-                {
-                    if (overrideMode == OverrideMode.None)
-                    {
-                        pendingAdds[cfgKey] = res.Config;
-                        XLog.DebugFormat("[Config] pending Add: {0}", cfgKey);
-                    }
-                    else
-                    {
-                        pendingReWrite[cfgKey] = res.Config;
-                        XLog.DebugFormat("[Config] pending ReWrite: {0}", cfgKey);
-                    }
-                }
-                else
-                    XLog.DebugFormat("[Config] 解析无效跳过: {0}, mode={1}", cfgKey, overrideMode);
-            }
-            else if (overrideMode == OverrideMode.Delete)
-            {
-                pendingDeletes[cfgKey] = 0;
-                XLog.DebugFormat("[Config] pending Delete: {0}", cfgKey);
-            }
-        }
-
-
-        /// <summary>
-        /// 解析 override 属性
-        /// </summary>
-        private OverrideMode ParseOverrideMode(string overrideAttr)
-        {
-            if (string.IsNullOrEmpty(overrideAttr))
-                return OverrideMode.None;
-
-            switch (overrideAttr.ToLowerInvariant())
-            {
-                case "rewrite":
-                case "add":
-                    return OverrideMode.ReWrite;
-                case "delete":
-                case "del":
-                    return OverrideMode.Delete;
-                case "modify":
-                    return OverrideMode.Modify;
-                default:
-                    Debug.LogWarning($"未知的 override 模式: {overrideAttr}，将视为 None");
-                    return OverrideMode.None;
-            }
-        }
-
-        /// <summary>
-        /// 从 cls 字符串解析 Type。支持 "MyMod:: MyItemConfig" 形式，取 "::" 后并 Trim 作为类型名解析。
-        /// </summary>
+        /// <summary>从 cls 字符串解析 Helper。支持 "MyMod::MyItemConfig" 形式，取 "::" 后 Trim 作为类型名。</summary>
+        /// <remarks>主要步骤：1. 校验 cls 非空；2. 若有 "::" 则取其后部分作为类型名；3. 构造 TblS 并用 Key1 查 Helper。</remarks>
         private ConfigClassHelper ResolveTypeFromCls(string cls, string configInMod)
         {
             if (string.IsNullOrWhiteSpace(cls))
                 return null;
+            // 规范化：Trim，若有 "::" 则取后半段作为类型名
             var normalized = cls.Trim();
             var idx = normalized.IndexOf("::", StringComparison.Ordinal);
             if (idx >= 0)
                 normalized = normalized.Substring(idx + 2).Trim();
 
+            // 用 (configInMod, normalized) 构造 TblS，按 Key1 查缓存
             var tbls = new TblS(configInMod, normalized);
             return _classHelperCache.GetByKey1(tbls);
         }
 
-        /// <summary>
-        /// 从 XConfig 类型获取表名（与 RegisterModHelper 中 TblS 使用的表名一致）。
-        /// </summary>
-        private string GetTableNameFromConfigType(Type configType)
-        {
-            var unmanagedType = GetUnmanagedTypeFromConfig(configType);
-            return unmanagedType != null ? GetTableNameFromUnmanagedType(unmanagedType) : null;
-        }
-
-        /// <summary>
-        /// </summary>
+        /// <summary>将解析阶段的待添加/待删除/待修改配置应用到 ConfigData 与 Helper。</summary>
+        /// <remarks>主要步骤：1. 处理删除（从 pendingAdds 移除、通知 SubLink 表移除引用、清空 pendingDeletes）；2. 处理 Modify（从 pendingAdds 取源配置、ParseAndFillFromXml、清空 pendingModifies）；3. 打日志。</remarks>
         private void ApplyPendingConfigs(
-            ConcurrentDictionary<CfgS, IXConfig> pendingAdds,
-            ConcurrentDictionary<CfgS, IXConfig> pendingReWrite,
+            ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> pendingAdds,
             ConcurrentDictionary<CfgS, byte> pendingDeletes,
             ConcurrentDictionary<CfgS, XmlElement> pendingModifies)
         {
-            XLog.DebugFormat("[Config] ApplyPendingConfigs 开始: Add={0}, Modify={1}, ReWrite={2}, Delete={3}",
-                pendingAdds.Count, pendingModifies.Count, pendingReWrite.Count, pendingDeletes.Count);
-
-            // 1. 先处理 ReWrite：合并或覆盖到 pendingAdds
-            foreach (var kv in pendingReWrite)
-            {
-                var tbls = GetTblSFromCfgS(kv.Key);
-                var helper = GetClassHelperByTable(tbls);
-                IXConfig dst = null;
-                if (pendingAdds.TryGetValue(kv.Key, out var fromAdd))
-                    dst = fromAdd;
-                else if (_typeLookUp.TryGetValueByKey(tbls, out var tableHandle) &&
-                         _configsByTable.TryGetValue(tableHandle, out var dict) &&
-                         dict.TryGetValue(kv.Key, out var fromTable))
-                    dst = fromTable;
-                if (dst != null && helper != null)
-                {
-                    helper.MergeConfig(kv.Value, dst);
-                    pendingAdds[kv.Key] = dst;
-                }
-                else
-                    pendingAdds[kv.Key] = kv.Value;
-            }
-
-            pendingReWrite.Clear();
-
-            // 2. 处理删除：从 _configLookUp 与 _configsByTable 移除
+            // 1. 处理删除：从 pendingAdds 中移除该键，并让“链接到本表”的子表也移除对已删配置的引用
             foreach (var cfgKey in pendingDeletes.Keys)
             {
-                _configLookUp.RemoveByKey(cfgKey);
-                var tbls = GetTblSFromCfgS(cfgKey);
-                if (_typeLookUp.TryGetValueByKey(tbls, out var tableHandle) &&
-                    _configsByTable.TryGetValue(tableHandle, out var dict))
-                    dict.Remove(cfgKey);
+                RemovePendingAdd(pendingAdds, cfgKey.Table, cfgKey);
+                var helper = _classHelperCache.GetByKey1(cfgKey.Table);
+                if (helper != null && helper.GetSubLinkHelper() is { Count: > 0 } subHelpers)
+                {
+                    foreach (var subHelper in subHelpers)
+                    {
+                        var subTbls = subHelper.GetTblS();
+                        if (pendingAdds.TryGetValue(subTbls, out var tableDict))
+                        {
+                            tableDict.Remove(new CfgS(cfgKey.ConfigInMod, subTbls, cfgKey.ConfigName), out _);
+                        }
+                    }
+                }
             }
 
             pendingDeletes.Clear();
 
-            // 3. 最后处理 Modify：用 Xml 合并到已有配置（FillFromXml）
-            foreach (var kv in pendingModifies)
+            // 2. 处理 Modify：从 pendingAdds 取出对应表的字典与源配置，用 Xml 合并到已有配置后清空 pendingModifies
+            foreach (var modifyEntry in pendingModifies)
             {
-                var tbls = GetTblSFromCfgS(kv.Key);
+                var tbls = GetTblSFromCfgS(modifyEntry.Key);
                 var helper = GetClassHelperByTable(tbls);
-                IXConfig dst = null;
-                if (pendingAdds.TryGetValue(kv.Key, out var fromAdd))
-                    dst = fromAdd;
-                else if (_typeLookUp.TryGetValueByKey(tbls, out var tableHandle) &&
-                         _configsByTable.TryGetValue(tableHandle, out var dict) &&
-                         dict.TryGetValue(kv.Key, out var fromTable))
-                    dst = fromTable;
-                if (dst != null && helper != null)
+                if (pendingAdds.TryRemove(tbls, out var tableDict) && tableDict.TryGetValue(modifyEntry.Key, out var sourceConfig))
                 {
-                    helper.FillFromXml(dst, kv.Value, kv.Key.Mod, kv.Key.ConfigName);
-                    pendingAdds[kv.Key] = dst;
-                }
-                else
-                {
-                    XLog.WarningFormat("[Config] Modify 目标配置不存在 {0}", kv.Key);
+                    helper.ParseAndFillFromXml(sourceConfig, modifyEntry.Value, modifyEntry.Key.ConfigInMod, modifyEntry.Key.ConfigName);
                 }
             }
 
@@ -464,33 +353,42 @@ namespace XM
             XLog.Debug("[Config] ApplyPendingConfigs 完成");
         }
 
+        /// <summary>从 pendingAdds 中移除指定表下的 existingKey 登记（用于 newIndex &gt; oriIndex 时覆盖前清理）</summary>
+        /// <remarks>主要步骤：1. 用 existingKey 与 tbls 构造 CfgS；2. 若该表在 pendingAdds 中则移除该键。</remarks>
+        private void RemovePendingAdd(
+            ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> pendingAdds,
+            TblS tbls,
+            CfgS existingKey)
+        {
+            var cfgKey = new CfgS(existingKey.ConfigInMod, tbls, existingKey.ConfigName);
+            if (pendingAdds.TryGetValue(tbls, out var tableDict))
+                tableDict.Remove(cfgKey, out _);
+        }
+
+        /// <remarks>主要步骤：从 CfgS 取 Table 字段（即 TblS）。</remarks>
         private static TblS GetTblSFromCfgS(CfgS cfg)
         {
-            return new TblS(cfg.Mod, cfg.TableName);
+            return cfg.Table;
         }
 
-        private void InitUnManagedData()
-        {
-            // TODO: 遍历 _configsByTable，为每个配置分配 CfgI
-            // TODO: 调用 AllocateCfgIForConfig 分配 CfgI 并写回 config.Data
-            // TODO: 将配置填充到 Unmanaged 数据（FillToUnmanaged）
-        }
+        #endregion
 
+        #region 动态配置类型注册
 
+        /// <summary>为每个已注册的 ClassHelper 分配 TblI 并写入 _typeLookUp</summary>
+        /// <remarks>主要步骤：1. 遍历 _classHelperCache；2. 从 Config 类型取 Unmanaged 类型；3. 取 Mod 名并转 ModI；4. 分配递增 TblI 并写入 _typeLookUp；5. 通知 Helper SetTblIDefinedInMod。</remarks>
         public void RegisterDynamicConfigType()
         {
-            // 为每个收集到的配置类型创建 TblI 并注册
             short tableIdCounter = 1;
 
-            // 从 _classHelperCache 遍历所有已注册的 ClassHelper
-            foreach (var pair in _classHelperCache.Pairs)
+            foreach (var entry in _classHelperCache.Pairs)
             {
-                var helper = pair.value;
-                var tableDefine = pair.key1;
-                var configType = pair.key2;
+                var helper = entry.value;
+                var tableDefine = entry.key1;
+                var configType = entry.key2;
                 try
                 {
-                    // 从 XConfig 类型获取 Unmanaged 类型
+                    // 从 Config 类型解析出 Unmanaged 类型，解析不到则跳过
                     var unmanagedType = GetUnmanagedTypeFromConfig(configType);
                     if (unmanagedType == null)
                     {
@@ -498,13 +396,10 @@ namespace XM
                         continue;
                     }
 
-                    // 从 TblS 获取 ModName
+                    // 用 TblS 的 Mod 名取 ModI，分配 TblI 并登记
                     var modName = tableDefine.DefinedInMod.Name;
-                    // 获取 ModI
                     var modHandle = IModManager.I.GetModId(modName);
-                    // 创建 TblI
                     var tableHandle = new TblI(tableIdCounter++, modHandle);
-                    // 注册到 _typeLookUp
                     _typeLookUp.AddOrUpdate(tableDefine, tableHandle);
                     helper.SetTblIDefinedInMod(tableHandle);
                 }
@@ -515,12 +410,11 @@ namespace XM
             }
         }
 
-        /// <summary>
-        /// 从 XConfig 类型获取 Unmanaged 类型（支持基类链或实现的 IXConfig&lt;T,TUnmanaged&gt; 接口）
-        /// </summary>
+        /// <summary>从 XConfig 类型获取 Unmanaged 类型（支持基类链或 IXConfig&lt;T,TUnmanaged&gt; 接口）</summary>
+        /// <remarks>主要步骤：1. 沿基类链查找泛型基类，取第二个泛型参数为 TUnmanaged；2. 若未找到则从实现的 IXConfig`2 接口取第二个泛型参数；3. 都没有则返回 null。</remarks>
         private Type GetUnmanagedTypeFromConfig(Type configType)
         {
-            // 1. 从基类链获取 TUnmanaged
+            // 1. 从基类链查找 ConfigClassHelper&lt;T, TUnmanaged&gt; 等，取 [1] 为 TUnmanaged
             var baseType = configType.BaseType;
             while (baseType != null && baseType.IsGenericType)
             {
@@ -533,7 +427,7 @@ namespace XM
                 baseType = baseType.BaseType;
             }
 
-            // 2. 从实现的 IXConfig<T, TUnmanaged> 接口获取 TUnmanaged
+            // 2. 从实现的 IXConfig&lt;T, TUnmanaged&gt; 取第二个泛型参数
             foreach (var iface in configType.GetInterfaces())
             {
                 if (iface.IsGenericType && iface.GetGenericTypeDefinition().Name == "IXConfig`2")
@@ -549,6 +443,9 @@ namespace XM
             return null;
         }
 
+        #endregion
+
+        #region 公开 API：配置查询与转换器
 
         public bool TryGetConfigBySingleIndex<TData, TIndex>(in TIndex index, out TData data)
             where TData : unmanaged, IConfigUnManaged<TData>
@@ -563,113 +460,54 @@ namespace XM
             throw new NotImplementedException();
         }
 
-
-        public void RegisterConfigTable<T>() where T : IXConfig
-        {
-        }
-
+        /// <remarks>主要步骤：按 domain 从 TypeConverterRegistry 取转换器。</remarks>
         public ITypeConverter<TSource, TTarget> GetConverter<TSource, TTarget>(string domain = "")
         {
             return TypeConverterRegistry.GetConverter<TSource, TTarget>(domain);
         }
 
+        /// <remarks>主要步骤：按类型从 TypeConverterRegistry 取转换器。</remarks>
         public ITypeConverter<TSource, TTarget> GetConverterByType<TSource, TTarget>()
         {
             return TypeConverterRegistry.GetConverterByType<TSource, TTarget>();
         }
 
+        /// <remarks>主要步骤：按 domain 查询是否存在转换器。</remarks>
         public bool HasConverter<TSource, TTarget>(string domain = "")
         {
             return TypeConverterRegistry.HasConverter<TSource, TTarget>(domain);
         }
 
+        /// <remarks>主要步骤：按类型查询是否存在转换器。</remarks>
         public bool HasConverterByType<TSource, TTarget>()
         {
             return TypeConverterRegistry.GetConverterByType<TSource, TTarget>() != null;
         }
 
+        /// <remarks>主要步骤：根据表定义、Mod、配置名解析 CfgI（当前未实现）。</remarks>
         public bool TryGetCfgI(TblS tableDefine, ModS mod, string configName, out CfgI cfgI)
         {
             var tbl = _typeLookUp.TryGetValueByKey(tableDefine, out var tableHandle);
             throw new NotImplementedException();
         }
 
-        public bool TryExistsConfig(TblI table, ModS mod, string configName)
-        {
-            if (!_typeLookUp.TryGetKeyByValue(table, out var tbls))
-                return false;
-            var cfgKey = new CfgS(mod, tbls.TableName, configName);
-            return _configsByTable.TryGetValue(table, out var dict) && dict.ContainsKey(cfgKey);
-        }
-
-        /// <summary>
-        /// 注册配置到内部字典（XML 读取阶段使用，不分配 CfgI）
-        /// </summary>
-        private void RegisterConfigInternal(IXConfig config, TblI tableHandle, ModS modKey, string configName)
-        {
-            if (!_typeLookUp.TryGetKeyByValue(tableHandle, out var tbls))
-                return;
-            var cfgKey = new CfgS(modKey, tbls.TableName, configName);
-            if (!_configsByTable.TryGetValue(tableHandle, out var dict))
-            {
-                dict = new Dictionary<CfgS, IXConfig>();
-                _configsByTable[tableHandle] = dict;
-            }
-
-            dict[cfgKey] = config;
-        }
-
-        /// <summary>
-        /// 为已注册的配置分配 CfgI（在 InitUnManagedData 时使用）
-        /// </summary>
-        private CfgI AllocateCfgIForConfig(TblI table, ModI mod, ModS modKey, string configName)
-        {
-            var key = (table, mod);
-            if (!_nextCfgIByTableMod.TryGetValue(key, out var nextId))
-                nextId = 1;
-
-            var cfgId = new CfgI(nextId, mod, table);
-            _nextCfgIByTableMod[key] = (short)(nextId + 1);
-
-            if (_typeLookUp.TryGetKeyByValue(table, out var tbls))
-                _configLookUp.AddOrUpdate(new CfgS(modKey, tbls.TableName, configName), cfgId);
-
-            return cfgId;
-        }
-
-        /// <summary>
-        /// 从 ModI 获取 ModS
-        /// </summary>
-        private ModS GetModSFromHandle(ModI modHandle)
-        {
-            // TODO: 需要从 IModManager 或内部映射获取 ModS
-            // 临时实现：遍历 _typeLookUp 查找匹配的 ModI
-            foreach (var (tableDefine, tableHandle) in _typeLookUp.Pairs)
-            {
-                if (tableHandle.Mod.Equals(modHandle))
-                {
-                    return tableDefine.DefinedInMod;
-                }
-            }
-
-            throw new InvalidOperationException($"无法找到 ModI {modHandle.ModId} 对应的 ModS");
-        }
-
-        public void RegisterData<T>(T data) where T : IXConfig
-        {
-            throw new NotImplementedException();
-        }
-
+        /// <remarks>主要步骤：预留接口，当前无实现。</remarks>
         public void UpdateData<T>(T data) where T : IXConfig
         {
         }
 
+        #endregion
+
+        #region 公开 API：ClassHelper 与表句柄
+
+        /// <remarks>主要步骤：取 T 的 Type 后调用 GetClassHelper(Type)。</remarks>
         public ConfigClassHelper GetClassHelper<T>() where T : IXConfig, new()
         {
             var configType = typeof(T);
-            return (ConfigClassHelper)GetClassHelper(configType);
+            return GetClassHelper(configType);
         }
 
+        /// <remarks>主要步骤：1. 校验 configType 非空；2. 按 Key3（Config 类型）查 _classHelperCache 返回 Helper。</remarks>
         public ConfigClassHelper GetClassHelper(Type configType)
         {
             if (configType == null)
@@ -677,25 +515,55 @@ namespace XM
                 throw new ArgumentNullException(nameof(configType));
             }
 
-            return _classHelperCache.TryGetValueByKey3(configType, out var helper) ? helper : default;
+            return _classHelperCache.TryGetValueByKey3(configType, out var helper) ? helper : null;
         }
 
+        /// <remarks>主要步骤：按 Key2（Helper 类型）查 _classHelperCache 返回 Helper。</remarks>
+        public ConfigClassHelper GetClassHelperByHelpType(Type configType)
+        {
+            return _classHelperCache.TryGetValueByKey2(configType, out var helper) ? helper : null;
+        }
+
+        /// <remarks>主要步骤：按 Key1（TblS）查 _classHelperCache 返回 Helper。</remarks>
         public ConfigClassHelper GetClassHelperByTable(TblS tableDefine)
         {
             return _classHelperCache.GetByKey1(tableDefine);
         }
 
-        /// <summary>
-        /// 从 TblS 获取 TblI
-        /// </summary>
+        /// <summary>从 TblS 获取 TblI</summary>
+        /// <remarks>主要步骤：用 _typeLookUp 按 TblS 查 TblI，查不到返回 default。</remarks>
         public TblI GetTblI(TblS tableDefine)
         {
             if (_typeLookUp.TryGetValueByKey(tableDefine, out var tableHandle))
-            {
                 return tableHandle;
-            }
-
             return default;
         }
+
+        #endregion
+
+        #region ConfigItemProcessor 上下文实现
+
+        /// <summary>ConfigItemProcessor 的上下文实现，委托到当前 ConfigDataCenter，便于测试与解耦。</summary>
+        private sealed class ConfigItemProcessorContextImpl : IConfigItemProcessorContext
+        {
+            private readonly ConfigDataCenter _owner;
+
+            internal ConfigItemProcessorContextImpl(ConfigDataCenter owner) => _owner = owner;
+
+            public bool HasTable(TblS tbls) => _owner._typeLookUp.TryGetValueByKey(tbls, out _);
+
+            public ConfigClassHelper ResolveHelper(string cls, string configInMod) =>
+                _owner.ResolveTypeFromCls(cls, configInMod);
+
+            public int GetModSortIndex(string modName) => IModManager.I.GetModSortIndex(modName);
+
+            public void RemovePendingAdd(
+                ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> pendingAdds,
+                TblS tbls,
+                CfgS existingKey) =>
+                _owner.RemovePendingAdd(pendingAdds, tbls, existingKey);
+        }
+
+        #endregion
     }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Reflection;
 using System.Xml;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
@@ -50,7 +49,7 @@ namespace XM.Editor
             IConfigDataCenter.I = null;
         }
 
-        #region 基类通用解析（通过反射调用 protected static）
+        #region 基类通用解析（调用 ConfigParseHelper 工具方法）
 
         [Test]
         public void GetXmlFieldValue_ChildElement_ReturnsInnerText()
@@ -607,89 +606,55 @@ namespace XM.Editor
             var helper = new TestInhertClassHelper(_mockDataCenter);
             var config = (TestInhert)helper.DeserializeConfigFromXml(el, new ModS("Default"), "test");
             Assert.IsNotNull(config);
-            Assert.AreEqual(999, config.TestInt, "基类字段应由基类 FillFromXml 解析");
+            // Assert.AreEqual(999, config.TestInt, "基类字段应由基类 FillFromXml 解析");
             Assert.AreEqual(777, config.xxxx, "子类附加字段应由子类解析");
         }
 
         #endregion
 
-        #region 反射调用基类 protected static
+        #region 调用 ConfigParseHelper 工具方法（与生成代码一致）
 
-        private static string InvokeGetXmlFieldValue(XmlElement parent, string fieldName)
-        {
-            var m = typeof(ConfigClassHelper).GetMethod("GetXmlFieldValue",
-                BindingFlags.NonPublic | BindingFlags.Static, null, new[] { typeof(XmlElement), typeof(string) }, null);
-            return (string)m.Invoke(null, new object[] { parent, fieldName });
-        }
+        private static string InvokeGetXmlFieldValue(XmlElement parent, string fieldName) =>
+            ConfigParseHelper.GetXmlFieldValue(parent, fieldName);
 
-        private static bool InvokeTryParseInt(string s, string fieldName, out int value)
-        {
-            value = 0;
-            var m = typeof(ConfigClassHelper).GetMethod("TryParseInt",
-                BindingFlags.NonPublic | BindingFlags.Static, null, new[] { typeof(string), typeof(string), typeof(int).MakeByRefType() }, null);
-            var args = new object[] { s, fieldName, 0 };
-            var ok = (bool)m.Invoke(null, args);
-            if (ok) value = (int)args[2];
-            return ok;
-        }
+        private static bool InvokeTryParseInt(string s, string fieldName, out int value) =>
+            ConfigParseHelper.TryParseInt(s, fieldName, out value);
 
-        private static bool InvokeTryParseCfgSString(string s, string fieldName, out string modName, out string configName)
-        {
-            modName = configName = null;
-            var m = typeof(ConfigClassHelper).GetMethod("TryParseCfgSString",
-                BindingFlags.NonPublic | BindingFlags.Static, null,
-                new[] { typeof(string), typeof(string), typeof(string).MakeByRefType(), typeof(string).MakeByRefType() }, null);
-            var args = new object[] { s, fieldName, null, null };
-            var ok = (bool)m.Invoke(null, args);
-            if (ok) { modName = (string)args[2]; configName = (string)args[3]; }
-            return ok;
-        }
+        private static bool InvokeTryParseCfgSString(string s, string fieldName, out string modName, out string configName) =>
+            ConfigParseHelper.TryParseCfgSString(s, fieldName, out modName, out configName);
 
-        private static bool InvokeTryParseLabelSString(string s, string fieldName, out string modName, out string labelName)
-        {
-            modName = labelName = null;
-            var m = typeof(ConfigClassHelper).GetMethod("TryParseLabelSString",
-                BindingFlags.NonPublic | BindingFlags.Static, null,
-                new[] { typeof(string), typeof(string), typeof(string).MakeByRefType(), typeof(string).MakeByRefType() }, null);
-            var args = new object[] { s, fieldName, null, null };
-            var ok = (bool)m.Invoke(null, args);
-            if (ok) { modName = (string)args[2]; labelName = (string)args[3]; }
-            return ok;
-        }
+        private static bool InvokeTryParseLabelSString(string s, string fieldName, out string modName, out string labelName) =>
+            ConfigParseHelper.TryParseLabelSString(s, fieldName, out modName, out labelName);
 
-        private static void InvokeLogParseWarning(string fieldName, string value, Exception ex)
-        {
-            var m = typeof(ConfigClassHelper).GetMethod("LogParseWarning",
-                BindingFlags.NonPublic | BindingFlags.Static, null, new[] { typeof(string), typeof(string), typeof(Exception) }, null);
-            m.Invoke(null, new object[] { fieldName, value, ex });
-        }
+        private static void InvokeLogParseWarning(string fieldName, string value, Exception ex) =>
+            ConfigParseHelper.LogParseWarning(fieldName, value, ex);
 
         #endregion
 
-        #region OverrideMode 严格/宽松异常处理
+        #region OverrideMode 严格/宽松异常处理（context 通过参数传递，不依赖线程静态）
 
         [Test]
         public void DeserializeConfigFromXml_StrictMode_ParseError_LogsErrorWithFileLineField_StillReturnsConfig()
         {
-            var prevContext = ConfigClassHelper.CurrentParseContext;
             string errorReceived = null;
             ConfigClassHelper.OnParseError = msg => errorReceived = msg;
             try
             {
-                ConfigClassHelper.CurrentParseContext = new ConfigParseContext
-                { FilePath = "C:/Mods/Test/test.xml", Line = 10, Mode = OverrideMode.None };
+                var ctx = new ConfigParseContext { FilePath = "C:/Mods/Test/test.xml", Line = 10, Mode = OverrideMode.None };
                 var helper = new NestedConfigClassHelper(_mockDataCenter);
-                // 传入 null 触发 FillFromXml 内异常，严格模式应打 Error（含文件、行、字段）并仍返回已创建实例
-                var config = (NestedConfig)helper.DeserializeConfigFromXml(null, new ModS("Default"), "test", OverrideMode.None);
+                // 传入 null 触发 FillFromXml 内异常，严格模式应打 Error（含文件、行、字段）并仍返回已创建实例；context 通过参数传递，不依赖线程上下文
+                var config = (NestedConfig)helper.DeserializeConfigFromXml(null, new ModS("Default"), "test", in ctx);
                 Assert.IsNotNull(config, "严格模式：解析失败仍应正常序列化返回 obj");
                 Assert.IsNotNull(errorReceived, "应触发 OnParseError");
                 Assert.IsTrue(errorReceived.Contains("文件"), "Error 应包含文件");
                 Assert.IsTrue(errorReceived.Contains("行"), "Error 应包含行");
                 Assert.IsTrue(errorReceived.Contains("字段"), "Error 应包含字段");
+                // 断言 context 通过参数传递到 LogParseError，错误信息中应包含传入的 FilePath 与 Line
+                Assert.IsTrue(errorReceived.Contains("C:/Mods/Test/test.xml"), "Error 应包含传入的 context.FilePath");
+                Assert.IsTrue(errorReceived.Contains("10"), "Error 应包含传入的 context.Line");
             }
             finally
             {
-                ConfigClassHelper.CurrentParseContext = prevContext;
                 ConfigClassHelper.OnParseError = null;
             }
         }
@@ -697,22 +662,21 @@ namespace XM.Editor
         [Test]
         public void DeserializeConfigFromXml_ReWriteMode_ParseError_LogsError_StillReturnsConfig()
         {
-            var prevContext = ConfigClassHelper.CurrentParseContext;
             string errorReceived = null;
             ConfigClassHelper.OnParseError = msg => errorReceived = msg;
             try
             {
-                ConfigClassHelper.CurrentParseContext = new ConfigParseContext
-                { FilePath = "D:/rewrite.xml", Line = 5, Mode = OverrideMode.ReWrite };
+                var ctx = new ConfigParseContext { FilePath = "D:/rewrite.xml", Line = 5, Mode = OverrideMode.ReWrite };
                 var helper = new NestedConfigClassHelper(_mockDataCenter);
-                var config = (NestedConfig)helper.DeserializeConfigFromXml(null, new ModS("Default"), "rewrite_test", OverrideMode.ReWrite);
+                var config = (NestedConfig)helper.DeserializeConfigFromXml(null, new ModS("Default"), "rewrite_test", in ctx);
                 Assert.IsNotNull(config);
                 Assert.IsNotNull(errorReceived);
                 Assert.IsTrue(errorReceived.Contains("文件") && errorReceived.Contains("行") && errorReceived.Contains("字段"));
+                Assert.IsTrue(errorReceived.Contains("D:/rewrite.xml"), "Error 应包含传入的 context.FilePath");
+                Assert.IsTrue(errorReceived.Contains("5"), "Error 应包含传入的 context.Line");
             }
             finally
             {
-                ConfigClassHelper.CurrentParseContext = prevContext;
                 ConfigClassHelper.OnParseError = null;
             }
         }
@@ -720,31 +684,30 @@ namespace XM.Editor
         [Test]
         public void DeserializeConfigFromXml_RelaxedMode_ParseError_LogsWarning_StillReturnsConfig()
         {
-            var prevContext = ConfigClassHelper.CurrentParseContext;
             string warningReceived = null;
             ConfigClassHelper.OnParseWarning = msg => warningReceived = msg;
             try
             {
-                ConfigClassHelper.CurrentParseContext = new ConfigParseContext { FilePath = "", Line = 0, Mode = OverrideMode.Modify };
+                var ctx = new ConfigParseContext { FilePath = "", Line = 0, Mode = OverrideMode.Modify };
                 var helper = new NestedConfigClassHelper(_mockDataCenter);
-                var config = (NestedConfig)helper.DeserializeConfigFromXml(null, new ModS("Default"), "modify_test", OverrideMode.Modify);
+                var config = (NestedConfig)helper.DeserializeConfigFromXml(null, new ModS("Default"), "modify_test", in ctx);
                 Assert.IsNotNull(config, "宽松模式：仍应返回已创建实例");
                 Assert.IsNotNull(warningReceived, "宽松模式应打 Warning");
             }
             finally
             {
-                ConfigClassHelper.CurrentParseContext = prevContext;
                 ConfigClassHelper.OnParseWarning = null;
             }
         }
 
+        /// <summary>三参重载应委托四参重载（default context），行为与显式传 context 一致。</summary>
         [Test]
-        public void DeserializeConfigFromXml_ThreeParam_CallsFourParamWithNone()
+        public void DeserializeConfigFromXml_ThreeParam_CallsFourParamWithDefaultContext()
         {
             var el = LoadXmlRootFromTestData("NestedConfig_NotNullAndDefault.xml");
             var helper = new NestedConfigClassHelper(_mockDataCenter);
             var config = (NestedConfig)helper.DeserializeConfigFromXml(el, new ModS("Default"), "test");
-            Assert.IsNotNull(config, "三参应委托四参 OverrideMode.None，行为一致");
+            Assert.IsNotNull(config, "三参应委托四参 default context，行为一致");
             Assert.AreEqual(200, config.RequiredId);
         }
 
@@ -762,6 +725,12 @@ namespace XM.Editor
                 return new TestConfigClassHelper(this);
             return null;
         }
+
+        public ConfigClassHelper GetClassHelperByHelpType(Type configType)
+        {
+            throw new NotImplementedException();
+        }
+
         public ConfigClassHelper GetClassHelper<T>() where T : IXConfig, new() => GetClassHelper(typeof(T));
         public ConfigClassHelper GetClassHelperByTable(TblS tableDefine)
         {

@@ -25,6 +25,10 @@ namespace UnityToolkit
         public string TargetType { get; set; }
         public bool IsNotNull { get; set; }
         public string DefaultValueString { get; set; }
+        /// <summary>[XMLLink] 组合链接：CfgS&lt;T&gt; 生成 FieldName_Dst、FieldName_Ref、FieldName 三字段。</summary>
+        public bool IsXmlLink { get; set; }
+        /// <summary>IsXmlLink 时，链接目标的 Unmanaged 类型名（如 TestConfigUnManaged）。</summary>
+        public string XmlLinkDstUnmanagedType { get; set; }
     }
 
     /// <summary>索引组信息。</summary>
@@ -48,9 +52,8 @@ namespace UnityToolkit
         public List<FieldInfo> Fields { get; set; } = new List<FieldInfo>();
         public List<IndexGroupInfo> IndexGroups { get; set; } = new List<IndexGroupInfo>();
         public HashSet<string> RequiredUsings { get; set; } = new HashSet<string>();
-        public bool HasBase { get; set; }
-        public string BaseManagedTypeName { get; set; }
-        public string BaseUnmanagedTypeName { get; set; }
+        /// <summary>[XMLLink] 时，链接目标的 ClassHelper 类名（如 TestConfigClassHelper），用于生成 LinkHelperType = typeof(...)。取第一个 [XMLLink] 字段的 CfgS&lt;T&gt; 的 T.Name + "ClassHelper"。</summary>
+        public string LinkHelperClassName { get; set; }
     }
 
     /// <summary>类型分析器，负责分析托管类型并映射到非托管类型。</summary>
@@ -106,15 +109,6 @@ namespace UnityToolkit
                     info.UnmanagedTypeName = info.UnmanagedType.Name;
                     ValidateUnmanagedTypeName(configType, info);
                 }
-            }
-
-            if (baseType != null && baseType != typeof(object) && IsXConfigType(baseType))
-            {
-                info.HasBase = true;
-                info.BaseManagedTypeName = baseType.Name;
-                var baseIx = GetIXConfigInterface(baseType);
-                if (baseIx != null && baseIx.GetGenericArguments().Length >= 2)
-                    info.BaseUnmanagedTypeName = baseIx.GetGenericArguments()[1].Name;
             }
 
             AnalyzeFields(configType, info);
@@ -239,8 +233,21 @@ namespace UnityToolkit
 
                 if (IsConfigKeyType(field.FieldType))
                 {
-                    fieldInfo.NeedsRefField = true;
-                    fieldInfo.RefFieldName = field.Name + "_Ref";
+                    var xmlLinkAttr = field.GetCustomAttribute<XMLLinkAttribute>();
+                    if (xmlLinkAttr != null)
+                    {
+                        fieldInfo.IsXmlLink = true;
+                        var linkedType = field.FieldType.GetGenericArguments()[0];
+                        fieldInfo.XmlLinkDstUnmanagedType = GetUnmanagedTypeNameForConfig(linkedType);
+                        fieldInfo.NeedsRefField = false;
+                        if (string.IsNullOrEmpty(info.LinkHelperClassName))
+                            info.LinkHelperClassName = linkedType.Name + "ClassHelper";
+                    }
+                    else
+                    {
+                        fieldInfo.NeedsRefField = true;
+                        fieldInfo.RefFieldName = field.Name + "_Ref";
+                    }
                 }
 
                 var notNullAttr = field.GetCustomAttribute<XmlNotNullAttribute>();
@@ -364,6 +371,22 @@ namespace UnityToolkit
 
         private static bool IsConfigKeyType(Type type)
             => type.IsGenericType && type.GetGenericTypeDefinition().Name == "CfgS`1";
+
+        /// <summary>获取 XConfig 类型对应的 Unmanaged 类型名（如 TestConfig -> TestConfigUnManaged）。CfgS 泛参可为托管或非托管类型。</summary>
+        private static string GetUnmanagedTypeNameForConfig(Type linkedType)
+        {
+            if (linkedType == null) return "UnknownUnManaged";
+            if (linkedType.Name.EndsWith("UnManaged", StringComparison.Ordinal) || linkedType.Name.EndsWith("Unmanaged", StringComparison.Ordinal))
+                return linkedType.Name;
+            if (!IsXConfigType(linkedType)) return linkedType.Name + "UnManaged";
+            var ixConfig = GetIXConfigInterface(linkedType);
+            if (ixConfig != null && ixConfig.GetGenericArguments().Length >= 2)
+                return ixConfig.GetGenericArguments()[1].Name;
+            var baseType = linkedType.BaseType;
+            if (baseType != null && baseType.IsGenericType && baseType.GetGenericArguments().Length >= 2)
+                return baseType.GetGenericArguments()[1].Name;
+            return linkedType.Name + "UnManaged";
+        }
 
         private static bool IsContainerType(Type type)
         {

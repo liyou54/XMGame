@@ -26,6 +26,16 @@ namespace XM.Utils.Attribute
         }
     }
 
+    public class XMLLinkAttribute : System.Attribute
+    {
+        public bool Multilink;
+
+        public XMLLinkAttribute(bool multilink = false)
+        {
+            Multilink = multilink;
+        }
+    }
+
     /// <summary>
     /// 标记字段为必要：XML 中缺失时打告警（LogParseWarning），仍使用默认值或 [XmlDefault]。
     /// 容器类型暂不参与默认值逻辑，仅支持缺失告警。
@@ -76,41 +86,6 @@ namespace XM.Utils.Attribute
         }
     }
 
-    /// <summary>
-    /// XML Overwrite 模式枚举，用于运行时解析 XML 的 overwrite 属性
-    /// </summary>
-    public enum EXmlOverwriteMode
-    {
-        /// <summary>
-        /// 清空所有后重写：先清空整个配置对象的所有字段，然后重新赋值
-        /// </summary>
-        ClearAll,
-        
-        /// <summary>
-        /// 覆盖重写：只覆盖 XML 中存在的字段，其他字段保持不变（默认模式）
-        /// </summary>
-        Override,
-        
-        /// <summary>
-        /// 容器删除：从容器（List/Dictionary/HashSet）中删除 XML 中指定的元素
-        /// </summary>
-        ContainerRemove,
-        
-        /// <summary>
-        /// 容器添加：向容器中添加 XML 中指定的元素（不删除现有元素）
-        /// </summary>
-        ContainerAdd,
-        
-        /// <summary>
-        /// 容器清空后添加：先清空容器，然后添加 XML 中的元素
-        /// </summary>
-        ContainerClearAdd,
-        
-        /// <summary>
-        /// 容器覆盖：覆盖整个容器内容，等同于 ContainerClearAdd
-        /// </summary>
-        ContainerOverride
-    }
 
     /// <summary>
     /// 类型转换特性，用于标记字段需要进行类型转换

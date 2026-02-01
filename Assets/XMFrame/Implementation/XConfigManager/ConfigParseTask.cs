@@ -5,21 +5,42 @@ using XM.Contracts.Config;
 
 namespace XM
 {
+    #region ConfigParseTask
+
     /// <summary>
-    /// 配置解析任务代理类，封装单次解析所需的所有参数，支持懒执行与多线程安全。
-    /// 在 Execute() 时设置 CurrentParseContext，避免调用方在多线程环境下设置上下文的风险。
+    /// 配置解析任务：封装单次解析所需参数，支持懒执行与多线程安全。
+    /// Execute() 时将 Context 通过参数传入 DeserializeConfigFromXml，避免线程上下文切换导致错乱。
     /// </summary>
     internal sealed class ConfigParseTask
     {
+        #region 属性
+
+        /// <summary>解析上下文（文件路径、行号、Override 模式等）</summary>
         public ConfigParseContext Context { get; }
+
+        /// <summary>XML ConfigItem 节点</summary>
         public XmlElement ConfigItem { get; }
+
+        /// <summary>对应表的 ClassHelper</summary>
         public ConfigClassHelper Helper { get; }
+
+        /// <summary>Mod 键（ModS）</summary>
         public ModS ModKey { get; }
+
+        /// <summary>配置名（id 中 "::" 后或当前 Mod 下的 id）</summary>
         public string ConfigName { get; }
+
+        /// <summary>Override 模式</summary>
         public OverrideMode OverrideMode { get; }
-        public TblI TableHandle { get; }
+
+        /// <summary>XML 文件路径（用于日志与错误信息）</summary>
         public string XmlFilePath { get; }
 
+        #endregion
+
+        #region 构造
+
+        /// <remarks>主要步骤：保存所有解析所需参数，供 Execute 使用。</remarks>
         public ConfigParseTask(
             ConfigParseContext context,
             XmlElement configItem,
@@ -27,7 +48,6 @@ namespace XM
             ModS modKey,
             string configName,
             OverrideMode overrideMode,
-            TblI tableHandle,
             string xmlFilePath)
         {
             Context = context;
@@ -36,56 +56,69 @@ namespace XM
             ModKey = modKey;
             ConfigName = configName;
             OverrideMode = overrideMode;
-            TableHandle = tableHandle;
             XmlFilePath = xmlFilePath;
         }
 
+        #endregion
+
+        #region 执行
+
         /// <summary>
-        /// 执行解析任务。在当前线程设置 CurrentParseContext，调用 Helper 解析，返回结果。
-        /// 可在子线程调用，每个线程有独立的 ThreadStatic 上下文。
+        /// 执行解析：将 Context 通过参数传入 Helper.DeserializeConfigFromXml，不依赖线程静态变量，多线程安全。
         /// </summary>
+        /// <remarks>主要步骤：1. 调用 Helper.DeserializeConfigFromXml（传入 context，不含 overrideMode）；2. 成功则返回含 Config 的结果；3. 异常则打日志并返回无效结果。</remarks>
+        /// <returns>解析结果；失败时 Config 为 null，IsValid 为 false</returns>
         public ConfigParseResult Execute()
         {
-            var prevContext = ConfigClassHelper.CurrentParseContext;
             try
             {
-                ConfigClassHelper.CurrentParseContext = Context;
-                var config = Helper.DeserializeConfigFromXml(ConfigItem, ModKey, ConfigName, OverrideMode);
-                return new ConfigParseResult(config, TableHandle, ModKey, ConfigName, XmlFilePath);
+                var ctx = Context;
+                var config = Helper.DeserializeConfigFromXml(ConfigItem, ModKey, ConfigName, in ctx);
+                return new ConfigParseResult(config, ModKey, ConfigName, XmlFilePath);
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
-                // 记录错误，返回空结果（主线程 merge 时会跳过）
                 UnityEngine.Debug.LogError($"解析配置失败: {XmlFilePath}, 配置: {ConfigName}, 错误: {ex.Message}");
-                return new ConfigParseResult(null, TableHandle, ModKey, ConfigName, XmlFilePath);
-            }
-            finally
-            {
-                ConfigClassHelper.CurrentParseContext = prevContext;
+                return new ConfigParseResult(null, ModKey, ConfigName, XmlFilePath);
             }
         }
+
+        #endregion
     }
 
+    #endregion
+
+    #region ConfigParseResult
+
     /// <summary>
-    /// 配置解析结果，包含解析出的 IXConfig 与注册所需的元数据。
+    /// 配置解析结果：包含解析出的 IXConfig 与注册所需的元数据（ModKey、ConfigName、XmlFilePath）。
     /// </summary>
     internal readonly struct ConfigParseResult
     {
+        /// <summary>解析出的配置实例，失败时为 null</summary>
         public readonly IXConfig Config;
-        public readonly TblI TableHandle;
+
+        /// <summary>Mod 键</summary>
         public readonly ModS ModKey;
+
+        /// <summary>配置名</summary>
         public readonly string ConfigName;
+
+        /// <summary>XML 文件路径</summary>
         public readonly string XmlFilePath;
 
-        public ConfigParseResult(IXConfig config, TblI tableHandle, ModS modKey, string configName, string xmlFilePath)
+        /// <remarks>主要步骤：保存解析出的 Config 与元数据（ModKey、ConfigName、XmlFilePath）。</remarks>
+        public ConfigParseResult(IXConfig config, ModS modKey, string configName, string xmlFilePath)
         {
             Config = config;
-            TableHandle = tableHandle;
             ModKey = modKey;
             ConfigName = configName;
             XmlFilePath = xmlFilePath;
         }
 
+        /// <summary>结果是否有效（Config 非 null）</summary>
         public bool IsValid => Config != null;
     }
+
+    #endregion
 }

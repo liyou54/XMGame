@@ -1,17 +1,23 @@
 using XM;
+using XM.Contracts.Config;
+using XM.Utils.Attribute;
 
 namespace XM.Editor.Gen
 {
     /// <summary>
-    /// 派生配置，Unmanaged 由代码生成器生成（TestInhertUnmanaged.Gen.cs）。
+    /// 组合配置（使用 [XMLLink] 代替继承），Unmanaged 由代码生成器生成（TestInhertUnmanaged.Gen.cs）。
     /// </summary>
-    public class TestInhert : TestConfig, IXConfig<TestInhert, TestInhertUnmanaged>
+    [XmlDefined]
+    public class TestInhert : IXConfig<TestInhert, TestInhertUnmanaged>
     {
-        public int xxxx;
+        [XMLLink] public CfgS<TestConfig> Link;
+        public int xxxx; 
+        public CfgI Data { get; set; }
     }
 
     /// <summary>
     /// 占位定义，供编译通过；字段由 Unmanaged 代码生成器在 TestInhertUnmanaged.Gen.cs 中生成。
+    /// [XMLLink] CfgS&lt;TestConfig&gt; Link 将生成：Link_Dst、Link_Ref、Link 三字段。
     /// </summary>
     public partial struct TestInhertUnmanaged : IConfigUnManaged<TestInhertUnmanaged>
     {
