@@ -31,6 +31,8 @@ namespace XM.Contracts
         /// </summary>
         ITypeConverter<TSource, TTarget> GetConverterByType<TSource, TTarget>();
 
+        T GetConverter<T>();
+        
         /// <summary>
         /// 检查是否存在转换器
         /// </summary>
@@ -70,6 +72,11 @@ namespace XM.Contracts
         bool TryGetCfgI(CfgS cfgS, out CfgI cfgI);
         
         /// <summary>
+        /// 从 CfgI 反查 CfgS（用于 ToString 等调试功能）
+        /// </summary>
+        bool TryGetCfgS(CfgI cfgI, out CfgS cfgS);
+        
+        /// <summary>
         /// 检查指定表中是否存在指定配置（供 Helper 的递归判断父类是否存在使用）
         /// </summary>
         bool TryExistsConfig(TblI table, ModS mod, string configName);
@@ -86,5 +93,6 @@ namespace XM.Contracts
         /// <param name="table">表句柄</param>
         /// <returns>分配的配置索引</returns>
         CfgI AllocCfgIndex(CfgS cfgS, TblI table);
+
     }
 }

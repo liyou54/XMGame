@@ -31,5 +31,6 @@ namespace MyMod
     /// </summary>
     public partial  struct MyItemConfigUnManaged : IConfigUnManaged<MyItemConfigUnManaged>
     {
+
     }
 }

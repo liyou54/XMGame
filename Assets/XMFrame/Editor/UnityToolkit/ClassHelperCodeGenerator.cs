@@ -165,7 +165,7 @@ namespace UnityToolkit
             return list;
         }
 
-        /// <summary>构建容器字段的内存分配代码，供模板生成 AllocContainerWithoutFillImpl 方法。</summary>
+        /// <summary>构建所有字段的内存分配和填充代码，供模板生成 AllocContainerWithFillImpl 方法。</summary>
         private static string BuildContainerAllocCodes(ConfigTypeInfo typeInfo)
         {
             var configType = typeInfo.ManagedType;
@@ -177,32 +177,20 @@ namespace UnityToolkit
             var unmanagedTypeName = typeInfo.UnmanagedTypeName;
             var managedTypeName = typeInfo.ManagedTypeName;
 
-            // 检查是否有容器字段需要分配
-            bool hasContainers = false;
+            // 检查是否有需要处理的字段（容器字段或嵌套配置字段）
+            bool hasFieldsToProcess = false;
             foreach (var field in typeInfo.Fields)
             {
                 if (field.Name == "Data") continue;
                 var fieldInfo = configType.GetField(field.Name);
-                if (fieldInfo != null && IsContainerType(fieldInfo.FieldType))
+                if (fieldInfo != null && (IsContainerType(fieldInfo.FieldType) || IsConfigType(fieldInfo.FieldType)))
                 {
-                    hasContainers = true;
+                    hasFieldsToProcess = true;
                     break;
                 }
             }
 
-            if (!hasContainers)
-                return "";
-
-            // 在最外层获取 unmanaged 数据的值（不是引用）
-            sb.AppendLine($"        // 在最外层获取 unmanaged 数据的值（不是引用）");
-            sb.AppendLine($"        var map = configHolderData.Data.GetMap<CfgI, {unmanagedTypeName}>(_definedInMod);");
-            sb.AppendLine($"        if (!map.TryGetValue(configHolderData.Data.BlobContainer, cfgi, out var {unmanagedVar}))");
-            sb.AppendLine($"        {{");
-            sb.AppendLine($"            return;");
-            sb.AppendLine($"        }}");
-            sb.AppendLine();
-
-            // 生成各个容器字段的分配调用
+            // 生成各个容器字段的分配和填充调用
             foreach (var field in typeInfo.Fields)
             {
                 if (field.Name == "Data") continue;
@@ -213,19 +201,131 @@ namespace UnityToolkit
                 var fieldType = fieldInfo.FieldType;
                 if (IsContainerType(fieldType))
                 {
-                    // 生成方法调用，传递 ref data, cfgi
+                    // 生成方法调用，传递 ref data, cfgi，分配并填充数据
                     sb.AppendLine($"        Alloc{field.Name}({managedVar}, ref {unmanagedVar}, cfgi, configHolderData);");
+                }
+                else if (IsConfigType(fieldType))
+                {
+                    // 嵌套配置字段，生成方法调用
+                    sb.AppendLine($"        Fill{field.Name}({managedVar}, ref {unmanagedVar}, cfgi, configHolderData);");
                 }
             }
 
+            // 处理非容器非嵌套配置字段
             sb.AppendLine();
-            sb.AppendLine($"        // 将修改后的 unmanaged 数据写回容器");
-            sb.AppendLine($"        map[configHolderData.Data.BlobContainer, cfgi] = {unmanagedVar};");
+            sb.AppendLine($"        // 填充基本类型和引用类型字段");
+            foreach (var field in typeInfo.Fields)
+            {
+                if (field.Name == "Data") continue;
+                
+                var fieldInfo = configType.GetField(field.Name);
+                if (fieldInfo == null) continue;
+
+                var fieldType = fieldInfo.FieldType;
+                var fieldName = field.Name;
+
+                // 跳过容器和嵌套配置字段（已在上面处理）
+                if (IsContainerType(fieldType) || IsConfigType(fieldType))
+                    continue;
+
+                // XMLLink 字段：特殊处理，生成三个字段的填充代码
+                if (field.IsXmlLink && !string.IsNullOrEmpty(field.XmlLinkDstUnmanagedType))
+                {
+                    var dstType = field.XmlLinkDstUnmanagedType;
+                    
+                    // 填充 Link_ParentDst 字段：指向链接目标的索引
+                    sb.AppendLine($"        if (IConfigDataCenter.I.TryGetCfgI({managedVar}.{fieldName}.AsNonGeneric(), out var cfgI_{fieldName}))");
+                    sb.AppendLine($"        {{");
+                    sb.AppendLine($"            {unmanagedVar}.{fieldName}_ParentDst = cfgI_{fieldName}.As<{dstType}>();");
+                    sb.AppendLine($"        }}");
+                    
+                    // 填充 Link 字段：指向当前配置项的索引（自引用）
+                    sb.AppendLine($"        {unmanagedVar}.{fieldName} = cfgi.As<{unmanagedTypeName}>();");
+                    
+                    // 填充 Link_ParentRef (XBlobPtr<目标类型>) - 从 linkParent 参数获取
+                    sb.AppendLine($"        if (linkParent != null)");
+                    sb.AppendLine($"        {{");
+                    sb.AppendLine($"            {unmanagedVar}.{fieldName}_ParentRef = linkParent.Value.As<{dstType}>();");
+                    sb.AppendLine($"        }}");
+                    
+                    continue;
+                }
+
+                // 基本类型：直接赋值
+                if (IsBasicType(fieldType))
+                {
+                    sb.AppendLine($"        {unmanagedVar}.{fieldName} = {managedVar}.{fieldName};");
+                }
+                // CfgS<T> 类型：转换为 CfgI<T>
+                else if (IsCfgSType(fieldType))
+                {
+                    var innerType = ExtractInnerTypeFromCfgI(field.UnmanagedType);
+                    sb.AppendLine($"        if (IConfigDataCenter.I.TryGetCfgI({managedVar}.{fieldName}.AsNonGeneric(), out var cfgI_{fieldName}))");
+                    sb.AppendLine($"        {{");
+                    sb.AppendLine($"            {unmanagedVar}.{fieldName} = cfgI_{fieldName}.As<{innerType}>();");
+                    sb.AppendLine($"        }}");
+                }
+                // 字符串类型转换
+                else if (field.UnmanagedType == "StrI")
+                {
+                    // string -> StrI
+                    sb.AppendLine($"        {unmanagedVar}.{fieldName} = ConvertToStrI({managedVar}.{fieldName});");
+                }
+                else if (field.UnmanagedType == "Unity.Collections.FixedString32Bytes" || field.UnmanagedType == "FixedString32Bytes")
+                {
+                    // string -> FixedString32Bytes
+                    sb.AppendLine($"        {unmanagedVar}.{fieldName} = ConvertToFixedString32({managedVar}.{fieldName});");
+                }
+                else if (field.UnmanagedType == "Unity.Collections.FixedString64Bytes" || field.UnmanagedType == "FixedString64Bytes")
+                {
+                    // string -> FixedString64Bytes
+                    sb.AppendLine($"        {unmanagedVar}.{fieldName} = ConvertToFixedString64({managedVar}.{fieldName});");
+                }
+                else if (field.UnmanagedType == "Unity.Collections.FixedString128Bytes" || field.UnmanagedType == "FixedString128Bytes")
+                {
+                    // string -> FixedString128Bytes
+                    sb.AppendLine($"        {unmanagedVar}.{fieldName} = ConvertToFixedString128({managedVar}.{fieldName});");
+                }
+                else if (field.UnmanagedType == "LabelI")
+                {
+                    // string 或 LabelS -> LabelI
+                    // ConvertToLabelI 方法有两个重载，会根据参数类型自动选择
+                    sb.AppendLine($"        {unmanagedVar}.{fieldName} = ConvertToLabelI({managedVar}.{fieldName});");
+                }
+                // 其他需要转换的类型（通过转换器）
+                else if (field.NeedsConverter && field.ManagedType != field.UnmanagedType)
+                {
+                    // 使用转换器
+                    var sourceType = field.ManagedType ?? field.SourceType ?? "string";
+                    var targetType = field.UnmanagedType ?? field.TargetType;
+                    var domain = field.ConverterDomain ?? "";
+                    var domainEscaped = domain.Replace("\\", "\\\\").Replace("\"", "\\\"");
+                    
+                    var converterExpr = !string.IsNullOrEmpty(field.ConverterTypeName)
+                        ? $"XM.Contracts.IConfigDataCenter.I?.GetConverter<{field.ConverterTypeName}>()"
+                        : string.IsNullOrEmpty(domain)
+                            ? $"XM.Contracts.IConfigDataCenter.I?.GetConverterByType<{sourceType}, {targetType}>()"
+                            : $"XM.Contracts.IConfigDataCenter.I?.GetConverter<{sourceType}, {targetType}>(\"{domainEscaped}\")";
+                    
+                    sb.AppendLine($"        {{");
+                    sb.AppendLine($"            var converter = {converterExpr};");
+                    sb.AppendLine($"            if (converter != null && converter.Convert({managedVar}.{fieldName}, out var result))");
+                    sb.AppendLine($"            {{");
+                    sb.AppendLine($"                {unmanagedVar}.{fieldName} = result;");
+                    sb.AppendLine($"            }}");
+                    sb.AppendLine($"        }}");
+                }
+                else
+                {
+                    // 默认：直接赋值
+                    sb.AppendLine($"        {unmanagedVar}.{fieldName} = {managedVar}.{fieldName};");
+                }
+            }
 
             return sb.ToString().TrimEnd();
         }
 
-        /// <summary>构建容器字段分配的辅助方法定义</summary>
+        /// <summary>构建容器字段和嵌套配置字段分配和填充的辅助方法定义</summary>
         private static string BuildContainerAllocHelperMethods(ConfigTypeInfo typeInfo)
         {
             var configType = typeInfo.ManagedType;
@@ -245,13 +345,15 @@ namespace UnityToolkit
                 if (fieldInfo == null) continue;
 
                 var fieldType = fieldInfo.FieldType;
-                var allocCode = GetContainerAllocCode(field.Name, fieldType, managedVar, unmanagedVar, typeInfo);
+                
+                // 处理容器字段
+                var allocCode = GetContainerAllocAndFillCode(field.Name, fieldType, managedVar, unmanagedVar, typeInfo);
                 if (!string.IsNullOrEmpty(allocCode))
                 {
                     // 替换占位符为实际的 unmanaged 类型名称
                     allocCode = allocCode.Replace("UNMANAGED_TYPE", unmanagedTypeName);
                     
-                    // 生成辅助方法
+                    // 生成辅助方法（方法名保持为 Alloc，但实现包含分配和填充逻辑）
                     sb.AppendLine($"    private void Alloc{field.Name}(");
                     sb.AppendLine($"        {managedTypeName} {managedVar},");
                     sb.AppendLine($"        ref {unmanagedTypeName} {unmanagedVar},");
@@ -259,6 +361,37 @@ namespace UnityToolkit
                     sb.AppendLine($"        XM.ConfigDataCenter.ConfigDataHolder configHolderData)");
                     sb.AppendLine("    {");
                     sb.AppendLine(allocCode);
+                    sb.AppendLine("    }");
+                    sb.AppendLine();
+                }
+                // 处理嵌套配置字段
+                else if (IsConfigType(fieldType))
+                {
+                    var configTypeName = fieldType.Name;
+                    var helperTypeName = $"{configTypeName}ClassHelper";
+                    var nestedUnmanagedTypeName = $"{configTypeName}UnManaged";
+                    
+                    sb.AppendLine($"    private void Fill{field.Name}(");
+                    sb.AppendLine($"        {managedTypeName} {managedVar},");
+                    sb.AppendLine($"        ref {unmanagedTypeName} {unmanagedVar},");
+                    sb.AppendLine($"        CfgI cfgi,");
+                    sb.AppendLine($"        XM.ConfigDataCenter.ConfigDataHolder configHolderData)");
+                    sb.AppendLine("    {");
+                    sb.AppendLine($"        if ({managedVar}.{field.Name} != null)");
+                    sb.AppendLine($"        {{");
+                    sb.AppendLine($"            var nestedHelper = IConfigDataCenter.I.GetClassHelper<{configTypeName}>() as {helperTypeName};");
+                    sb.AppendLine($"            if (nestedHelper != null)");
+                    sb.AppendLine($"            {{");
+                    sb.AppendLine($"                // 递归填充嵌套配置，直接在当前 data 的嵌套字段上操作");
+                    sb.AppendLine($"                // 使用 ref 传递嵌套字段，确保修改能够生效");
+                    sb.AppendLine($"                nestedHelper.AllocContainerWithFillImpl(");
+                    sb.AppendLine($"                    {managedVar}.{field.Name},");
+                    sb.AppendLine($"                    _definedInMod,");
+                    sb.AppendLine($"                    cfgi,");
+                    sb.AppendLine($"                    ref {unmanagedVar}.{field.Name},");
+                    sb.AppendLine($"                    configHolderData);");
+                    sb.AppendLine($"            }}");
+                    sb.AppendLine($"        }}");
                     sb.AppendLine("    }");
                     sb.AppendLine();
                 }
@@ -301,11 +434,15 @@ namespace UnityToolkit
                 sb.AppendLine($"{indent}    continue;");
                 sb.AppendLine($"{indent}}}");
             }
-            else if (TryGetKeyConverterInfo(keyType, typeInfo, varNamePrefix, out var targetTypeName, out var converterVarName))
+            else if (TryGetKeyConverterInfo(keyType, typeInfo, varNamePrefix, out var targetTypeName, out var converterVarName, out var converterTypeName))
             {
-                // 自定义转换器（如 Type -> TypeI）
+                // 自定义转换器（如 Type -> TypeI）：优先使用 GetConverter<T>() 直接获取转换器类型实例
                 convertedVarName = converterVarName;
-                sb.AppendLine($"{indent}var converter_{varNamePrefix} = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<{GetCSharpTypeName(keyType)}, {targetTypeName}>();");
+                var converterExpr = !string.IsNullOrEmpty(converterTypeName)
+                    ? $"XM.Contracts.IConfigDataCenter.I?.GetConverter<{converterTypeName}>()"
+                    : $"XM.Contracts.IConfigDataCenter.I?.GetConverterByType<{GetCSharpTypeName(keyType)}, {targetTypeName}>()";
+                    
+                sb.AppendLine($"{indent}var converter_{varNamePrefix} = {converterExpr};");
                 sb.AppendLine($"{indent}if (converter_{varNamePrefix} == null)");
                 sb.AppendLine($"{indent}{{");
                 sb.AppendLine($"{indent}    XM.XLog.Error($\"[Config] 无法找到类型转换器 {GetCSharpTypeName(keyType)} -> {targetTypeName}\");");
@@ -329,7 +466,31 @@ namespace UnityToolkit
             if (keyType == null || typeInfo == null) return false;
             
             // 查找该类型是否有转换器
-            if (TryGetConverterTargetType(keyType, typeInfo, out var unmanagedTypeName))
+            if (TryGetConverterTargetType(keyType, typeInfo, out var unmanagedTypeName, out var converterTypeName))
+            {
+                targetTypeName = unmanagedTypeName;
+                // 根据键类型和前缀生成唯一的变量名
+                if (keyType == typeof(Type))
+                    convertedVarName = $"{varNamePrefix}_typeId";
+                else
+                    convertedVarName = $"{varNamePrefix}_{keyType.Name.ToLower()}Id";
+                return true;
+            }
+            
+            return false;
+        }
+        
+        /// <summary>尝试获取键类型的转换器信息（包含转换器类型名）</summary>
+        private static bool TryGetKeyConverterInfo(Type keyType, ConfigTypeInfo typeInfo, string varNamePrefix, out string targetTypeName, out string convertedVarName, out string converterTypeName)
+        {
+            targetTypeName = null;
+            convertedVarName = null;
+            converterTypeName = null;
+            
+            if (keyType == null || typeInfo == null) return false;
+            
+            // 查找该类型是否有转换器
+            if (TryGetConverterTargetType(keyType, typeInfo, out var unmanagedTypeName, out converterTypeName))
             {
                 targetTypeName = unmanagedTypeName;
                 // 根据键类型和前缀生成唯一的变量名
@@ -384,21 +545,62 @@ namespace UnityToolkit
             return cfgIType;
         }
 
-        /// <summary>为容器类型字段生成内存分配代码，每次分配都重新获取引用以避免扩容导致的引用失效</summary>
-        private static string GetContainerAllocCode(string fieldName, Type fieldType, string managedVar, string unmanagedVar, ConfigTypeInfo typeInfo)
+        /// <summary>为值类型生成转换表达式（从托管类型到 unmanaged 类型）</summary>
+        private static string GetValueConversionExpression(Type valueType, string valueExpression, ConfigTypeInfo typeInfo)
+        {
+            if (valueType == null) return valueExpression;
+            
+            // CfgS<T> -> CfgI<T> 转换（需要在调用处单独处理，因为需要生成 if 语句）
+            if (IsCfgSType(valueType))
+            {
+                // 这种情况需要特殊处理，返回占位符
+                return "__NEEDS_CFGS_CONVERSION__";
+            }
+            
+            // 基本类型直接返回
+            if (IsBasicType(valueType))
+            {
+                return valueExpression;
+            }
+            
+            // 如果是实现了 IXConfig 的类型，可能需要访问 .Data 属性
+            // 但这需要更多上下文，暂时直接返回
+            return valueExpression;
+        }
+
+        /// <summary>判断是否为基本类型</summary>
+        private static bool IsBasicType(Type type)
+        {
+            if (type == null) return false;
+            // 注意：string 不在基本类型中，因为它需要根据 [XmlStringMode] 特性进行转换
+            return type == typeof(int) || type == typeof(long) || type == typeof(short) || 
+                   type == typeof(byte) || type == typeof(bool) || type == typeof(float) || 
+                   type == typeof(double) || type == typeof(decimal);
+        }
+
+        /// <summary>判断是否为配置类型（IXConfig）</summary>
+        private static bool IsConfigType(Type type)
+        {
+            if (type == null) return false;
+            // 检查是否实现了 IXConfig 接口
+            return type.GetInterfaces().Any(i => i.Name == "IXConfig");
+        }
+
+        /// <summary>为容器类型字段生成内存分配和填充代码，每次分配都重新获取引用以避免扩容导致的引用失效</summary>
+        private static string GetContainerAllocAndFillCode(string fieldName, Type fieldType, string managedVar, string unmanagedVar, ConfigTypeInfo typeInfo)
         {
             // 获取 unmanaged 类型名称（需要从 typeInfo 中获取）
             var unmanagedTypeName = "UNMANAGED_TYPE"; // 这个会在调用处替换
             
             var sb = new StringBuilder();
-            GenerateContainerAllocCode(sb, fieldName, fieldType, managedVar, unmanagedVar, unmanagedTypeName, "", 0, typeInfo);
+            GenerateContainerAllocAndFillCode(sb, fieldName, fieldType, managedVar, unmanagedVar, unmanagedTypeName, "", 0, typeInfo);
             return sb.ToString().TrimEnd();
         }
 
-        /// <summary>递归生成容器分配代码（支持嵌套容器）</summary>
+        /// <summary>递归生成容器分配和填充代码（支持嵌套容器）</summary>
         /// <param name="parentIteratorKey">父层的迭代器键，用于写入父容器：List 用 "i{level-1}"，Dictionary 用转换后的键变量</param>
         /// <param name="parentFieldPath">父层字段的访问路径（相对于data），如 "TestKeyList1" 或 "TestKeyList1[container, kvp0_cfgI].TestNestedList"</param>
-        private static void GenerateContainerAllocCode(StringBuilder sb, string fieldName, Type fieldType, 
+        private static void GenerateContainerAllocAndFillCode(StringBuilder sb, string fieldName, Type fieldType, 
             string managedVar, string unmanagedVar, string unmanagedTypeName, string accessPath, int level, ConfigTypeInfo typeInfo, string parentIteratorKey = null, string parentFieldPath = null)
         {
             var indent = new string(' ', 8 + level * 4);
@@ -422,13 +624,68 @@ namespace UnityToolkit
                     if (IsContainerType(elemType))
                     {
                         sb.AppendLine();
-                        sb.AppendLine($"{indent}    // 分配嵌套容器");
+                        sb.AppendLine($"{indent}    // 分配嵌套容器并填充");
                         sb.AppendLine($"{indent}    for (int i{level} = 0; i{level} < {managedFieldAccess}.Count; i{level}++)");
                         sb.AppendLine($"{indent}    {{");
                         var nestedAccess = $"{managedFieldAccess}[i{level}]";
                         // 传递字段名作为起始路径（不带 data. 前缀）
-                        GenerateContainerAllocCode(sb, fieldName, elemType, managedVar, unmanagedVar, unmanagedTypeName, nestedAccess, level + 1, typeInfo, $"i{level}", fieldName);
+                        GenerateContainerAllocAndFillCode(sb, fieldName, elemType, managedVar, unmanagedVar, unmanagedTypeName, nestedAccess, level + 1, typeInfo, $"i{level}", fieldName);
                         sb.AppendLine($"{indent}    }}");
+                    }
+                    else
+                    {
+                        // 元素不是容器
+                        // 检查元素类型
+                        if (IsConfigType(elemType))
+                        {
+                            // 配置类型：通过 Helper 递归填充 Unmanaged 数据
+                            var configTypeName = elemType.Name;
+                            var helperTypeName = $"{configTypeName}ClassHelper";
+                            sb.AppendLine();
+                            sb.AppendLine($"{indent}    // 填充嵌套配置数据");
+                            sb.AppendLine($"{indent}    var nestedHelper{level} = IConfigDataCenter.I.GetClassHelper<{configTypeName}>() as {helperTypeName};");
+                            sb.AppendLine($"{indent}    if (nestedHelper{level} != null)");
+                            sb.AppendLine($"{indent}    {{");
+                            sb.AppendLine($"{indent}        for (int i{level} = 0; i{level} < {managedFieldAccess}.Count; i{level}++)");
+                            sb.AppendLine($"{indent}        {{");
+                            sb.AppendLine($"{indent}            if ({managedFieldAccess}[i{level}] != null)");
+                            sb.AppendLine($"{indent}            {{");
+                            sb.AppendLine($"{indent}                var nestedData{level} = allocated[configHolderData.Data.BlobContainer, i{level}];");
+                            sb.AppendLine($"{indent}                nestedHelper{level}.AllocContainerWithFillImpl(");
+                            sb.AppendLine($"{indent}                    {managedFieldAccess}[i{level}],");
+                            sb.AppendLine($"{indent}                    _definedInMod,");
+                            sb.AppendLine($"{indent}                    cfgi,");
+                            sb.AppendLine($"{indent}                    ref nestedData{level},");
+                            sb.AppendLine($"{indent}                    configHolderData);");
+                            sb.AppendLine($"{indent}                allocated[configHolderData.Data.BlobContainer, i{level}] = nestedData{level};");
+                            sb.AppendLine($"{indent}            }}");
+                            sb.AppendLine($"{indent}        }}");
+                            sb.AppendLine($"{indent}    }}");
+                        }
+                        else if (IsCfgSType(elemType))
+                        {
+                            // CfgS<T> -> CfgI<T> 转换
+                            sb.AppendLine();
+                            sb.AppendLine($"{indent}    // 填充数据");
+                            var innerType = ExtractInnerTypeFromCfgI(unmanagedElemType);
+                            sb.AppendLine($"{indent}    for (int i{level} = 0; i{level} < {managedFieldAccess}.Count; i{level}++)");
+                            sb.AppendLine($"{indent}    {{");
+                            sb.AppendLine($"{indent}        if (IConfigDataCenter.I.TryGetCfgI({managedFieldAccess}[i{level}].AsNonGeneric(), out var cfgI{level}))");
+                            sb.AppendLine($"{indent}        {{");
+                            sb.AppendLine($"{indent}            allocated[configHolderData.Data.BlobContainer, i{level}] = cfgI{level}.As<{innerType}>();");
+                            sb.AppendLine($"{indent}        }}");
+                            sb.AppendLine($"{indent}    }}");
+                        }
+                        else
+                        {
+                            // 基本类型，直接赋值
+                            sb.AppendLine();
+                            sb.AppendLine($"{indent}    // 填充数据");
+                            sb.AppendLine($"{indent}    for (int i{level} = 0; i{level} < {managedFieldAccess}.Count; i{level}++)");
+                            sb.AppendLine($"{indent}    {{");
+                            sb.AppendLine($"{indent}        allocated[configHolderData.Data.BlobContainer, i{level}] = {managedFieldAccess}[i{level}];");
+                            sb.AppendLine($"{indent}    }}");
+                        }
                     }
                     
                     sb.AppendLine($"{indent}}}");
@@ -445,27 +702,75 @@ namespace UnityToolkit
                     if (IsContainerType(elemType))
                     {
                         sb.AppendLine();
-                        sb.AppendLine($"{indent}    // 分配更深层的嵌套容器");
+                        sb.AppendLine($"{indent}    // 分配更深层的嵌套容器并填充");
                         sb.AppendLine($"{indent}    for (int i{level} = 0; i{level} < {managedFieldAccess}.Count; i{level}++)");
                         sb.AppendLine($"{indent}    {{");
                         var nestedAccess = $"{managedFieldAccess}[i{level}]";
                         // 传递当前层的变量名，子层会直接赋值到这个变量
-                        GenerateContainerAllocCode(sb, fieldName, elemType, managedVar, unmanagedVar, unmanagedTypeName, nestedAccess, level + 1, typeInfo, $"i{level}", varName);
+                        GenerateContainerAllocAndFillCode(sb, fieldName, elemType, managedVar, unmanagedVar, unmanagedTypeName, nestedAccess, level + 1, typeInfo, $"i{level}", varName);
                         sb.AppendLine($"{indent}    }}");
                     }
+                    else
+                    {
+                        // 元素不是容器
+                        // 检查元素类型
+                        if (IsConfigType(elemType))
+                        {
+                            // 配置类型：通过 Helper 递归填充 Unmanaged 数据
+                            var configTypeName = elemType.Name;
+                            var helperTypeName = $"{configTypeName}ClassHelper";
+                            sb.AppendLine();
+                            sb.AppendLine($"{indent}    // 填充嵌套配置数据");
+                            sb.AppendLine($"{indent}    var nestedHelper{level} = IConfigDataCenter.I.GetClassHelper<{configTypeName}>() as {helperTypeName};");
+                            sb.AppendLine($"{indent}    if (nestedHelper{level} != null)");
+                            sb.AppendLine($"{indent}    {{");
+                            sb.AppendLine($"{indent}        for (int i{level} = 0; i{level} < {managedFieldAccess}.Count; i{level}++)");
+                            sb.AppendLine($"{indent}        {{");
+                            sb.AppendLine($"{indent}            if ({managedFieldAccess}[i{level}] != null)");
+                            sb.AppendLine($"{indent}            {{");
+                            sb.AppendLine($"{indent}                var nestedData{level} = {varName}[configHolderData.Data.BlobContainer, i{level}];");
+                            sb.AppendLine($"{indent}                nestedHelper{level}.AllocContainerWithFillImpl(");
+                            sb.AppendLine($"{indent}                    {managedFieldAccess}[i{level}],");
+                            sb.AppendLine($"{indent}                    _definedInMod,");
+                            sb.AppendLine($"{indent}                    cfgi,");
+                            sb.AppendLine($"{indent}                    ref nestedData{level},");
+                            sb.AppendLine($"{indent}                    configHolderData);");
+                            sb.AppendLine($"{indent}                {varName}[configHolderData.Data.BlobContainer, i{level}] = nestedData{level};");
+                            sb.AppendLine($"{indent}            }}");
+                            sb.AppendLine($"{indent}        }}");
+                            sb.AppendLine($"{indent}    }}");
+                        }
+                        else if (IsCfgSType(elemType))
+                        {
+                            // CfgS<T> -> CfgI<T> 转换
+                            sb.AppendLine();
+                            sb.AppendLine($"{indent}    // 填充数据");
+                            var innerType = ExtractInnerTypeFromCfgI(unmanagedElemType);
+                            sb.AppendLine($"{indent}    for (int i{level} = 0; i{level} < {managedFieldAccess}.Count; i{level}++)");
+                            sb.AppendLine($"{indent}    {{");
+                            sb.AppendLine($"{indent}        if (IConfigDataCenter.I.TryGetCfgI({managedFieldAccess}[i{level}].AsNonGeneric(), out var cfgI{level}_i{level}))");
+                            sb.AppendLine($"{indent}        {{");
+                            sb.AppendLine($"{indent}            {varName}[configHolderData.Data.BlobContainer, i{level}] = cfgI{level}_i{level}.As<{innerType}>();");
+                            sb.AppendLine($"{indent}        }}");
+                            sb.AppendLine($"{indent}    }}");
+                        }
+                        else
+                        {
+                            // 基本类型，直接赋值
+                            sb.AppendLine();
+                            sb.AppendLine($"{indent}    // 填充数据");
+                            sb.AppendLine($"{indent}    for (int i{level} = 0; i{level} < {managedFieldAccess}.Count; i{level}++)");
+                            sb.AppendLine($"{indent}    {{");
+                            sb.AppendLine($"{indent}        {varName}[configHolderData.Data.BlobContainer, i{level}] = {managedFieldAccess}[i{level}];");
+                            sb.AppendLine($"{indent}    }}");
+                        }
+                    }
                     
-                    // Level 1: 赋值到顶层 data 并写回（在父层循环内，每次迭代都要执行）
+                    // Level 1: 赋值到顶层 data（直接使用 ref 参数）
                     sb.AppendLine();
                     sb.AppendLine($"{indent}    // 将分配的容器赋值到顶层数据");
                     var iteratorKey = parentIteratorKey ?? $"i{level - 1}";
-                    sb.AppendLine($"{indent}    var map{level} = configHolderData.Data.GetMap<CfgI, {unmanagedTypeName}>(_definedInMod);");
-                    sb.AppendLine($"{indent}    if (!map{level}.TryGetValue(configHolderData.Data.BlobContainer, cfgi, out var data{level}))");
-                    sb.AppendLine($"{indent}    {{");
-                    sb.AppendLine($"{indent}        XM.XLog.Error($\"[Config] 配置 {{cfgi}} 不存在于表中，无法分配嵌套容器\");");
-                    sb.AppendLine($"{indent}        return;");
-                    sb.AppendLine($"{indent}    }}");
-                    sb.AppendLine($"{indent}    data{level}.{fieldName}[configHolderData.Data.BlobContainer, {iteratorKey}] = {varName};");
-                    sb.AppendLine($"{indent}    map{level}[configHolderData.Data.BlobContainer, cfgi] = data{level};");
+                    sb.AppendLine($"{indent}    {unmanagedVar}.{fieldName}[configHolderData.Data.BlobContainer, {iteratorKey}] = {varName};");
                     sb.AppendLine($"{indent}}}");
                 }
                 else
@@ -480,13 +785,68 @@ namespace UnityToolkit
                     if (IsContainerType(elemType))
                     {
                         sb.AppendLine();
-                        sb.AppendLine($"{indent}    // 分配更深层的嵌套容器");
+                        sb.AppendLine($"{indent}    // 分配更深层的嵌套容器并填充");
                         sb.AppendLine($"{indent}    for (int i{level} = 0; i{level} < {managedFieldAccess}.Count; i{level}++)");
                         sb.AppendLine($"{indent}    {{");
                         var nestedAccess = $"{managedFieldAccess}[i{level}]";
                         // 传递当前层的变量名，子层会直接赋值到这个变量
-                        GenerateContainerAllocCode(sb, fieldName, elemType, managedVar, unmanagedVar, unmanagedTypeName, nestedAccess, level + 1, typeInfo, $"i{level}", varName);
+                        GenerateContainerAllocAndFillCode(sb, fieldName, elemType, managedVar, unmanagedVar, unmanagedTypeName, nestedAccess, level + 1, typeInfo, $"i{level}", varName);
                         sb.AppendLine($"{indent}    }}");
+                    }
+                    else
+                    {
+                        // 元素不是容器
+                        // 检查元素类型
+                        if (IsConfigType(elemType))
+                        {
+                            // 配置类型：通过 Helper 递归填充 Unmanaged 数据
+                            var configTypeName = elemType.Name;
+                            var helperTypeName = $"{configTypeName}ClassHelper";
+                            sb.AppendLine();
+                            sb.AppendLine($"{indent}    // 填充嵌套配置数据");
+                            sb.AppendLine($"{indent}    var nestedHelper{level} = IConfigDataCenter.I.GetClassHelper<{configTypeName}>() as {helperTypeName};");
+                            sb.AppendLine($"{indent}    if (nestedHelper{level} != null)");
+                            sb.AppendLine($"{indent}    {{");
+                            sb.AppendLine($"{indent}        for (int i{level} = 0; i{level} < {managedFieldAccess}.Count; i{level}++)");
+                            sb.AppendLine($"{indent}        {{");
+                            sb.AppendLine($"{indent}            if ({managedFieldAccess}[i{level}] != null)");
+                            sb.AppendLine($"{indent}            {{");
+                            sb.AppendLine($"{indent}                var nestedData{level} = {varName}[configHolderData.Data.BlobContainer, i{level}];");
+                            sb.AppendLine($"{indent}                nestedHelper{level}.AllocContainerWithFillImpl(");
+                            sb.AppendLine($"{indent}                    {managedFieldAccess}[i{level}],");
+                            sb.AppendLine($"{indent}                    _definedInMod,");
+                            sb.AppendLine($"{indent}                    cfgi,");
+                            sb.AppendLine($"{indent}                    ref nestedData{level},");
+                            sb.AppendLine($"{indent}                    configHolderData);");
+                            sb.AppendLine($"{indent}                {varName}[configHolderData.Data.BlobContainer, i{level}] = nestedData{level};");
+                            sb.AppendLine($"{indent}            }}");
+                            sb.AppendLine($"{indent}        }}");
+                            sb.AppendLine($"{indent}    }}");
+                        }
+                        else if (IsCfgSType(elemType))
+                        {
+                            // CfgS<T> -> CfgI<T> 转换
+                            sb.AppendLine();
+                            sb.AppendLine($"{indent}    // 填充数据");
+                            var innerType = ExtractInnerTypeFromCfgI(unmanagedElemType);
+                            sb.AppendLine($"{indent}    for (int i{level} = 0; i{level} < {managedFieldAccess}.Count; i{level}++)");
+                            sb.AppendLine($"{indent}    {{");
+                            sb.AppendLine($"{indent}        if (IConfigDataCenter.I.TryGetCfgI({managedFieldAccess}[i{level}].AsNonGeneric(), out var cfgI{level}_i{level}))");
+                            sb.AppendLine($"{indent}        {{");
+                            sb.AppendLine($"{indent}            {varName}[configHolderData.Data.BlobContainer, i{level}] = cfgI{level}_i{level}.As<{innerType}>();");
+                            sb.AppendLine($"{indent}        }}");
+                            sb.AppendLine($"{indent}    }}");
+                        }
+                        else
+                        {
+                            // 基本类型，直接赋值
+                            sb.AppendLine();
+                            sb.AppendLine($"{indent}    // 填充数据");
+                            sb.AppendLine($"{indent}    for (int i{level} = 0; i{level} < {managedFieldAccess}.Count; i{level}++)");
+                            sb.AppendLine($"{indent}    {{");
+                            sb.AppendLine($"{indent}        {varName}[configHolderData.Data.BlobContainer, i{level}] = {managedFieldAccess}[i{level}];");
+                            sb.AppendLine($"{indent}    }}");
+                        }
                     }
                     
                     // Level >= 2: 直接赋值到父层变量
@@ -515,7 +875,7 @@ namespace UnityToolkit
                     if (IsContainerType(valType))
                     {
                         sb.AppendLine();
-                        sb.AppendLine($"{indent}    // 分配嵌套容器");
+                        sb.AppendLine($"{indent}    // 分配嵌套容器并填充");
                         sb.AppendLine($"{indent}    foreach (var kvp{level} in {managedFieldAccess})");
                         sb.AppendLine($"{indent}    {{");
                         
@@ -525,7 +885,55 @@ namespace UnityToolkit
                         
                         var nestedAccess = $"kvp{level}.Value";
                         // 传递字段名作为起始路径（不带 data. 前缀）
-                        GenerateContainerAllocCode(sb, fieldName, valType, managedVar, unmanagedVar, unmanagedTypeName, nestedAccess, level + 1, typeInfo, convertedKey, fieldName);
+                        GenerateContainerAllocAndFillCode(sb, fieldName, valType, managedVar, unmanagedVar, unmanagedTypeName, nestedAccess, level + 1, typeInfo, convertedKey, fieldName);
+                        sb.AppendLine($"{indent}    }}");
+                    }
+                    else
+                    {
+                        // value 不是容器，填充数据
+                        sb.AppendLine();
+                        sb.AppendLine($"{indent}    // 填充数据");
+                        sb.AppendLine($"{indent}    foreach (var kvp{level} in {managedFieldAccess})");
+                        sb.AppendLine($"{indent}    {{");
+                        
+                        // 添加键类型转换代码（如果需要）
+                        AppendKeyConversion(sb, keyType, $"kvp{level}.Key", $"kvp{level}", $"{indent}        ", typeInfo, out var convertedVarName);
+                        var convertedKey = GetConvertedKeyExpression(keyType, $"kvp{level}.Key", convertedVarName, keyUnmanagedType);
+                        
+                        // 检查值类型
+                        if (IsConfigType(valType))
+                        {
+                            // 配置类型：通过 Helper 递归填充 Unmanaged 数据
+                            var configTypeName = valType.Name;
+                            var helperTypeName = $"{configTypeName}ClassHelper";
+                            sb.AppendLine($"{indent}        var nestedHelper{level}_val = IConfigDataCenter.I.GetClassHelper<{configTypeName}>() as {helperTypeName};");
+                            sb.AppendLine($"{indent}        if (kvp{level}.Value != null && nestedHelper{level}_val != null)");
+                            sb.AppendLine($"{indent}        {{");
+                            sb.AppendLine($"{indent}            var nestedData{level} = allocated[configHolderData.Data.BlobContainer, {convertedKey}];");
+                            sb.AppendLine($"{indent}            nestedHelper{level}_val.AllocContainerWithFillImpl(");
+                            sb.AppendLine($"{indent}                kvp{level}.Value,");
+                            sb.AppendLine($"{indent}                _definedInMod,");
+                            sb.AppendLine($"{indent}                cfgi,");
+                            sb.AppendLine($"{indent}                ref nestedData{level},");
+                            sb.AppendLine($"{indent}                configHolderData);");
+                            sb.AppendLine($"{indent}            allocated[configHolderData.Data.BlobContainer, {convertedKey}] = nestedData{level};");
+                            sb.AppendLine($"{indent}        }}");
+                        }
+                        else if (IsCfgSType(valType))
+                        {
+                            // CfgS<T> -> CfgI<T> 转换
+                            var innerType = ExtractInnerTypeFromCfgI(valUnmanagedType);
+                            sb.AppendLine($"{indent}        if (IConfigDataCenter.I.TryGetCfgI(kvp{level}.Value.AsNonGeneric(), out var cfgIVal{level}))");
+                            sb.AppendLine($"{indent}        {{");
+                            sb.AppendLine($"{indent}            allocated[configHolderData.Data.BlobContainer, {convertedKey}] = cfgIVal{level}.As<{innerType}>();");
+                            sb.AppendLine($"{indent}        }}");
+                        }
+                        else
+                        {
+                            // 基本类型，直接赋值
+                            sb.AppendLine($"{indent}        allocated[configHolderData.Data.BlobContainer, {convertedKey}] = kvp{level}.Value;");
+                        }
+                        
                         sb.AppendLine($"{indent}    }}");
                     }
                     
@@ -543,7 +951,7 @@ namespace UnityToolkit
                     if (IsContainerType(valType))
                     {
                         sb.AppendLine();
-                        sb.AppendLine($"{indent}    // 分配更深层的嵌套容器");
+                        sb.AppendLine($"{indent}    // 分配更深层的嵌套容器并填充");
                         sb.AppendLine($"{indent}    foreach (var kvp{level} in {managedFieldAccess})");
                         sb.AppendLine($"{indent}    {{");
                         
@@ -553,22 +961,50 @@ namespace UnityToolkit
                         
                         var nestedAccess = $"kvp{level}.Value";
                         // 传递当前层的变量名，子层会直接赋值到这个变量
-                        GenerateContainerAllocCode(sb, fieldName, valType, managedVar, unmanagedVar, unmanagedTypeName, nestedAccess, level + 1, typeInfo, convertedKey, varName);
+                        GenerateContainerAllocAndFillCode(sb, fieldName, valType, managedVar, unmanagedVar, unmanagedTypeName, nestedAccess, level + 1, typeInfo, convertedKey, varName);
+                        sb.AppendLine($"{indent}    }}");
+                    }
+                    else
+                    {
+                        // value 不是容器，填充数据
+                        sb.AppendLine();
+                        sb.AppendLine($"{indent}    // 填充数据");
+                        sb.AppendLine($"{indent}    foreach (var kvp{level} in {managedFieldAccess})");
+                        sb.AppendLine($"{indent}    {{");
+                        
+                        // 添加键类型转换代码（如果需要）
+                        AppendKeyConversion(sb, keyType, $"kvp{level}.Key", $"kvp{level}", $"{indent}        ", typeInfo, out var convertedVarName);
+                        var convertedKey = GetConvertedKeyExpression(keyType, $"kvp{level}.Key", convertedVarName, keyUnmanagedType);
+                        
+                        // 检查值类型
+                        if (IsConfigType(valType))
+                        {
+                            // 配置类型：不填充数据，由其他流程处理
+                            sb.AppendLine($"{indent}        // 嵌套配置类型，数据将在 FillToUnmanaged 阶段填充");
+                        }
+                        else if (IsCfgSType(valType))
+                        {
+                            // CfgS<T> -> CfgI<T> 转换
+                            var innerType = ExtractInnerTypeFromCfgI(valUnmanagedType);
+                            sb.AppendLine($"{indent}        if (IConfigDataCenter.I.TryGetCfgI(kvp{level}.Value.AsNonGeneric(), out var cfgIVal{level}))");
+                            sb.AppendLine($"{indent}        {{");
+                            sb.AppendLine($"{indent}            {varName}[configHolderData.Data.BlobContainer, {convertedKey}] = cfgIVal{level}.As<{innerType}>();");
+                            sb.AppendLine($"{indent}        }}");
+                        }
+                        else
+                        {
+                            // 基本类型，直接赋值
+                            sb.AppendLine($"{indent}        {varName}[configHolderData.Data.BlobContainer, {convertedKey}] = kvp{level}.Value;");
+                        }
+                        
                         sb.AppendLine($"{indent}    }}");
                     }
                     
-                    // Level 1: 赋值到顶层 data 并写回（在父层循环内，每次迭代都要执行）
+                    // Level 1: 赋值到顶层 data（直接使用 ref 参数）
                     sb.AppendLine();
                     sb.AppendLine($"{indent}    // 将分配的容器赋值到顶层数据");
                     var iteratorKey = parentIteratorKey ?? $"kvp{level - 1}.Key";
-                    sb.AppendLine($"{indent}    var map{level} = configHolderData.Data.GetMap<CfgI, {unmanagedTypeName}>(_definedInMod);");
-                    sb.AppendLine($"{indent}    if (!map{level}.TryGetValue(configHolderData.Data.BlobContainer, cfgi, out var data{level}))");
-                    sb.AppendLine($"{indent}    {{");
-                    sb.AppendLine($"{indent}        XM.XLog.Error($\"[Config] 配置 {{cfgi}} 不存在于表中，无法分配嵌套容器\");");
-                    sb.AppendLine($"{indent}        return;");
-                    sb.AppendLine($"{indent}    }}");
-                    sb.AppendLine($"{indent}    data{level}.{fieldName}[configHolderData.Data.BlobContainer, {iteratorKey}] = {varName};");
-                    sb.AppendLine($"{indent}    map{level}[configHolderData.Data.BlobContainer, cfgi] = data{level};");
+                    sb.AppendLine($"{indent}    {unmanagedVar}.{fieldName}[configHolderData.Data.BlobContainer, {iteratorKey}] = {varName};");
                     sb.AppendLine($"{indent}}}");
                 }
                 else
@@ -583,7 +1019,7 @@ namespace UnityToolkit
                     if (IsContainerType(valType))
                     {
                         sb.AppendLine();
-                        sb.AppendLine($"{indent}    // 分配更深层的嵌套容器");
+                        sb.AppendLine($"{indent}    // 分配更深层的嵌套容器并填充");
                         sb.AppendLine($"{indent}    foreach (var kvp{level} in {managedFieldAccess})");
                         sb.AppendLine($"{indent}    {{");
                         
@@ -593,7 +1029,42 @@ namespace UnityToolkit
                         
                         var nestedAccess = $"kvp{level}.Value";
                         // 传递当前层的变量名，子层会直接赋值到这个变量
-                        GenerateContainerAllocCode(sb, fieldName, valType, managedVar, unmanagedVar, unmanagedTypeName, nestedAccess, level + 1, typeInfo, convertedKey, varName);
+                        GenerateContainerAllocAndFillCode(sb, fieldName, valType, managedVar, unmanagedVar, unmanagedTypeName, nestedAccess, level + 1, typeInfo, convertedKey, varName);
+                        sb.AppendLine($"{indent}    }}");
+                    }
+                    else
+                    {
+                        // value 不是容器，填充数据
+                        sb.AppendLine();
+                        sb.AppendLine($"{indent}    // 填充数据");
+                        sb.AppendLine($"{indent}    foreach (var kvp{level} in {managedFieldAccess})");
+                        sb.AppendLine($"{indent}    {{");
+                        
+                        // 添加键类型转换代码（如果需要）
+                        AppendKeyConversion(sb, keyType, $"kvp{level}.Key", $"kvp{level}", $"{indent}        ", typeInfo, out var convertedVarName);
+                        var convertedKey = GetConvertedKeyExpression(keyType, $"kvp{level}.Key", convertedVarName, keyUnmanagedType);
+                        
+                        // 检查值类型
+                        if (IsConfigType(valType))
+                        {
+                            // 配置类型：不填充数据，由其他流程处理
+                            sb.AppendLine($"{indent}        // 嵌套配置类型，数据将在 FillToUnmanaged 阶段填充");
+                        }
+                        else if (IsCfgSType(valType))
+                        {
+                            // CfgS<T> -> CfgI<T> 转换
+                            var innerType = ExtractInnerTypeFromCfgI(valUnmanagedType);
+                            sb.AppendLine($"{indent}        if (IConfigDataCenter.I.TryGetCfgI(kvp{level}.Value.AsNonGeneric(), out var cfgIVal{level}))");
+                            sb.AppendLine($"{indent}        {{");
+                            sb.AppendLine($"{indent}            {varName}[configHolderData.Data.BlobContainer, {convertedKey}] = cfgIVal{level}.As<{innerType}>();");
+                            sb.AppendLine($"{indent}        }}");
+                        }
+                        else
+                        {
+                            // 基本类型，直接赋值
+                            sb.AppendLine($"{indent}        {varName}[configHolderData.Data.BlobContainer, {convertedKey}] = kvp{level}.Value;");
+                        }
+                        
                         sb.AppendLine($"{indent}    }}");
                     }
                     
@@ -616,6 +1087,56 @@ namespace UnityToolkit
                     sb.AppendLine($"{indent}{{");
                     sb.AppendLine($"{indent}    var allocated = configHolderData.Data.BlobContainer.AllocSet<{unmanagedElemType}>({managedFieldAccess}.Count);");
                     sb.AppendLine($"{indent}    {unmanagedVar}.{fieldName} = allocated;");
+                    sb.AppendLine();
+                    sb.AppendLine($"{indent}    // 填充数据");
+                    
+                    // 检查元素类型
+                    if (IsConfigType(elemType))
+                    {
+                        // 配置类型：通过 Helper 递归填充 Unmanaged 数据
+                        var configTypeName = elemType.Name;
+                        var helperTypeName = $"{configTypeName}ClassHelper";
+                        sb.AppendLine($"{indent}    // 填充嵌套配置数据");
+                        sb.AppendLine($"{indent}    var nestedHelperSet = IConfigDataCenter.I.GetClassHelper<{configTypeName}>() as {helperTypeName};");
+                        sb.AppendLine($"{indent}    if (nestedHelperSet != null)");
+                        sb.AppendLine($"{indent}    {{");
+                        sb.AppendLine($"{indent}        foreach (var item in {managedFieldAccess})");
+                        sb.AppendLine($"{indent}        {{");
+                        sb.AppendLine($"{indent}            if (item != null)");
+                        sb.AppendLine($"{indent}            {{");
+                        sb.AppendLine($"{indent}                var nestedData = new {unmanagedElemType}();");
+                        sb.AppendLine($"{indent}                nestedHelperSet.AllocContainerWithFillImpl(");
+                        sb.AppendLine($"{indent}                    item,");
+                        sb.AppendLine($"{indent}                    _definedInMod,");
+                        sb.AppendLine($"{indent}                    cfgi,");
+                        sb.AppendLine($"{indent}                    ref nestedData,");
+                        sb.AppendLine($"{indent}                    configHolderData);");
+                        sb.AppendLine($"{indent}                allocated.Add(configHolderData.Data.BlobContainer, nestedData);");
+                        sb.AppendLine($"{indent}            }}");
+                        sb.AppendLine($"{indent}        }}");
+                        sb.AppendLine($"{indent}    }}");
+                    }
+                    else if (IsCfgSType(elemType))
+                    {
+                        // CfgS<T> -> CfgI<T> 转换
+                        var innerType = ExtractInnerTypeFromCfgI(unmanagedElemType);
+                        sb.AppendLine($"{indent}    foreach (var item in {managedFieldAccess})");
+                        sb.AppendLine($"{indent}    {{");
+                        sb.AppendLine($"{indent}        if (IConfigDataCenter.I.TryGetCfgI(item.AsNonGeneric(), out var cfgI))");
+                        sb.AppendLine($"{indent}        {{");
+                        sb.AppendLine($"{indent}            allocated.Add(configHolderData.Data.BlobContainer, cfgI.As<{innerType}>());");
+                        sb.AppendLine($"{indent}        }}");
+                        sb.AppendLine($"{indent}    }}");
+                    }
+                    else
+                    {
+                        // 基本类型，直接添加
+                        sb.AppendLine($"{indent}    foreach (var item in {managedFieldAccess})");
+                        sb.AppendLine($"{indent}    {{");
+                        sb.AppendLine($"{indent}        allocated.Add(configHolderData.Data.BlobContainer, item);");
+                        sb.AppendLine($"{indent}    }}");
+                    }
+                    
                     sb.AppendLine($"{indent}}}");
                 }
             }
@@ -773,6 +1294,7 @@ namespace UnityToolkit
                 ManagedTypeName = typeInfo.ManagedTypeName,
                 UnmanagedTypeName = typeInfo.UnmanagedTypeName,
                 TableName = typeInfo.TableName ?? typeInfo.ManagedTypeName,
+                LinkHelperClassName = typeInfo.LinkHelperClassName,
                 RequiredUsings = typeInfo.RequiredUsings?.OrderBy(x => x).ToList() ?? new List<string>()
             };
             foreach (var o in fieldAssigns ?? new List<ScriptObject>())
@@ -825,7 +1347,13 @@ namespace UnityToolkit
         /// <summary>尝试获取类型的自定义转换器目标类型（unmanaged 类型名称）</summary>
         private static bool TryGetConverterTargetType(Type type, ConfigTypeInfo typeInfo, out string unmanagedTypeName)
         {
+            return TryGetConverterTargetType(type, typeInfo, out unmanagedTypeName, out var _);
+        }
+        
+        private static bool TryGetConverterTargetType(Type type, ConfigTypeInfo typeInfo, out string unmanagedTypeName, out string converterTypeName)
+        {
             unmanagedTypeName = null;
+            converterTypeName = null;
             if (type == null) return false;
             
             // 1. 在字段中查找是否有该类型的转换器定义（字段级别转换器）
@@ -843,6 +1371,7 @@ namespace UnityToolkit
                         // 找到了转换器，TargetType 是托管类型名称
                         // 对于大多数情况（枚举、值类型），托管类型名就是 unmanaged 类型名
                         unmanagedTypeName = field.TargetType;
+                        converterTypeName = field.ConverterTypeName;
                         return !string.IsNullOrEmpty(unmanagedTypeName);
                     }
                 }
@@ -852,9 +1381,10 @@ namespace UnityToolkit
             if (typeInfo?.ManagedType?.Assembly != null)
             {
                 // 2.1 尝试查找 type -> target 的转换器（支持任意类型对）
-                if (TypeAnalyzer.TryGetConverterTargetBySourceType(typeInfo.ManagedType.Assembly, type, out var targetType, out var _))
+                if (TypeAnalyzer.TryGetConverterTargetBySourceType(typeInfo.ManagedType.Assembly, type, out var targetType, out var _, out var globalConverterType))
                 {
                     unmanagedTypeName = targetType.Name;
+                    converterTypeName = globalConverterType?.FullName ?? globalConverterType?.Name;
                     Debug.Log($"[ClassHelperCodeGenerator] 通过转换器查找: {type.Name} -> {targetType.Name}");
                     return true;
                 }
@@ -864,9 +1394,10 @@ namespace UnityToolkit
                 }
                 
                 // 2.2 向后兼容：查找 string -> type 的转换器
-                var domain = TypeAnalyzer.GetConverterDomainForType(typeInfo.ManagedType.Assembly, type);
+                var domain = TypeAnalyzer.GetConverterDomainForType(typeInfo.ManagedType.Assembly, type, out var oldConverterType);
                 if (domain != null)
                 {
+                    converterTypeName = oldConverterType?.FullName ?? oldConverterType?.Name;
                     // 找到了全局转换器（string -> type），目标类型就是 type 本身
                     if (type.IsEnum || type.IsValueType)
                     {
@@ -1120,14 +1651,19 @@ namespace UnityToolkit
                 return ($"config.{fieldName} = {parseName}(configItem, mod, configName, context);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName,\n        in ConfigParseContext context)\n    {{\n        try\n        {{\n            {body}\n        }}\n        catch (Exception ex)\n        {{\n            {GetParseCatchBlock(fieldName, $"ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\")")}\n            return default;\n        }}\n    }}"));
             }
 
-            // 自定义转换器：从 IConfigDataCenter 按域获取转换器（含 [XmlNotNull]/[XmlDefault]）；有 domain 时用 GetConverter(domain)，否则用 GetConverterByType
+            // 自定义转换器：从 IConfigDataCenter 按域获取转换器（含 [XmlNotNull]/[XmlDefault]）；优先使用 GetConverter<T>()，否则用 GetConverter(domain) 或 GetConverterByType
             if (field.NeedsConverter && !string.IsNullOrEmpty(field.TargetType))
             {
                 var domain = field.ConverterDomain ?? "";
                 var domainEscaped = domain.Replace("\\", "\\\\").Replace("\"", "\\\"");
-                var converterExpr = string.IsNullOrEmpty(domain)
-                    ? $"XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {typeName}>()"
-                    : $"XM.Contracts.IConfigDataCenter.I?.GetConverter<string, {typeName}>(\"{domainEscaped}\")";
+                
+                // 优先使用 GetConverter<T>() 直接获取转换器类型实例
+                var converterExpr = !string.IsNullOrEmpty(field.ConverterTypeName)
+                    ? $"XM.Contracts.IConfigDataCenter.I?.GetConverter<{field.ConverterTypeName}>()"
+                    : string.IsNullOrEmpty(domain)
+                        ? $"XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, {typeName}>()"
+                        : $"XM.Contracts.IConfigDataCenter.I?.GetConverter<string, {typeName}>(\"{domainEscaped}\")";
+                
                 var emptyBlock = GetEmptyValueBlock(fieldName, field);
                 var body = $"var s = ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\");\n            " + (string.IsNullOrEmpty(emptyBlock) ? "" : emptyBlock + "\n            ") + $"if (string.IsNullOrEmpty(s)) return default;\n            var converter = {converterExpr};\n            return converter != null && converter.Convert(s, out var result) ? result : default;";
                 return ($"config.{fieldName} = {parseName}(configItem, mod, configName, context);", ToGlobal($"private static {typeName} {parseName}(XmlElement configItem, ModS mod, string configName,\n        in ConfigParseContext context)\n    {{\n        try\n        {{\n            {body}\n        }}\n        catch (Exception ex)\n        {{\n            {GetParseCatchBlock(fieldName, $"ConfigParseHelper.GetXmlFieldValue(configItem, \"{fieldName}\")")}\n            return default;\n        }}\n    }}"));
@@ -1142,6 +1678,7 @@ namespace UnityToolkit
             var fn = (fieldName ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");
             return $"if (ConfigParseHelper.IsStrictMode(context))\n                ConfigParseHelper.LogParseError(context, \"{fn}\", ex);\n            else\n                ConfigParseHelper.LogParseWarning(\"{fn}\",\n                    {valueExpr}, ex);";
         }
+
 
         private static bool IsXConfigType(Type type)
         {

@@ -6,6 +6,7 @@ namespace XM.Contracts.Config
     public readonly struct ModS : IEquatable<ModS>
     {
         public readonly string Name;
+        public bool Valid => !String.IsNullOrEmpty(Name);
 
         public ModS(string name)
         {
@@ -29,6 +30,8 @@ namespace XM.Contracts.Config
     {
         public readonly ModS DefinedInMod;
         public readonly string TableName;
+        
+        public bool Valid => !String.IsNullOrEmpty(TableName);
 
         public TblS(ModS definedInMod, string tableName)
         {
@@ -142,10 +145,12 @@ namespace XM.Contracts.Config
         /// </summary>
         public string ConfigName { get; }
 
+        public bool Valid => Table.Valid && Mod.Valid && !String.IsNullOrEmpty(ConfigName);
+
         public CfgS(ModS mod, string configName)
         {
             Mod = mod;
-            ConfigName = configName ?? throw new ArgumentNullException(nameof(configName));
+            ConfigName = configName;
         }
 
         /// <summary>
@@ -153,6 +158,11 @@ namespace XM.Contracts.Config
         /// </summary>
         public CfgS AsNonGeneric()
         {
+            if (!Valid)
+            {
+                return default;
+            }
+            
             return new CfgS(Mod, Table, ConfigName);
         }
 

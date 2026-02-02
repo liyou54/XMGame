@@ -80,11 +80,11 @@ namespace XM.Editor.Tests.Fakes
         }
         
         public override void AllocUnManagedAndInitHeadVal(
-            TblI table, 
+            TblI tbli, 
             ConcurrentDictionary<CfgS, IXConfig> kvValue, 
             object configHolder)
         {
-            RecordCall($"{nameof(AllocUnManagedAndInitHeadVal)}(table={table})");
+            RecordCall($"{nameof(AllocUnManagedAndInitHeadVal)}(table={tbli})");
         }
         
         public override Type GetLinkHelperType()
@@ -93,22 +93,15 @@ namespace XM.Editor.Tests.Fakes
             return null; // Fake实现：返回null
         }
         
-        public override void FillBasicData(
-            TblI tblI, 
-            ConcurrentDictionary<CfgS, IXConfig> kvValue, 
-            object configHolder)
-        {
-            RecordCall($"{nameof(FillBasicData)}(table={tblI})");
-        }
-        
-        public override void AllocContainerWithoutFill(
-            TblI tblI, 
+   
+        public override void AllocContainerWithFill(
+            TblI tbli, 
             TblS tblS, 
             ConcurrentDictionary<CfgS, IXConfig> kvValue,
             ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> allData,
             object configHolder)
         {
-            RecordCall($"{nameof(AllocContainerWithoutFill)}(table={tblI})");
+            RecordCall($"{nameof(AllocContainerWithFill)}(table={tbli})");
         }
         
         /// <summary>

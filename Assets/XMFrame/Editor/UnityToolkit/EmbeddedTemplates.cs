@@ -59,6 +59,15 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
 {{~ end ~}}
     }
 
+    public override Type GetLinkHelperType()
+    {
+{{~ if link_helper_class_name != """" ~}}
+        return typeof({{ link_helper_class_name }});
+{{~ else ~}}
+        return null;
+{{~ end ~}}
+    }
+
     #region 字段解析 (ParseXXX)
 
 {{~ for assign in field_assigns ~}}
@@ -67,18 +76,19 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
 {{~ end ~}}
     #endregion
 
-    protected override void AllocContainerWithoutFillImpl(
+    public override void AllocContainerWithFillImpl(
         IXConfig value,
         TblI tbli,
         CfgI cfgi,
-        System.Collections.Concurrent.ConcurrentDictionary<TblS, System.Collections.Concurrent.ConcurrentDictionary<CfgS, IXConfig>> allData,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+        ref {{ unmanaged_type_name }} data,
+        XM.ConfigDataCenter.ConfigDataHolder configHolderData,
+        XBlobPtr? linkParent = null)
     {
-{{~ if container_alloc_code != """" ~}}
         var config = ({{ managed_type_name }})value;
+{{~ if container_alloc_code != """" ~}}
 {{ container_alloc_code }}
 {{~ else ~}}
-        // 无容器字段需要分配
+        // 无字段需要处理
 {{~ end ~}}
     }
 
@@ -90,11 +100,6 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
     #endregion
 {{~ end ~}}
 
-    public override void FillBasicDataImpl(XM.ConfigDataCenter.ConfigDataHolder configHolderData, CfgS key, IXConfig value, XBlobMap<CfgI, {{ unmanaged_type_name }}> tableMap)
-    {
-        // TODO: 实现基础数据填充逻辑
-    }
-
     private TblI _definedInMod;
 }
 
@@ -103,24 +108,24 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
 {{~ end ~}}
 ";
 
-        public const string UnmanagedStructSbncs = @"{{- # 非托管结构体代码生成模板（所有类型使用 global:: 全局命名空间限定） -}}
-{{- # 生成 using 语句 -}}
+        public const string UnmanagedStructSbncs = @"{{~ # 非托管结构体代码生成模板（所有类型使用 global:: 全局命名空间限定） ~}}
+{{~ # 生成 using 语句 ~}}
 {{~ for using in required_usings ~}}
 using {{ using }};
 {{~ end ~}}
 
-{{- # 生成命名空间 -}}
+{{~ # 生成命名空间 ~}}
 {{~ if namespace != """" ~}}
 namespace {{ namespace }}
 {
 {{~ end ~}}
 
-{{- # 第一部分：接口声明 -}}
+{{~ # 第一部分：接口声明 ~}}
 public partial struct {{ unmanaged_type_name }} : global::XM.IConfigUnManaged<{{ unmanaged_type_name }}>
 {
 }
 
-{{- # 第二部分：字段定义 -}}
+{{~ # 第二部分：字段定义 ~}}
 public partial struct {{ unmanaged_type_name }}
 {
 {{~ for field in fields ~}}
@@ -131,7 +136,7 @@ public partial struct {{ unmanaged_type_name }}
 {{~ end ~}}
 }
 
-{{- # 第四部分：转换方法（从 IConfigDataCenter 获取转换器，不静态 new 转换器类型） -}}
+{{~ # 第四部分：转换方法（从 IConfigDataCenter 获取转换器，不静态 new 转换器类型） ~}}
 {{~ for field in fields ~}}
 {{~ if field.needs_converter ~}}
 public partial struct {{ unmanaged_type_name }}
@@ -148,7 +153,7 @@ public partial struct {{ unmanaged_type_name }}
 {{~ end ~}}
 {{~ end ~}}
 
-{{- # 第三部分：索引组定义 -}}
+{{~ # 第三部分：索引组定义 ~}}
 {{~ for index_group in index_groups ~}}
 public partial struct {{ unmanaged_type_name }}
 {
@@ -182,6 +187,172 @@ public partial struct {{ unmanaged_type_name }}
     }
 }
 {{~ end ~}}
+
+{{~ # 第五部分：ToString 方法（条件编译） ~}}
+
+#if DEBUG || UNITY_EDITOR
+public partial struct {{ unmanaged_type_name }}
+{
+    /// <summary>无容器参数的 ToString：容器只显示类型和长度</summary>
+    public override string ToString()
+    {
+        return ToString(null);
+    }
+
+    /// <summary>带容器参数的 ToString：打印完整容器内容（实现接口方法）</summary>
+    public string ToString(object dataContainer)
+    {
+        var container = dataContainer as global::XBlobContainer?;
+        var sb = new global::System.Text.StringBuilder();
+        sb.Append(""{{ unmanaged_type_name }} {"");
+{{~ for field in fields ~}}
+{{~ if !for.first ~}}
+        sb.Append("", "");
+{{~ end ~}}
+{{~ if field.is_xblobptr ~}}
+{{~ if field.associated_cfgi_field != """" ~}}
+        // XBlobPtr 关联 CfgI：打印为 ""Ptr->CfgS""
+        sb.Append(""{{ field.name }}=Ptr->"");
+        AppendCfgI(sb, {{ field.associated_cfgi_field }});
+{{~ else ~}}
+        // 独立 XBlobPtr：只打印偏移量
+        sb.Append(""{{ field.name }}=Ptr("" + {{ field.name }}.Offset + "")"");
+{{~ end ~}}
+{{~ else if field.is_cfgi ~}}
+        // CfgI：打印为 CfgS（模块::配置名）
+        sb.Append(""{{ field.name }}="");
+        AppendCfgI(sb, {{ field.name }});
+{{~ else if field.is_container ~}}
+{{~ if field.container_kind == ""Array"" ~}}
+        // XBlobArray
+        sb.Append(""{{ field.name }}="");
+        if (container.HasValue)
+            AppendArray_{{ field.name }}(sb, container.Value, {{ field.name }});
+        else
+            sb.Append(""XBlobArray<{{ field.element_type }}>[?]"");
+{{~ else if field.container_kind == ""Map"" ~}}
+        // XBlobMap
+        sb.Append(""{{ field.name }}="");
+        if (container.HasValue)
+            AppendMap_{{ field.name }}(sb, container.Value, {{ field.name }});
+        else
+            sb.Append(""XBlobMap<{{ field.key_type }}, {{ field.value_type }}>[?]"");
+{{~ else if field.container_kind == ""Set"" ~}}
+        // XBlobSet
+        sb.Append(""{{ field.name }}="");
+        if (container.HasValue)
+            AppendSet_{{ field.name }}(sb, container.Value, {{ field.name }});
+        else
+            sb.Append(""XBlobSet<{{ field.element_type }}>[?]"");
+{{~ end ~}}
+{{~ else if field.needs_ref_field ~}}
+        // 普通字段但有 Ref 字段：打印字段值和 Ref
+        sb.Append(""{{ field.name }}="" + {{ field.name }});
+        sb.Append("", {{ field.ref_field_name }}=Ptr->"");
+        sb.Append({{ field.name }});
+{{~ else ~}}
+        // 普通字段：直接打印
+        sb.Append(""{{ field.name }}="" + {{ field.name }});
+{{~ end ~}}
+{{~ end ~}}
+        sb.Append("" }"");
+        return sb.ToString();
+    }
+
+    /// <summary>辅助方法：打印 CfgI（尝试转为 CfgS）</summary>
+    private static void AppendCfgI<T>(global::System.Text.StringBuilder sb, global::CfgI<T> cfgi)
+        where T : unmanaged, global::XM.IConfigUnManaged<T>
+    {
+        var dataCenter = global::XM.Contracts.IConfigDataCenter.I;
+        if (dataCenter != null && dataCenter.TryGetCfgS(cfgi.AsNonGeneric(), out var cfgs))
+        {
+            sb.Append(cfgs.ToString()); // ""模块::配置名""
+        }
+        else
+        {
+            sb.Append(cfgi.ToString()); // 回退到 ""CfgI(Id)""
+        }
+    }
+{{~ for field in fields ~}}
+{{~ if field.is_container && field.container_kind == ""Array"" ~}}
+
+    /// <summary>辅助方法：打印 XBlobArray {{ field.name }}</summary>
+    private static void AppendArray_{{ field.name }}(global::System.Text.StringBuilder sb, global::XBlobContainer container, {{ field.unmanaged_type }} arr)
+    {
+        int len = arr.GetLength(container);
+        sb.Append(""["");
+        int maxPrint = global::System.Math.Min(len, 10); // 最多打印 10 个元素
+        for (int i = 0; i < maxPrint; i++)
+        {
+            if (i > 0) sb.Append("", "");
+            var elem = arr[container, i];
+{{~ if field.element_type_is_cfgi ~}}
+            AppendCfgI(sb, elem);
+{{~ else ~}}
+            sb.Append(elem);
+{{~ end ~}}
+        }
+        if (len > maxPrint) sb.Append($"", ...({len - maxPrint} more)"");
+        sb.Append(""]"");
+    }
+{{~ end ~}}
+{{~ if field.is_container && field.container_kind == ""Map"" ~}}
+
+    /// <summary>辅助方法：打印 XBlobMap {{ field.name }}</summary>
+    private static void AppendMap_{{ field.name }}(global::System.Text.StringBuilder sb, global::XBlobContainer container, {{ field.unmanaged_type }} map)
+    {
+        int len = map.GetLength(container);
+        sb.Append(""{"");
+        // Map 打印前 5 对
+        int maxPrint = global::System.Math.Min(len, 5);
+        int printed = 0;
+        foreach (var kvp in map.GetEnumerator(container))
+        {
+            if (printed >= maxPrint) break;
+            if (printed > 0) sb.Append("", "");
+{{~ if field.key_type_is_cfgi ~}}
+            AppendCfgI(sb, kvp.Key);
+{{~ else ~}}
+            sb.Append(kvp.Key);
+{{~ end ~}}
+            sb.Append("":"");
+{{~ if field.value_type_is_cfgi ~}}
+            AppendCfgI(sb, kvp.Value);
+{{~ else ~}}
+            sb.Append(kvp.Value);
+{{~ end ~}}
+            printed++;
+        }
+        if (len > maxPrint) sb.Append($"", ...({len - maxPrint} more)"");
+        sb.Append("")}"");
+    }
+{{~ end ~}}
+{{~ if field.is_container && field.container_kind == ""Set"" ~}}
+
+    /// <summary>辅助方法：打印 XBlobSet {{ field.name }}</summary>
+    private static void AppendSet_{{ field.name }}(global::System.Text.StringBuilder sb, global::XBlobContainer container, {{ field.unmanaged_type }} set)
+    {
+        int len = set.GetLength(container);
+        sb.Append(""{"");
+        int maxPrint = global::System.Math.Min(len, 10);
+        for (int i = 0; i < maxPrint && i < len; i++)
+        {
+            if (i > 0) sb.Append("", "");
+            var elem = set[container, i];
+{{~ if field.element_type_is_cfgi ~}}
+            AppendCfgI(sb, elem);
+{{~ else ~}}
+            sb.Append(elem);
+{{~ end ~}}
+        }
+        if (len > maxPrint) sb.Append($"", ...({len - maxPrint} more)"");
+        sb.Append("")}"");
+    }
+{{~ end ~}}
+{{~ end ~}}
+}
+
+#endif
 
 {{~ if namespace != """" ~}}
 }

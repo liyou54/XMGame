@@ -9,34 +9,6 @@ using XM.Utils;
 using XM.Utils.Attribute;
 using XM.Contracts.Config;
 
-[assembly: XmlGlobalConvert(typeof(TestGlobalInt2Convert), "global")]
-[assembly: XmlGlobalConvert(typeof(TestGlobalInt2Convert), "global")]
-[assembly: XmlGlobalConvert(typeof(TestGlobalTypeConvert), "global")]
-
-
-public class TestGlobalTypeConvert : ITypeConverter<Type,TypeI>
-{
-    public bool Convert(Type source, out TypeI target)
-    {
-        throw new NotImplementedException();
-    }
-}
-
-public class TestGlobalInt2Convert : XmlConvertBase<int2, TestInt2Convert>
-{
-    public override bool TryGetData(string str, out int2 data)
-    {
-        throw new System.NotImplementedException();
-    }
-}
-
-public class TestInt2Convert : XmlConvertBase<int2, TestInt2Convert>
-{
-    public override bool TryGetData(string str, out int2 data)
-    {
-        throw new System.NotImplementedException();
-    }
-}
 
 [XmlDefined()]
 public class NestedConfig : IXConfig<NestedConfig, NestedConfigUnManaged>
@@ -51,7 +23,6 @@ public class NestedConfig : IXConfig<NestedConfig, NestedConfigUnManaged>
 
     public int Test;
 
-    [XmlGlobalConvert(typeof(TestInt2Convert))]
     public int2 TestCustom;
 
     public int2 TestGlobalConvert;
@@ -67,6 +38,8 @@ public class NestedConfig : IXConfig<NestedConfig, NestedConfigUnManaged>
     public string Str;
 
     public LabelS LabelS;
+    
+    
     public CfgI Data { get; set; }
 }
 
@@ -78,7 +51,6 @@ public partial struct NestedConfigUnManaged : IConfigUnManaged<NestedConfigUnMan
 [XmlDefined()]
 public class TestConfig : IXConfig<TestConfig, TestConfigUnManaged>
 {
-    public CfgI Data { get; set; }
 
     public CfgS<TestConfigUnManaged> Id;
     public int TestInt;
@@ -94,9 +66,6 @@ public class TestConfig : IXConfig<TestConfig, TestConfigUnManaged>
     public NestedConfig TestNested;
     public List<NestedConfig> TestNestedConfig;
     public CfgS<TestConfigUnManaged> Foreign;
-    public Type ConfigType;
-    
-    public Dictionary<Type, Dictionary<Type, List<NestedConfig>>> ConfigDict;
     
     [XmlIndex("Index1", false, 0)] public int TestIndex1;
     [XmlIndex("Index1", false, 1)] public CfgS<TestConfigUnManaged> TestIndex2;

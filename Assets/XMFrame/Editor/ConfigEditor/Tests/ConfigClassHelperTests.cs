@@ -747,6 +747,11 @@ namespace XM.Editor
             throw new NotImplementedException();
         }
 
+        public bool TryGetCfgS(CfgI cfgI, out CfgS cfgS)
+        {
+            throw new NotImplementedException();
+        }
+
         public bool TryExistsConfig(TblI tableI, ModS mod, string configName) => false;
         public bool TryGetCfgI(TblS tableDefine, ModS mod, string configName, out CfgI cfgI) { cfgI = default; return false; }
         public bool TryGetCfgI(CfgS cfgS, out CfgI cfgI) { cfgI = default; return false; }
@@ -764,6 +769,12 @@ namespace XM.Editor
                 return (ITypeConverter<TSource, TTarget>)(object)MockInt2Converter.Instance;
             return null;
         }
+
+        public T GetConverter<T>()
+        {
+            throw new NotImplementedException();
+        }
+
         public bool HasConverter<TSource, TTarget>(string domain = "") => typeof(TSource) == typeof(string) && typeof(TTarget) == typeof(int2);
         public bool HasConverterByType<TSource, TTarget>() => typeof(TSource) == typeof(string) && typeof(TTarget) == typeof(int2);
         public void RegisterData<T>(T data) where T : IXConfig { }

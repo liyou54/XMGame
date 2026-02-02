@@ -23,6 +23,7 @@ namespace XModToolkit
             scriptObject["mod_name"] = dto.ModName ?? "Default";
             scriptObject["container_alloc_code"] = dto.ContainerAllocCode ?? "";
             scriptObject["container_alloc_helper_methods"] = dto.ContainerAllocHelperMethods ?? "";
+            scriptObject["link_helper_class_name"] = dto.LinkHelperClassName ?? "";
             scriptObject["required_usings"] = dto.RequiredUsings ?? new List<string>();
 
             var fieldAssigns = new List<ScriptObject>();

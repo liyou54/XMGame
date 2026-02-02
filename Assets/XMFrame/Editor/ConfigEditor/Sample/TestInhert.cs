@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using XM;
 using XM.Contracts.Config;
 using XM.Utils.Attribute;
@@ -13,11 +14,13 @@ namespace XM.Editor.Gen
         [XMLLink] public CfgS<TestConfig> Link;
         public int xxxx; 
         public CfgI Data { get; set; }
+        
+        public List<CfgS<TestConfig>> DataList { get; set; }
     }
 
     /// <summary>
     /// 占位定义，供编译通过；字段由 Unmanaged 代码生成器在 TestInhertUnmanaged.Gen.cs 中生成。
-    /// [XMLLink] CfgS&lt;TestConfig&gt; Link 将生成：Link_Dst、Link_Ref、Link 三字段。
+    /// [XMLLink] CfgS&lt;TestConfig&gt; Link 将生成：Link_ParentDst、Link_ParentRef、Link 三字段。
     /// </summary>
     public partial struct TestInhertUnmanaged : IConfigUnManaged<TestInhertUnmanaged>
     {

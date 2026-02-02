@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MyMod 复杂配置测试：字典、集合、嵌套结构 -->
+<Root>
+  <ConfigItem cls="TestConfig" id="test_001">
+    <Id>MyMod::test_001</Id>
+    <TestInt>100</TestInt>
+    <TestSample>1,2,3,4,5</TestSample>
+    <TestDictSample>1:10,2:20,3:30</TestDictSample>
+    <TestKeyList>MyMod::test_001;MyMod::test_002</TestKeyList>
+    <TestKeyHashSet>1;2;3;4;5</TestKeyHashSet>
+    <TestSetSample>10,20,30,40</TestSetSample>
+    <TestIndex1>101</TestIndex1>
+    <TestIndex2>MyMod::test_001</TestIndex2>
+    <TestIndex3>MyMod::test_001</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="test_002">
+    <Id>MyMod::test_002</Id>
+    <TestInt>200</TestInt>
+    <TestSample>10;20;30</TestSample>
+    <TestDictSample>5:50;6:60;7:70;8:80</TestDictSample>
+    <TestKeyDict>MyMod::test_001:MyMod::test_002,MyMod::test_002:MyMod::test_001</TestKeyDict>
+    <TestSetKey>MyMod::test_001;MyMod::test_002;MyMod::test_003</TestSetKey>
+    <Foreign>MyMod::test_001</Foreign>
+    <TestIndex1>102</TestIndex1>
+    <TestIndex2>MyMod::test_002</TestIndex2>
+    <TestIndex3>MyMod::test_002</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="test_003">
+    <Id>MyMod::test_003</Id>
+    <TestInt>0</TestInt>
+    <TestSample></TestSample>
+    <TestKeyHashSet></TestKeyHashSet>
+    <TestSetSample></TestSetSample>
+    <TestIndex1>0</TestIndex1>
+    <TestIndex2>MyMod::test_003</TestIndex2>
+    <TestIndex3>MyMod::test_003</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="test_004">
+    <Id>MyMod::test_004</Id>
+    <TestInt>-999</TestInt>
+    <TestSample>-1,-2,-3,-4,-5</TestSample>
+    <TestDictSample>-1:-10,-2:-20,-3:-30</TestDictSample>
+    <TestKeyHashSet>100;200;300</TestKeyHashSet>
+    <TestIndex1>104</TestIndex1>
+    <TestIndex2>MyMod::test_004</TestIndex2>
+    <TestIndex3>MyMod::test_004</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="test_005">
+    <Id>MyMod::test_005</Id>
+    <TestInt>2147483647</TestInt>
+    <TestSample>1</TestSample>
+    <TestSample>2</TestSample>
+    <TestSample>3</TestSample>
+    <TestDictSample>999:9999</TestDictSample>
+    <TestKeyList>MyMod::test_001,MyMod::test_002,MyMod::test_003,MyMod::test_004,MyMod::test_005</TestKeyList>
+    <TestIndex1>105</TestIndex1>
+    <TestIndex2>MyMod::test_005</TestIndex2>
+    <TestIndex3>MyMod::test_005</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="test_006">
+    <Id>MyMod::test_006</Id>
+    <TestInt>666</TestInt>
+    <TestSample>1,1,1,1,1</TestSample>
+    <TestDictSample>1:1,2:2,3:3</TestDictSample>
+    <TestSetKey>MyMod::test_006</TestSetKey>
+    <Foreign>MyMod::test_005</Foreign>
+    <TestIndex1>106</TestIndex1>
+    <TestIndex2>MyMod::test_006</TestIndex2>
+    <TestIndex3>MyMod::test_006</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="test_007">
+    <Id>MyMod::test_007</Id>
+    <TestInt>777</TestInt>
+    <TestSample>7,77,777,7777</TestSample>
+    <TestKeyHashSet>7;77;777;7777</TestKeyHashSet>
+    <TestSetSample>7,14,21,28,35</TestSetSample>
+    <TestIndex1>107</TestIndex1>
+    <TestIndex2>MyMod::test_007</TestIndex2>
+    <TestIndex3>MyMod::test_007</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="test_008">
+    <Id>MyMod::test_008</Id>
+    <TestInt>888</TestInt>
+    <TestDictSample>1:100;2:200;3:300;4:400;5:500;6:600;7:700;8:800</TestDictSample>
+    <TestKeyDict>MyMod::test_008:MyMod::test_008</TestKeyDict>
+    <Foreign>MyMod::test_007</Foreign>
+    <TestIndex1>108</TestIndex1>
+    <TestIndex2>MyMod::test_008</TestIndex2>
+    <TestIndex3>MyMod::test_008</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="test_009">
+    <Id>MyMod::test_009</Id>
+    <TestInt>1</TestInt>
+    <TestSample>9,8,7,6,5,4,3,2,1,0</TestSample>
+    <TestSetSample>0;1;2;3;4;5;6;7;8;9</TestSetSample>
+    <TestIndex1>109</TestIndex1>
+    <TestIndex2>MyMod::test_009</TestIndex2>
+    <TestIndex3>MyMod::test_009</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="test_010">
+    <Id>MyMod::test_010</Id>
+    <TestInt>1010</TestInt>
+    <TestSample>10,100,1000,10000</TestSample>
+    <TestDictSample>10:100,100:1000,1000:10000</TestDictSample>
+    <TestKeyList>MyMod::test_010</TestKeyList>
+    <TestSetKey>MyMod::test_001;MyMod::test_005;MyMod::test_010</TestSetKey>
+    <Foreign>MyMod::test_001</Foreign>
+    <TestIndex1>110</TestIndex1>
+    <TestIndex2>MyMod::test_010</TestIndex2>
+    <TestIndex3>MyMod::test_010</TestIndex3>
+  </ConfigItem>
+</Root>

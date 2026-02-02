@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MyMod 边界情况测试：空值、特殊字符、极限值、异常情况 -->
+<Root>
+  <!-- 边界测试1：最小值 -->
+  <ConfigItem cls="MyItemConfig" id="edge_001">
+    <Id>MyMod::edge_001</Id>
+    <Name></Name>
+    <Level>0</Level>
+    <Tags></Tags>
+  </ConfigItem>
+  
+  <!-- 边界测试2：特殊字符 -->
+  <ConfigItem cls="MyItemConfig" id="edge_002">
+    <Id>MyMod::edge_002</Id>
+    <Name>&lt;特殊&gt;&amp;字符"测试'</Name>
+    <Level>1</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  
+  <!-- 边界测试3：Unicode字符 -->
+  <ConfigItem cls="MyItemConfig" id="edge_003">
+    <Id>MyMod::edge_003</Id>
+    <Name>表情测试😀🎮🔥💯</Name>
+    <Level>100</Level>
+    <Tags>1,2,3</Tags>
+  </ConfigItem>
+  
+  <!-- 边界测试4：极长列表 -->
+  <ConfigItem cls="MyItemConfig" id="edge_004">
+    <Id>MyMod::edge_004</Id>
+    <Name>极长标签列表</Name>
+    <Level>500</Level>
+    <Tags>1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50</Tags>
+  </ConfigItem>
+  
+  <!-- 边界测试5：负数 -->
+  <ConfigItem cls="MyItemConfig" id="edge_005">
+    <Id>MyMod::edge_005</Id>
+    <Name>负数测试</Name>
+    <Level>-2147483648</Level>
+    <Tags>-1,-2,-3,-100,-1000,-10000</Tags>
+  </ConfigItem>
+  
+  <!-- 边界测试6：换行与空格 -->
+  <ConfigItem cls="MyItemConfig" id="edge_006">
+    <Id>MyMod::edge_006</Id>
+    <Name>包含
+    换行
+    的名称</Name>
+    <Level>50</Level>
+    <Tags>1;  2  ;3   ;    4</Tags>
+  </ConfigItem>
+  
+  <!-- 边界测试7：中英文混合 -->
+  <ConfigItem cls="MyItemConfig" id="edge_007">
+    <Id>MyMod::edge_007</Id>
+    <Name>Mixed中英文Name测试123ABC</Name>
+    <Level>789</Level>
+    <Tags>123;456;789</Tags>
+  </ConfigItem>
+  
+  <!-- 边界测试8：单引号双引号 -->
+  <ConfigItem cls="MyItemConfig" id="edge_008">
+    <Id>MyMod::edge_008</Id>
+    <Name>引号测试'单引号'"双引号"</Name>
+    <Level>111</Level>
+    <Tags>1</Tags>
+  </ConfigItem>
+  
+  <!-- 边界测试9：数字边界 -->
+  <ConfigItem cls="MyItemConfig" id="edge_009">
+    <Id>MyMod::edge_009</Id>
+    <Name>数字边界测试</Name>
+    <Level>2147483647</Level>
+    <Tags>0,1,2147483647,-2147483648</Tags>
+  </ConfigItem>
+  
+  <!-- 边界测试10：复杂TestConfig边界 -->
+  <ConfigItem cls="TestConfig" id="edge_010">
+    <Id>MyMod::edge_010</Id>
+    <TestInt>0</TestInt>
+    <TestSample></TestSample>
+    <TestDictSample></TestDictSample>
+    <TestKeyList></TestKeyList>
+    <TestKeyHashSet></TestKeyHashSet>
+    <TestSetSample></TestSetSample>
+    <TestNested>
+      <RequiredId>0</RequiredId>
+      <OptionalWithDefault></OptionalWithDefault>
+      <Test>0</Test>
+      <TestCustom>0,0</TestCustom>
+      <TestGlobalConvert>0,0</TestGlobalConvert>
+      <StrIndex></StrIndex>
+      <Str32></Str32>
+      <Str64></Str64>
+      <Str></Str>
+    </TestNested>
+    <TestIndex1>0</TestIndex1>
+    <TestIndex2>MyMod::edge_010</TestIndex2>
+    <TestIndex3>MyMod::edge_010</TestIndex3>
+  </ConfigItem>
+</Root>

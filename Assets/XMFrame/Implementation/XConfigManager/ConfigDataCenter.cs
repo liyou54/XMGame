@@ -198,24 +198,8 @@ namespace XM
                     continue;
                 }
 
-                // 调用 Helper 分配 Unmanaged 内存并初始化
-                helper.AllocContainerWithoutFill(tblI,tbls, kvValue, pendingAdds, _configHolder);
-            }
-
-            foreach (var tableEntry in pendingAdds)
-            {
-                var tbls = tableEntry.Key;
-                var kvValue = tableEntry.Value;
-                // 获取该表的 TblI
-                var tblI = GetTblI(tbls);
-                if (!tblI.Valid)
-                {
-                    XLog.Error($"[Config] FillUnmanagedData: 表 {tbls} 的 TblI 无效");
-                    continue;
-                }
-                var helper = GetClassHelperByTable(tbls);
-                // 多线程
-                helper.FillBasicData(tblI, kvValue, _configHolder);
+                // 调用 Helper 分配 Unmanaged 内存、初始化并填充数据
+                helper.AllocContainerWithFill(tblI,tbls, kvValue, pendingAdds, _configHolder);
             }
         }
 
@@ -554,6 +538,11 @@ namespace XM
             return TypeConverterRegistry.GetConverterByType<TSource, TTarget>();
         }
 
+        public T GetConverter<T>()
+        {
+            return TypeConverterRegistry.GetConverter<T>();
+        }
+
         /// <remarks>主要步骤：按 domain 查询是否存在转换器。</remarks>
         public bool HasConverter<TSource, TTarget>(string domain = "")
         {
@@ -581,6 +570,13 @@ namespace XM
         public bool TryGetCfgI(CfgS cfgS, out CfgI cfgI)
         {
             return _cfgLookUp.TryGetValueByKey(cfgS, out cfgI);
+        }
+
+        /// <summary>从 CfgI 反查 CfgS（用于 ToString 等调试功能）</summary>
+        /// <remarks>主要步骤：直接用 CfgI 从 _cfgLookUp 反查 CfgS。</remarks>
+        public bool TryGetCfgS(CfgI cfgI, out CfgS cfgS)
+        {
+            return _cfgLookUp.TryGetKeyByValue(cfgI, out cfgS);
         }
 
         /// <remarks>主要步骤：根据表句柄、Mod、配置名构造查询键，检查 ConfigData 中是否存在该配置。</remarks>
@@ -682,6 +678,7 @@ namespace XM
 
             return cfgI;
         }
+
 
         #endregion
 

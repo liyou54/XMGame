@@ -54,6 +54,15 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
 {{~ end ~}}
     }
 
+    public override Type GetLinkHelperType()
+    {
+{{~ if link_helper_class_name != "" ~}}
+        return typeof({{ link_helper_class_name }});
+{{~ else ~}}
+        return null;
+{{~ end ~}}
+    }
+
     #region 字段解析 (ParseXXX)
 
 {{~ for assign in field_assigns ~}}
@@ -62,18 +71,19 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
 {{~ end ~}}
     #endregion
 
-    protected override void AllocContainerWithoutFillImpl(
+    public override void AllocContainerWithFillImpl(
         IXConfig value,
         TblI tbli,
         CfgI cfgi,
-        System.Collections.Concurrent.ConcurrentDictionary<TblS, System.Collections.Concurrent.ConcurrentDictionary<CfgS, IXConfig>> allData,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+        ref {{ unmanaged_type_name }} data,
+        XM.ConfigDataCenter.ConfigDataHolder configHolderData,
+        XBlobPtr? linkParent = null)
     {
-{{~ if container_alloc_code != "" ~}}
         var config = ({{ managed_type_name }})value;
+{{~ if container_alloc_code != "" ~}}
 {{ container_alloc_code }}
 {{~ else ~}}
-        // 无容器字段需要分配
+        // 无字段需要处理
 {{~ end ~}}
     }
 
@@ -84,11 +94,6 @@ public sealed class {{ helper_class_name }} : ConfigClassHelper<{{ managed_type_
 
     #endregion
 {{~ end ~}}
-
-    public override void FillBasicDataImpl(XM.ConfigDataCenter.ConfigDataHolder configHolderData, CfgS key, IXConfig value, XBlobMap<CfgI, {{ unmanaged_type_name }}> tableMap)
-    {
-        // TODO: 实现基础数据填充逻辑
-    }
 
     private TblI _definedInMod;
 }

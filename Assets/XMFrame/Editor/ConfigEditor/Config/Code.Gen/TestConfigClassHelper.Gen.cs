@@ -4,7 +4,6 @@ using System.Xml;
 using XM;
 using XM.Contracts;
 using XM.Contracts.Config;
-using XM.Utils;
 
 
 /// <summary>
@@ -30,7 +29,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
 
     public override TblS GetTblS()
     {
-        return new TblS(new ModS("Default"), "TestConfig");
+        return TblS;
     }
 
     public override void SetTblIDefinedInMod(TblI tbl)
@@ -57,6 +56,11 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
         config.TestIndex1 = ParseTestIndex1(configItem, mod, configName, context);
         config.TestIndex2 = ParseTestIndex2(configItem, mod, configName, context);
         config.TestIndex3 = ParseTestIndex3(configItem, mod, configName, context);
+    }
+
+    public override Type GetLinkHelperType()
+    {
+        return null;
     }
 
     #region 字段解析 (ParseXXX)
@@ -392,21 +396,15 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
 
     #endregion
 
-    protected override void AllocContainerWithoutFillImpl(
+    public override void AllocContainerWithFillImpl(
         IXConfig value,
         TblI tbli,
         CfgI cfgi,
-        System.Collections.Concurrent.ConcurrentDictionary<TblS, System.Collections.Concurrent.ConcurrentDictionary<CfgS, IXConfig>> allData,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+        ref TestConfigUnManaged data,
+        XM.ConfigDataCenter.ConfigDataHolder configHolderData,
+        XBlobPtr? linkParent = null)
     {
         var config = (TestConfig)value;
-        // 在最外层获取 unmanaged 数据的值（不是引用）
-        var map = configHolderData.Data.GetMap<CfgI, TestConfigUnManaged>(_definedInMod);
-        if (!map.TryGetValue(configHolderData.Data.BlobContainer, cfgi, out var data))
-        {
-            return;
-        }
-
         AllocTestSample(config, ref data, cfgi, configHolderData);
         AllocTestDictSample(config, ref data, cfgi, configHolderData);
         AllocTestKeyList(config, ref data, cfgi, configHolderData);
@@ -416,11 +414,28 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
         AllocTestKeyDict(config, ref data, cfgi, configHolderData);
         AllocTestSetKey(config, ref data, cfgi, configHolderData);
         AllocTestSetSample(config, ref data, cfgi, configHolderData);
+        FillTestNested(config, ref data, cfgi, configHolderData);
         AllocTestNestedConfig(config, ref data, cfgi, configHolderData);
-        AllocConfigDict(config, ref data, cfgi, configHolderData);
 
-        // 将修改后的 unmanaged 数据写回容器
-        map[configHolderData.Data.BlobContainer, cfgi] = data;
+        // 填充基本类型和引用类型字段
+        if (IConfigDataCenter.I.TryGetCfgI(config.Id.AsNonGeneric(), out var cfgI_Id))
+        {
+            data.Id = cfgI_Id.As<TestConfigUnManaged>();
+        }
+        data.TestInt = config.TestInt;
+        if (IConfigDataCenter.I.TryGetCfgI(config.Foreign.AsNonGeneric(), out var cfgI_Foreign))
+        {
+            data.Foreign = cfgI_Foreign.As<TestConfigUnManaged>();
+        }
+        data.TestIndex1 = config.TestIndex1;
+        if (IConfigDataCenter.I.TryGetCfgI(config.TestIndex2.AsNonGeneric(), out var cfgI_TestIndex2))
+        {
+            data.TestIndex2 = cfgI_TestIndex2.As<TestConfigUnManaged>();
+        }
+        if (IConfigDataCenter.I.TryGetCfgI(config.TestIndex3.AsNonGeneric(), out var cfgI_TestIndex3))
+        {
+            data.TestIndex3 = cfgI_TestIndex3.As<TestConfigUnManaged>();
+        }
     }
 
     #region 容器分配辅助方法
@@ -435,6 +450,12 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
         {
             var allocated = configHolderData.Data.BlobContainer.AllocArray<Int32>(config.TestSample.Count);
             data.TestSample = allocated;
+
+            // 填充数据
+            for (int i0 = 0; i0 < config.TestSample.Count; i0++)
+            {
+                allocated[configHolderData.Data.BlobContainer, i0] = config.TestSample[i0];
+            }
         }
     }
 
@@ -448,6 +469,12 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
         {
             var allocated = configHolderData.Data.BlobContainer.AllocMap<Int32, Int32>(config.TestDictSample.Count);
             data.TestDictSample = allocated;
+
+            // 填充数据
+            foreach (var kvp0 in config.TestDictSample)
+            {
+                allocated[configHolderData.Data.BlobContainer, kvp0.Key] = kvp0.Value;
+            }
         }
     }
 
@@ -461,6 +488,15 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
         {
             var allocated = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnManaged>>(config.TestKeyList.Count);
             data.TestKeyList = allocated;
+
+            // 填充数据
+            for (int i0 = 0; i0 < config.TestKeyList.Count; i0++)
+            {
+                if (IConfigDataCenter.I.TryGetCfgI(config.TestKeyList[i0].AsNonGeneric(), out var cfgI0))
+                {
+                    allocated[configHolderData.Data.BlobContainer, i0] = cfgI0.As<TestConfigUnManaged>();
+                }
+            }
         }
     }
 
@@ -475,32 +511,34 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             var allocated = configHolderData.Data.BlobContainer.AllocMap<Int32, XBlobArray<XBlobArray<CfgI<TestConfigUnManaged>>>>(config.TestKeyList1.Count);
             data.TestKeyList1 = allocated;
 
-            // 分配嵌套容器
+            // 分配嵌套容器并填充
             foreach (var kvp0 in config.TestKeyList1)
             {
             if (kvp0.Value != null && kvp0.Value.Count > 0)
             {
                 var nested1 = configHolderData.Data.BlobContainer.AllocArray<XBlobArray<CfgI<TestConfigUnManaged>>>(kvp0.Value.Count);
 
-                // 分配更深层的嵌套容器
+                // 分配更深层的嵌套容器并填充
                 for (int i1 = 0; i1 < kvp0.Value.Count; i1++)
                 {
                 if (kvp0.Value[i1] != null && kvp0.Value[i1].Count > 0)
                 {
                     var nested2 = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnManaged>>(kvp0.Value[i1].Count);
+
+                    // 填充数据
+                    for (int i2 = 0; i2 < kvp0.Value[i1].Count; i2++)
+                    {
+                        if (IConfigDataCenter.I.TryGetCfgI(kvp0.Value[i1][i2].AsNonGeneric(), out var cfgI2_i2))
+                        {
+                            nested2[configHolderData.Data.BlobContainer, i2] = cfgI2_i2.As<TestConfigUnManaged>();
+                        }
+                    }
                     nested1[configHolderData.Data.BlobContainer, i1] = nested2;
                 }
                 }
 
                 // 将分配的容器赋值到顶层数据
-                var map1 = configHolderData.Data.GetMap<CfgI, TestConfigUnManaged>(_definedInMod);
-                if (!map1.TryGetValue(configHolderData.Data.BlobContainer, cfgi, out var data1))
-                {
-                    XM.XLog.Error($"[Config] 配置 {cfgi} 不存在于表中，无法分配嵌套容器");
-                    return;
-                }
-                data1.TestKeyList1[configHolderData.Data.BlobContainer, kvp0.Key] = nested1;
-                map1[configHolderData.Data.BlobContainer, cfgi] = data1;
+                data.TestKeyList1[configHolderData.Data.BlobContainer, kvp0.Key] = nested1;
             }
             }
         }
@@ -517,7 +555,7 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             var allocated = configHolderData.Data.BlobContainer.AllocMap<CfgI<TestConfigUnManaged>, XBlobArray<XBlobArray<CfgI<TestConfigUnManaged>>>>(config.TestKeyList2.Count);
             data.TestKeyList2 = allocated;
 
-            // 分配嵌套容器
+            // 分配嵌套容器并填充
             foreach (var kvp0 in config.TestKeyList2)
             {
                 if (!IConfigDataCenter.I.TryGetCfgI(kvp0.Key.AsNonGeneric(), out var kvp0_cfgI))
@@ -529,25 +567,27 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
             {
                 var nested1 = configHolderData.Data.BlobContainer.AllocArray<XBlobArray<CfgI<TestConfigUnManaged>>>(kvp0.Value.Count);
 
-                // 分配更深层的嵌套容器
+                // 分配更深层的嵌套容器并填充
                 for (int i1 = 0; i1 < kvp0.Value.Count; i1++)
                 {
                 if (kvp0.Value[i1] != null && kvp0.Value[i1].Count > 0)
                 {
                     var nested2 = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnManaged>>(kvp0.Value[i1].Count);
+
+                    // 填充数据
+                    for (int i2 = 0; i2 < kvp0.Value[i1].Count; i2++)
+                    {
+                        if (IConfigDataCenter.I.TryGetCfgI(kvp0.Value[i1][i2].AsNonGeneric(), out var cfgI2_i2))
+                        {
+                            nested2[configHolderData.Data.BlobContainer, i2] = cfgI2_i2.As<TestConfigUnManaged>();
+                        }
+                    }
                     nested1[configHolderData.Data.BlobContainer, i1] = nested2;
                 }
                 }
 
                 // 将分配的容器赋值到顶层数据
-                var map1 = configHolderData.Data.GetMap<CfgI, TestConfigUnManaged>(_definedInMod);
-                if (!map1.TryGetValue(configHolderData.Data.BlobContainer, cfgi, out var data1))
-                {
-                    XM.XLog.Error($"[Config] 配置 {cfgi} 不存在于表中，无法分配嵌套容器");
-                    return;
-                }
-                data1.TestKeyList2[configHolderData.Data.BlobContainer, kvp0_cfgI.As<TestConfigUnManaged>()] = nested1;
-                map1[configHolderData.Data.BlobContainer, cfgi] = data1;
+                data.TestKeyList2[configHolderData.Data.BlobContainer, kvp0_cfgI.As<TestConfigUnManaged>()] = nested1;
             }
             }
         }
@@ -563,6 +603,12 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
         {
             var allocated = configHolderData.Data.BlobContainer.AllocSet<Int32>(config.TestKeyHashSet.Count);
             data.TestKeyHashSet = allocated;
+
+            // 填充数据
+            foreach (var item in config.TestKeyHashSet)
+            {
+                allocated.Add(configHolderData.Data.BlobContainer, item);
+            }
         }
     }
 
@@ -576,6 +622,20 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
         {
             var allocated = configHolderData.Data.BlobContainer.AllocMap<CfgI<TestConfigUnManaged>, CfgI<TestConfigUnManaged>>(config.TestKeyDict.Count);
             data.TestKeyDict = allocated;
+
+            // 填充数据
+            foreach (var kvp0 in config.TestKeyDict)
+            {
+                if (!IConfigDataCenter.I.TryGetCfgI(kvp0.Key.AsNonGeneric(), out var kvp0_cfgI))
+                {
+                    XM.XLog.Error($"[Config] 无法找到配置 {kvp0.Key.ConfigName}, 跳过该项嵌套容器分配");
+                    continue;
+                }
+                if (IConfigDataCenter.I.TryGetCfgI(kvp0.Value.AsNonGeneric(), out var cfgIVal0))
+                {
+                    allocated[configHolderData.Data.BlobContainer, kvp0_cfgI.As<TestConfigUnManaged>()] = cfgIVal0.As<TestConfigUnManaged>();
+                }
+            }
         }
     }
 
@@ -589,6 +649,15 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
         {
             var allocated = configHolderData.Data.BlobContainer.AllocSet<CfgI<TestConfigUnManaged>>(config.TestSetKey.Count);
             data.TestSetKey = allocated;
+
+            // 填充数据
+            foreach (var item in config.TestSetKey)
+            {
+                if (IConfigDataCenter.I.TryGetCfgI(item.AsNonGeneric(), out var cfgI))
+                {
+                    allocated.Add(configHolderData.Data.BlobContainer, cfgI.As<TestConfigUnManaged>());
+                }
+            }
         }
     }
 
@@ -602,6 +671,35 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
         {
             var allocated = configHolderData.Data.BlobContainer.AllocSet<Int32>(config.TestSetSample.Count);
             data.TestSetSample = allocated;
+
+            // 填充数据
+            foreach (var item in config.TestSetSample)
+            {
+                allocated.Add(configHolderData.Data.BlobContainer, item);
+            }
+        }
+    }
+
+    private void FillTestNested(
+        TestConfig config,
+        ref TestConfigUnManaged data,
+        CfgI cfgi,
+        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.TestNested != null)
+        {
+            var nestedHelper = IConfigDataCenter.I.GetClassHelper<NestedConfig>() as NestedConfigClassHelper;
+            if (nestedHelper != null)
+            {
+                // 递归填充嵌套配置，直接在当前 data 的嵌套字段上操作
+                // 使用 ref 传递嵌套字段，确保修改能够生效
+                nestedHelper.AllocContainerWithFillImpl(
+                    config.TestNested,
+                    _definedInMod,
+                    cfgi,
+                    ref data.TestNested,
+                    configHolderData);
+            }
         }
     }
 
@@ -615,71 +713,30 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
         {
             var allocated = configHolderData.Data.BlobContainer.AllocArray<NestedConfigUnManaged>(config.TestNestedConfig.Count);
             data.TestNestedConfig = allocated;
-        }
-    }
 
-    private void AllocConfigDict(
-        TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        if (config.ConfigDict != null && config.ConfigDict.Count > 0)
-        {
-            var allocated = configHolderData.Data.BlobContainer.AllocMap<TypeI, XBlobMap<TypeI, XBlobArray<NestedConfigUnManaged>>>(config.ConfigDict.Count);
-            data.ConfigDict = allocated;
-
-            // 分配嵌套容器
-            foreach (var kvp0 in config.ConfigDict)
+            // 填充嵌套配置数据
+            var nestedHelper0 = IConfigDataCenter.I.GetClassHelper<NestedConfig>() as NestedConfigClassHelper;
+            if (nestedHelper0 != null)
             {
-                var converter_kvp0 = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<Type, TypeI>();
-                if (converter_kvp0 == null)
+                for (int i0 = 0; i0 < config.TestNestedConfig.Count; i0++)
                 {
-                    XM.XLog.Error($"[Config] 无法找到类型转换器 Type -> TypeI");
-                    continue;
-                }
-                if (!converter_kvp0.Convert(kvp0.Key, out var kvp0_typeId)) continue;
-            if (kvp0.Value != null && kvp0.Value.Count > 0)
-            {
-                var nested1 = configHolderData.Data.BlobContainer.AllocMap<TypeI, XBlobArray<NestedConfigUnManaged>>(kvp0.Value.Count);
-
-                // 分配更深层的嵌套容器
-                foreach (var kvp1 in kvp0.Value)
-                {
-                    var converter_kvp1 = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<Type, TypeI>();
-                    if (converter_kvp1 == null)
+                    if (config.TestNestedConfig[i0] != null)
                     {
-                        XM.XLog.Error($"[Config] 无法找到类型转换器 Type -> TypeI");
-                        continue;
+                        var nestedData0 = allocated[configHolderData.Data.BlobContainer, i0];
+                        nestedHelper0.AllocContainerWithFillImpl(
+                            config.TestNestedConfig[i0],
+                            _definedInMod,
+                            cfgi,
+                            ref nestedData0,
+                            configHolderData);
+                        allocated[configHolderData.Data.BlobContainer, i0] = nestedData0;
                     }
-                    if (!converter_kvp1.Convert(kvp1.Key, out var kvp1_typeId)) continue;
-                if (kvp1.Value != null && kvp1.Value.Count > 0)
-                {
-                    var nested2 = configHolderData.Data.BlobContainer.AllocArray<NestedConfigUnManaged>(kvp1.Value.Count);
-                    nested1[configHolderData.Data.BlobContainer, kvp1_typeId] = nested2;
                 }
-                }
-
-                // 将分配的容器赋值到顶层数据
-                var map1 = configHolderData.Data.GetMap<CfgI, TestConfigUnManaged>(_definedInMod);
-                if (!map1.TryGetValue(configHolderData.Data.BlobContainer, cfgi, out var data1))
-                {
-                    XM.XLog.Error($"[Config] 配置 {cfgi} 不存在于表中，无法分配嵌套容器");
-                    return;
-                }
-                data1.ConfigDict[configHolderData.Data.BlobContainer, kvp0_typeId] = nested1;
-                map1[configHolderData.Data.BlobContainer, cfgi] = data1;
-            }
             }
         }
     }
 
     #endregion
-
-    public override void FillBasicDataImpl(XM.ConfigDataCenter.ConfigDataHolder configHolderData, CfgS key, IXConfig value, XBlobMap<CfgI, TestConfigUnManaged> tableMap)
-    {
-        // TODO: 实现基础数据填充逻辑
-    }
 
     private TblI _definedInMod;
 }

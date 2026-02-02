@@ -14,6 +14,7 @@ namespace XModToolkit.Config
         public string ModName { get; set; }
         public string ContainerAllocCode { get; set; }
         public string ContainerAllocHelperMethods { get; set; }
+        public string LinkHelperClassName { get; set; }
         public List<string> RequiredUsings { get; set; } = new List<string>();
         public List<UnmanagedFieldDto> Fields { get; set; } = new List<UnmanagedFieldDto>();
         public List<IndexGroupDto> IndexGroups { get; set; } = new List<IndexGroupDto>();
@@ -34,6 +35,39 @@ namespace XModToolkit.Config
         public string SourceType { get; set; }
         public string TargetType { get; set; }
         public string ConverterDomainEscaped { get; set; }
+        
+        /// <summary>字段是否是 CfgI 类型（用于 ToString 生成）</summary>
+        public bool IsCfgI { get; set; }
+        
+        /// <summary>字段是否是 XBlobPtr 类型（用于 ToString 生成）</summary>
+        public bool IsXBlobPtr { get; set; }
+        
+        /// <summary>如果是 XBlobPtr，关联的 CfgI 字段名（用于 ToString 生成）</summary>
+        public string AssociatedCfgIField { get; set; }
+        
+        /// <summary>字段是否是容器类型（用于 ToString 生成）</summary>
+        public bool IsContainer { get; set; }
+        
+        /// <summary>容器类型："Array", "Map", "Set"（用于 ToString 生成）</summary>
+        public string ContainerKind { get; set; }
+        
+        /// <summary>容器元素类型（用于 ToString 生成）</summary>
+        public string ElementType { get; set; }
+        
+        /// <summary>Map 的键类型（用于 ToString 生成）</summary>
+        public string KeyType { get; set; }
+        
+        /// <summary>Map 的值类型（用于 ToString 生成）</summary>
+        public string ValueType { get; set; }
+        
+        /// <summary>容器元素类型是否是 CfgI（用于 ToString 生成）</summary>
+        public bool ElementTypeIsCfgI { get; set; }
+        
+        /// <summary>Map 的键类型是否是 CfgI（用于 ToString 生成）</summary>
+        public bool KeyTypeIsCfgI { get; set; }
+        
+        /// <summary>Map 的值类型是否是 CfgI（用于 ToString 生成）</summary>
+        public bool ValueTypeIsCfgI { get; set; }
     }
 
     /// <summary>

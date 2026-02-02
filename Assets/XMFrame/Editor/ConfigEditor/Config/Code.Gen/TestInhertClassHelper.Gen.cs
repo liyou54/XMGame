@@ -31,7 +31,7 @@ public sealed class TestInhertClassHelper : ConfigClassHelper<TestInhert, TestIn
 
     public override TblS GetTblS()
     {
-        return new TblS(new ModS("Default"), "TestInhert");
+        return TblS;
     }
 
     public override void SetTblIDefinedInMod(TblI tbl)
@@ -44,6 +44,11 @@ public sealed class TestInhertClassHelper : ConfigClassHelper<TestInhert, TestIn
         var config = (TestInhert)target;
         config.Link = ParseLink(configItem, mod, configName, context);
         config.xxxx = Parsexxxx(configItem, mod, configName, context);
+    }
+
+    public override Type GetLinkHelperType()
+    {
+        return typeof(TestConfigClassHelper);
     }
 
     #region 字段解析 (ParseXXX)
@@ -80,21 +85,29 @@ public sealed class TestInhertClassHelper : ConfigClassHelper<TestInhert, TestIn
 
     #endregion
 
-    protected override void AllocContainerWithoutFillImpl(
+    public override void AllocContainerWithFillImpl(
         IXConfig value,
         TblI tbli,
         CfgI cfgi,
-        System.Collections.Concurrent.ConcurrentDictionary<TblS, System.Collections.Concurrent.ConcurrentDictionary<CfgS, IXConfig>> allData,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+        ref TestInhertUnmanaged data,
+        XM.ConfigDataCenter.ConfigDataHolder configHolderData,
+        XBlobPtr? linkParent = null)
     {
-        // 无容器字段需要分配
+        var config = (TestInhert)value;
+
+        // 填充基本类型和引用类型字段
+        if (IConfigDataCenter.I.TryGetCfgI(config.Link.AsNonGeneric(), out var cfgI_Link))
+        {
+            data.Link_ParentDst = cfgI_Link.As<TestConfigUnManaged>();
+        }
+        data.Link = cfgi.As<TestInhertUnmanaged>();
+        if (linkParent != null)
+        {
+            data.Link_ParentRef = linkParent.Value.As<TestConfigUnManaged>();
+        }
+        data.xxxx = config.xxxx;
     }
 
-
-    public override void FillBasicDataImpl(XM.ConfigDataCenter.ConfigDataHolder configHolderData, CfgS key, IXConfig value, XBlobMap<CfgI, TestInhertUnmanaged> tableMap)
-    {
-        // TODO: 实现基础数据填充逻辑
-    }
 
     private TblI _definedInMod;
 }

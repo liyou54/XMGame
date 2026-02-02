@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MyMod XMLLink配置测试：继承链接、外键引用 -->
+<Root>
+  <ConfigItem cls="TestInhert" id="link_001">
+    <Link>MyMod::test_001</Link>
+    <xxxx>1001</xxxx>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestInhert" id="link_002">
+    <Link>MyMod::test_002</Link>
+    <xxxx>1002</xxxx>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestInhert" id="link_003">
+    <Link>MyMod::test_003</Link>
+    <xxxx>1003</xxxx>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestInhert" id="link_004">
+    <Link>MyMod::test_004</Link>
+    <xxxx>0</xxxx>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestInhert" id="link_005">
+    <Link>MyMod::test_005</Link>
+    <xxxx>-999</xxxx>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestInhert" id="link_006">
+    <Link>MyMod::test_006</Link>
+    <xxxx>2147483647</xxxx>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestInhert" id="link_007">
+    <Link>MyMod::test_007</Link>
+    <xxxx>777</xxxx>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestInhert" id="link_008">
+    <Link>MyMod::test_008</Link>
+    <xxxx>888</xxxx>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestInhert" id="link_009">
+    <Link>MyMod::test_009</Link>
+    <xxxx>999</xxxx>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestInhert" id="link_010">
+    <Link>MyMod::test_010</Link>
+    <xxxx>1010</xxxx>
+  </ConfigItem>
+</Root>

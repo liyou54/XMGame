@@ -17,6 +17,10 @@ namespace XM.Utils
         // 局部转换器字典：Domain -> SourceType -> TargetType -> Converter
         private static readonly Dictionary<string, Dictionary<Type, Dictionary<Type, object>>> _localConverters = 
             new Dictionary<string, Dictionary<Type, Dictionary<Type, object>>>();
+        
+        // 转换器类型到实例的映射：ConverterType -> ConverterInstance
+        private static readonly Dictionary<Type, object> _converterInstances = 
+            new Dictionary<Type, object>();
 
         /// <summary>
         /// 注册全局转换器
@@ -28,6 +32,16 @@ namespace XM.Utils
                 _globalConverters[typeof(TSource)] = new Dictionary<Type, object>();
             }
             _globalConverters[typeof(TSource)][typeof(TTarget)] = converter;
+            
+            // 同时按转换器类型存储实例
+            if (converter != null)
+            {
+                var converterType = converter.GetType();
+                if (!_converterInstances.ContainsKey(converterType))
+                {
+                    _converterInstances[converterType] = converter;
+                }
+            }
         }
 
         /// <summary>
@@ -52,6 +66,16 @@ namespace XM.Utils
                 domainConverters[typeof(TSource)] = new Dictionary<Type, object>();
             }
             domainConverters[typeof(TSource)][typeof(TTarget)] = converter;
+            
+            // 同时按转换器类型存储实例
+            if (converter != null)
+            {
+                var converterType = converter.GetType();
+                if (!_converterInstances.ContainsKey(converterType))
+                {
+                    _converterInstances[converterType] = converter;
+                }
+            }
         }
 
         /// <summary>
@@ -99,6 +123,19 @@ namespace XM.Utils
             }
             return null;
         }
+        
+        /// <summary>
+        /// 直接按转换器类型获取转换器实例
+        /// </summary>
+        public static T GetConverter<T>()
+        {
+            var converterType = typeof(T);
+            if (_converterInstances.TryGetValue(converterType, out var instance))
+            {
+                return (T)instance;
+            }
+            return default(T);
+        }
 
 
         /// <summary>
@@ -116,6 +153,7 @@ namespace XM.Utils
         {
             _globalConverters.Clear();
             _localConverters.Clear();
+            _converterInstances.Clear();
         }
 
         /// <summary>

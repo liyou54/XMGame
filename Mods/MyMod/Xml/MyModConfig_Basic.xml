@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MyMod 基础配置测试：简单字段、列表、边界值 -->
+<Root>
+  <ConfigItem cls="MyItemConfig" id="basic_001">
+    <Id>MyMod::basic_001</Id>
+    <Name>普通武器</Name>
+    <Level>1</Level>
+    <Tags>1,2,3</Tags>
+  </ConfigItem>
+  
+  <ConfigItem cls="MyItemConfig" id="basic_002">
+    <Id>MyMod::basic_002</Id>
+    <Name>稀有装备</Name>
+    <Level>50</Level>
+    <Tags>10;20;30;40</Tags>
+  </ConfigItem>
+  
+  <ConfigItem cls="MyItemConfig" id="basic_003">
+    <Id>MyMod::basic_003</Id>
+    <Name>传说级道具</Name>
+    <Level>100</Level>
+    <Tags>100</Tags>
+    <Tags>200</Tags>
+    <Tags>300</Tags>
+    <Tags>400</Tags>
+    <Tags>500</Tags>
+  </ConfigItem>
+  
+  <ConfigItem cls="MyItemConfig" id="basic_004">
+    <Id>MyMod::basic_004</Id>
+    <Name>最小等级物品</Name>
+    <Level>0</Level>
+    <Tags>0</Tags>
+  </ConfigItem>
+  
+  <ConfigItem cls="MyItemConfig" id="basic_005">
+    <Id>MyMod::basic_005</Id>
+    <Name>最大等级物品</Name>
+    <Level>2147483647</Level>
+    <Tags>1,2,3,4,5,6,7,8,9,10</Tags>
+  </ConfigItem>
+  
+  <ConfigItem cls="MyItemConfig" id="basic_006">
+    <Id>MyMod::basic_006</Id>
+    <Name>空标签物品</Name>
+    <Level>25</Level>
+  </ConfigItem>
+  
+  <ConfigItem cls="MyItemConfig" id="basic_007">
+    <Id>MyMod::basic_007</Id>
+    <Name>中文名称测试：剑·龙吟</Name>
+    <Level>88</Level>
+    <Tags>888;999;1000</Tags>
+  </ConfigItem>
+  
+  <ConfigItem cls="MyItemConfig" id="basic_008">
+    <Id>MyMod::basic_008</Id>
+    <Name>Special!@#$%Name</Name>
+    <Level>42</Level>
+    <Tags>-1;-10;-100</Tags>
+  </ConfigItem>
+  
+  <ConfigItem cls="MyItemConfig" id="basic_009">
+    <Id>MyMod::basic_009</Id>
+    <Name>重复标签测试</Name>
+    <Level>33</Level>
+    <Tags>5,5,5,10,10,15</Tags>
+  </ConfigItem>
+  
+  <ConfigItem cls="MyItemConfig" id="basic_010">
+    <Id>MyMod::basic_010</Id>
+    <Name>极长名称测试：这是一个非常非常非常非常非常非常非常非常非常非常长的物品名称用来测试字符串处理能力</Name>
+    <Level>999</Level>
+    <Tags>1;2;3;4;5;6;7;8;9;10;11;12;13;14;15;16;17;18;19;20</Tags>
+  </ConfigItem>
+</Root>

@@ -79,7 +79,7 @@ namespace XM.Contracts.Config
         public abstract void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName,
             in ConfigParseContext context);
 
-        public abstract void AllocUnManagedAndInitHeadVal(TblI table, ConcurrentDictionary<CfgS, IXConfig> kvValue,
+        public abstract void AllocUnManagedAndInitHeadVal(TblI tbli, ConcurrentDictionary<CfgS, IXConfig> kvValue,
             object configHolder);
 
         /// <summary>
@@ -100,10 +100,7 @@ namespace XM.Contracts.Config
 
         public abstract Type GetLinkHelperType();
 
-        public abstract void FillBasicData(TblI tblI, ConcurrentDictionary<CfgS, IXConfig> kvValue,
-            object configHolder);
-
-        public abstract void AllocContainerWithoutFill(TblI tblI,TblS tblS, ConcurrentDictionary<CfgS, IXConfig> kvValue,
+        public abstract void AllocContainerWithFill(TblI tbli,TblS tblS, ConcurrentDictionary<CfgS, IXConfig> kvValue,
             ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> allData,
             object configHolder);
     }

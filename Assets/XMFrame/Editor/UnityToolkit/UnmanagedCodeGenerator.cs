@@ -132,22 +132,73 @@ namespace UnityToolkit
             {
                 if (field.IsXmlLink && !string.IsNullOrEmpty(field.XmlLinkDstUnmanagedType))
                 {
-                    dto.Fields.Add(new UnmanagedFieldDto { Name = field.Name + "_Dst", UnmanagedType = $"CfgI<{field.XmlLinkDstUnmanagedType}>", NeedsRefField = false, RefFieldName = "", NeedsConverter = false, SourceType = "", TargetType = "", ConverterDomainEscaped = "" });
-                    dto.Fields.Add(new UnmanagedFieldDto { Name = field.Name + "_Ref", UnmanagedType = $"CfgI<{field.XmlLinkDstUnmanagedType}>", NeedsRefField = false, RefFieldName = "", NeedsConverter = false, SourceType = "", TargetType = "", ConverterDomainEscaped = "" });
-                    dto.Fields.Add(new UnmanagedFieldDto { Name = field.Name, UnmanagedType = $"CfgI<{currentUnmanaged}>", NeedsRefField = false, RefFieldName = "", NeedsConverter = false, SourceType = "", TargetType = "", ConverterDomainEscaped = "" });
+                    dto.Fields.Add(new UnmanagedFieldDto { Name = field.Name + "_ParentDst", UnmanagedType = $"CfgI<{field.XmlLinkDstUnmanagedType}>", NeedsRefField = false, RefFieldName = "", NeedsConverter = false, SourceType = "", TargetType = "", ConverterDomainEscaped = "", IsCfgI = true, IsXBlobPtr = false, AssociatedCfgIField = "" });
+                    dto.Fields.Add(new UnmanagedFieldDto { Name = field.Name + "_ParentRef", UnmanagedType = $"XBlobPtr<{field.XmlLinkDstUnmanagedType}>", NeedsRefField = false, RefFieldName = "", NeedsConverter = false, SourceType = "", TargetType = "", ConverterDomainEscaped = "", IsCfgI = false, IsXBlobPtr = true, AssociatedCfgIField = field.Name + "_ParentDst" });
+                    dto.Fields.Add(new UnmanagedFieldDto { Name = field.Name, UnmanagedType = $"CfgI<{currentUnmanaged}>", NeedsRefField = false, RefFieldName = "", NeedsConverter = false, SourceType = "", TargetType = "", ConverterDomainEscaped = "", IsCfgI = true, IsXBlobPtr = false, AssociatedCfgIField = "" });
                 }
                 else
                 {
+                    var unmanagedType = field.UnmanagedType ?? "";
+                    var isCfgI = unmanagedType.StartsWith("CfgI<") || unmanagedType == "CfgI";
+                    // Ref 字段是在模板中自动生成的 XBlobPtr，它们不是独立字段，所以这里不标记
+                    var isXBlobPtr = false;
+                    var associatedCfgIField = "";
+                    
+                    // 容器类型识别
+                    var isContainer = false;
+                    var containerKind = "";
+                    var elementType = "";
+                    var keyType = "";
+                    var valueType = "";
+                    var elementTypeIsCfgI = false;
+                    var keyTypeIsCfgI = false;
+                    var valueTypeIsCfgI = false;
+
+                    if (TypeAnalyzer.IsXBlobArrayType(unmanagedType, out var arrElementType))
+                    {
+                        isContainer = true;
+                        containerKind = "Array";
+                        elementType = arrElementType;
+                        elementTypeIsCfgI = TypeAnalyzer.IsCfgITypeString(elementType);
+                    }
+                    else if (TypeAnalyzer.IsXBlobMapType(unmanagedType, out var mapKeyType, out var mapValueType))
+                    {
+                        isContainer = true;
+                        containerKind = "Map";
+                        keyType = mapKeyType;
+                        valueType = mapValueType;
+                        keyTypeIsCfgI = TypeAnalyzer.IsCfgITypeString(keyType);
+                        valueTypeIsCfgI = TypeAnalyzer.IsCfgITypeString(valueType);
+                    }
+                    else if (TypeAnalyzer.IsXBlobSetType(unmanagedType, out var setElementType))
+                    {
+                        isContainer = true;
+                        containerKind = "Set";
+                        elementType = setElementType;
+                        elementTypeIsCfgI = TypeAnalyzer.IsCfgITypeString(elementType);
+                    }
+                    
                     dto.Fields.Add(new UnmanagedFieldDto
                     {
                         Name = field.Name,
-                        UnmanagedType = field.UnmanagedType ?? "",
+                        UnmanagedType = unmanagedType,
                         NeedsRefField = field.NeedsRefField,
                         RefFieldName = field.RefFieldName ?? "",
                         NeedsConverter = field.NeedsConverter,
                         SourceType = field.SourceType ?? "",
                         TargetType = field.TargetType ?? "",
-                        ConverterDomainEscaped = (field.ConverterDomain ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"")
+                        ConverterDomainEscaped = (field.ConverterDomain ?? "").Replace("\\", "\\\\").Replace("\"", "\\\""),
+                        IsCfgI = isCfgI,
+                        IsXBlobPtr = isXBlobPtr,
+                        AssociatedCfgIField = associatedCfgIField,
+                        IsContainer = isContainer,
+                        ContainerKind = containerKind,
+                        ElementType = elementType,
+                        KeyType = keyType,
+                        ValueType = valueType,
+                        ElementTypeIsCfgI = elementTypeIsCfgI,
+                        KeyTypeIsCfgI = keyTypeIsCfgI,
+                        ValueTypeIsCfgI = valueTypeIsCfgI
                     });
                 }
             }

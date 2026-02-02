@@ -237,6 +237,16 @@ namespace XM.Contracts.Config
                 if (p.Length < 2) return false;
                 modName = p[0].Trim();
                 configName = p.Length >= 3 ? p[2].Trim() : p[1].Trim();
+                
+                // 验证解析结果不能为空
+                if (string.IsNullOrEmpty(modName) || string.IsNullOrEmpty(configName))
+                {
+                    LogParseWarning(fieldName, s, new Exception($"配置引用格式错误：模块名或配置名为空 (input: '{s}')"));
+                    modName = null;
+                    configName = null;
+                    return false;
+                }
+                
                 return true;
             }
             catch (Exception ex)

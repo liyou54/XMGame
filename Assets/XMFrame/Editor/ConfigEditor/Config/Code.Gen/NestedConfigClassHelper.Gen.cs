@@ -6,7 +6,6 @@ using Unity.Mathematics;
 using XM;
 using XM.Contracts;
 using XM.Contracts.Config;
-using XM.Utils;
 
 
 /// <summary>
@@ -28,12 +27,11 @@ public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, Ne
     public NestedConfigClassHelper(IConfigDataCenter dataCenter)
         : base(dataCenter)
     {
-        TypeConverterRegistry.RegisterLocalConverter<String, int2>("", new TestInt2Convert());
     }
 
     public override TblS GetTblS()
     {
-        return new TblS(new ModS("Default"), "NestedConfig");
+        return TblS;
     }
 
     public override void SetTblIDefinedInMod(TblI tbl)
@@ -47,14 +45,17 @@ public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, Ne
         config.RequiredId = ParseRequiredId(configItem, mod, configName, context);
         config.OptionalWithDefault = ParseOptionalWithDefault(configItem, mod, configName, context);
         config.Test = ParseTest(configItem, mod, configName, context);
-        config.TestCustom = ParseTestCustom(configItem, mod, configName, context);
-        config.TestGlobalConvert = ParseTestGlobalConvert(configItem, mod, configName, context);
         config.TestKeyList = ParseTestKeyList(configItem, mod, configName, context);
         config.StrIndex = ParseStrIndex(configItem, mod, configName, context);
         config.Str32 = ParseStr32(configItem, mod, configName, context);
         config.Str64 = ParseStr64(configItem, mod, configName, context);
         config.Str = ParseStr(configItem, mod, configName, context);
         config.LabelS = ParseLabelS(configItem, mod, configName, context);
+    }
+
+    public override Type GetLinkHelperType()
+    {
+        return null;
     }
 
     #region 字段解析 (ParseXXX)
@@ -82,48 +83,6 @@ public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, Ne
         var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Test");
         if (string.IsNullOrEmpty(s)) return default;
         return ConfigParseHelper.TryParseInt(s, "Test", out var v) ? v : default;
-    }
-
-    private static int2 ParseTestCustom(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
-    {
-        try
-        {
-            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "TestCustom");
-            if (string.IsNullOrEmpty(s)) return default;
-            var converter = XM.Contracts.IConfigDataCenter.I?.GetConverterByType<string, int2>();
-            return converter != null && converter.Convert(s, out var result) ? result : default;
-        }
-        catch (Exception ex)
-        {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestCustom", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestCustom",
-                    ConfigParseHelper.GetXmlFieldValue(configItem, "TestCustom"), ex);
-            return default;
-        }
-    }
-
-    private static int2 ParseTestGlobalConvert(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
-    {
-        try
-        {
-            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "TestGlobalConvert");
-            if (string.IsNullOrEmpty(s)) return default;
-            var converter = XM.Contracts.IConfigDataCenter.I?.GetConverter<string, int2>("global");
-            return converter != null && converter.Convert(s, out var result) ? result : default;
-        }
-        catch (Exception ex)
-        {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestGlobalConvert", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestGlobalConvert",
-                    ConfigParseHelper.GetXmlFieldValue(configItem, "TestGlobalConvert"), ex);
-            return default;
-        }
     }
 
     private static List<CfgS<TestConfigUnManaged>> ParseTestKeyList(XmlElement configItem, ModS mod, string configName,
@@ -200,25 +159,28 @@ public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, Ne
 
     #endregion
 
-    protected override void AllocContainerWithoutFillImpl(
+    public override void AllocContainerWithFillImpl(
         IXConfig value,
         TblI tbli,
         CfgI cfgi,
-        System.Collections.Concurrent.ConcurrentDictionary<TblS, System.Collections.Concurrent.ConcurrentDictionary<CfgS, IXConfig>> allData,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+        ref NestedConfigUnManaged data,
+        XM.ConfigDataCenter.ConfigDataHolder configHolderData,
+        XBlobPtr? linkParent = null)
     {
         var config = (NestedConfig)value;
-        // 在最外层获取 unmanaged 数据的值（不是引用）
-        var map = configHolderData.Data.GetMap<CfgI, NestedConfigUnManaged>(_definedInMod);
-        if (!map.TryGetValue(configHolderData.Data.BlobContainer, cfgi, out var data))
-        {
-            return;
-        }
-
         AllocTestKeyList(config, ref data, cfgi, configHolderData);
 
-        // 将修改后的 unmanaged 数据写回容器
-        map[configHolderData.Data.BlobContainer, cfgi] = data;
+        // 填充基本类型和引用类型字段
+        data.RequiredId = config.RequiredId;
+        data.OptionalWithDefault = ConvertToStrI(config.OptionalWithDefault);
+        data.Test = config.Test;
+        data.TestCustom = config.TestCustom;
+        data.TestGlobalConvert = config.TestGlobalConvert;
+        data.StrIndex = ConvertToLabelI(config.StrIndex);
+        data.Str32 = ConvertToFixedString32(config.Str32);
+        data.Str64 = ConvertToFixedString64(config.Str64);
+        data.Str = ConvertToStrI(config.Str);
+        data.LabelS = ConvertToLabelI(config.LabelS);
     }
 
     #region 容器分配辅助方法
@@ -233,15 +195,19 @@ public sealed class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, Ne
         {
             var allocated = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnManaged>>(config.TestKeyList.Count);
             data.TestKeyList = allocated;
+
+            // 填充数据
+            for (int i0 = 0; i0 < config.TestKeyList.Count; i0++)
+            {
+                if (IConfigDataCenter.I.TryGetCfgI(config.TestKeyList[i0].AsNonGeneric(), out var cfgI0))
+                {
+                    allocated[configHolderData.Data.BlobContainer, i0] = cfgI0.As<TestConfigUnManaged>();
+                }
+            }
         }
     }
 
     #endregion
-
-    public override void FillBasicDataImpl(XM.ConfigDataCenter.ConfigDataHolder configHolderData, CfgS key, IXConfig value, XBlobMap<CfgI, NestedConfigUnManaged> tableMap)
-    {
-        // TODO: 实现基础数据填充逻辑
-    }
 
     private TblI _definedInMod;
 }

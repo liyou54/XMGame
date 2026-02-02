@@ -433,18 +433,13 @@ namespace XM.Editor
                 throw new NotImplementedException();
             }
 
-            public override void AllocUnManagedAndInitHeadVal(TblI table, ConcurrentDictionary<CfgS, IXConfig> kvValue, object configHolder) { }
+            public override void AllocUnManagedAndInitHeadVal(TblI tbli, ConcurrentDictionary<CfgS, IXConfig> kvValue, object configHolder) { }
             public override Type GetLinkHelperType()
             {
                 throw new NotImplementedException();
             }
 
-            public override void FillBasicData(TblI tblI, ConcurrentDictionary<CfgS, IXConfig> kvValue, object configHolder)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void AllocContainerWithoutFill(TblI tblI, TblS tblS, ConcurrentDictionary<CfgS, IXConfig> kvValue, ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> allData,
+            public override void AllocContainerWithFill(TblI tbli, TblS tblS, ConcurrentDictionary<CfgS, IXConfig> kvValue, ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> allData,
                 object configHolder)
             {
                 throw new NotImplementedException();

@@ -284,4 +284,9 @@ public readonly struct CfgI<T> :
     {
         return IConfigDataCenter.I.TryGetConfig(out data);
     }
+
+    public CfgI AsNonGeneric()
+    {
+        return new CfgI(Id,Mod,Table.As());
+    }
 }

@@ -327,13 +327,6 @@ namespace UnityToolkit
                     configInfo.RequiredUsings.Add(targetType.Namespace);
                 return "LabelI";
             }
-            if (managedType == typeof(Type))
-            {
-                var targetType = FindTypeByName("TypeI");
-                if (targetType != null && !string.IsNullOrEmpty(targetType.Namespace))
-                    configInfo.RequiredUsings.Add(targetType.Namespace);
-                return "TypeI";
-            }
             if (IsXConfigType(managedType))
             {
                 Type unmanagedTypeFromGeneric = null;
@@ -400,6 +393,10 @@ namespace UnityToolkit
         /// <summary>缓存：程序集 -> (源类型 -> (目标类型, 域))</summary>
         private static readonly Dictionary<Assembly, Dictionary<Type, (Type targetType, string domain)>> ConverterSourceTargetCache = 
             new Dictionary<Assembly, Dictionary<Type, (Type, string)>>();
+        
+        /// <summary>缓存：程序集 -> (源类型 -> (目标类型, 域, 转换器类型))</summary>
+        private static readonly Dictionary<Assembly, Dictionary<Type, (Type targetType, string domain, Type converterType)>> ConverterFullCache = 
+            new Dictionary<Assembly, Dictionary<Type, (Type, string, Type)>>();
 
         public static Type GetTargetTypeFromConverterType(Type converterType)
         {
@@ -432,20 +429,50 @@ namespace UnityToolkit
 
         public static string GetConverterDomainForType(Assembly assembly, Type targetType)
         {
+            return GetConverterDomainForType(assembly, targetType, out var _);
+        }
+        
+        public static string GetConverterDomainForType(Assembly assembly, Type targetType, out Type converterType)
+        {
+            converterType = null;
             if (assembly == null || targetType == null) return null;
+            
+            // 确保缓存已构建
             if (!ConverterTargetCache.TryGetValue(assembly, out var dict))
             {
                 dict = BuildConverterTargetMap(assembly);
                 ConverterTargetCache[assembly] = dict;
             }
+            
+            // 从完整缓存中获取转换器类型
+            if (ConverterFullCache.TryGetValue(assembly, out var fullCache))
+            {
+                // 在完整缓存中查找 string -> targetType 的转换器
+                foreach (var kvp in fullCache)
+                {
+                    if (kvp.Value.targetType == targetType && kvp.Key == typeof(string))
+                    {
+                        converterType = kvp.Value.converterType;
+                        break;
+                    }
+                }
+            }
+            
             return dict.TryGetValue(targetType, out var domain) ? domain : null;
         }
 
         /// <summary>根据源类型获取目标类型和域</summary>
         public static bool TryGetConverterTargetBySourceType(Assembly assembly, Type sourceType, out Type targetType, out string domain)
         {
+            return TryGetConverterTargetBySourceType(assembly, sourceType, out targetType, out domain, out var _);
+        }
+        
+        /// <summary>根据源类型获取目标类型、域和转换器类型</summary>
+        public static bool TryGetConverterTargetBySourceType(Assembly assembly, Type sourceType, out Type targetType, out string domain, out Type converterType)
+        {
             targetType = null;
             domain = null;
+            converterType = null;
             
             if (assembly == null || sourceType == null) return false;
             
@@ -455,7 +482,19 @@ namespace UnityToolkit
                 BuildConverterTargetMap(assembly);
             }
             
-            // 从源类型->目标类型缓存中查询
+            // 优先从完整缓存中查询（包含转换器类型）
+            if (ConverterFullCache.TryGetValue(assembly, out var fullCache))
+            {
+                if (fullCache.TryGetValue(sourceType, out var fullResult))
+                {
+                    targetType = fullResult.targetType;
+                    domain = fullResult.domain;
+                    converterType = fullResult.converterType;
+                    return true;
+                }
+            }
+            
+            // 向后兼容：从旧缓存中查询
             if (ConverterSourceTargetCache.TryGetValue(assembly, out var sourceTargetDict))
             {
                 if (sourceTargetDict.TryGetValue(sourceType, out var result))
@@ -473,6 +512,7 @@ namespace UnityToolkit
         {
             var dict = new Dictionary<Type, string>();
             var sourceTargetDict = new Dictionary<Type, (Type, string)>();
+            var fullCacheDict = new Dictionary<Type, (Type, string, Type)>();
             
             try
             {
@@ -499,6 +539,12 @@ namespace UnityToolkit
                         {
                             sourceTargetDict[sourceType] = (targetType, domain);
                             UnityEngine.Debug.Log($"[UnityToolkit.TypeAnalyzer] 注册转换器: {sourceType.Name} -> {targetType.Name}, 域={domain}");
+                        }
+                        
+                        // 添加到完整缓存（包含转换器类型）
+                        if (sourceType != null && !fullCacheDict.ContainsKey(sourceType))
+                        {
+                            fullCacheDict[sourceType] = (targetType, domain, ga.ConverterType);
                         }
                     }
                 }
@@ -546,10 +592,10 @@ namespace UnityToolkit
             catch (ReflectionTypeLoadException) { }
             
             // 保存源类型->目标类型缓存
-            lock (ConverterSourceTargetCache)
-            {
-                ConverterSourceTargetCache[asm] = sourceTargetDict;
-            }
+            ConverterSourceTargetCache[asm] = sourceTargetDict;
+            
+            // 保存完整缓存（包含转换器类型）
+            ConverterFullCache[asm] = fullCacheDict;
             
             return dict;
         }
@@ -697,6 +743,82 @@ namespace UnityToolkit
                 catch { }
             }
             return null;
+        }
+
+        /// <summary>
+        /// 检查字符串是否表示 XBlobArray 类型并提取元素类型
+        /// </summary>
+        public static bool IsXBlobArrayType(string unmanagedType, out string elementType)
+        {
+            if (string.IsNullOrEmpty(unmanagedType))
+            {
+                elementType = null;
+                return false;
+            }
+
+            if (unmanagedType.StartsWith("XBlobArray<") && unmanagedType.EndsWith(">"))
+            {
+                elementType = unmanagedType.Substring(11, unmanagedType.Length - 12).Trim();
+                return true;
+            }
+            elementType = null;
+            return false;
+        }
+
+        /// <summary>
+        /// 检查字符串是否表示 XBlobMap 类型并提取键和值类型
+        /// </summary>
+        public static bool IsXBlobMapType(string unmanagedType, out string keyType, out string valueType)
+        {
+            keyType = null;
+            valueType = null;
+
+            if (string.IsNullOrEmpty(unmanagedType))
+                return false;
+
+            if (!unmanagedType.StartsWith("XBlobMap<") || !unmanagedType.EndsWith(">"))
+                return false;
+
+            string genericArgs = unmanagedType.Substring(9, unmanagedType.Length - 10);
+            var args = SplitGenericArguments(genericArgs);
+            
+            if (args.Count != 2)
+                return false;
+
+            keyType = args[0].Trim();
+            valueType = args[1].Trim();
+            return true;
+        }
+
+        /// <summary>
+        /// 检查字符串是否表示 XBlobSet 类型并提取元素类型
+        /// </summary>
+        public static bool IsXBlobSetType(string unmanagedType, out string elementType)
+        {
+            if (string.IsNullOrEmpty(unmanagedType))
+            {
+                elementType = null;
+                return false;
+            }
+
+            if (unmanagedType.StartsWith("XBlobSet<") && unmanagedType.EndsWith(">"))
+            {
+                elementType = unmanagedType.Substring(9, unmanagedType.Length - 10).Trim();
+                return true;
+            }
+            elementType = null;
+            return false;
+        }
+
+        /// <summary>
+        /// 检查类型字符串是否是 CfgI 类型
+        /// </summary>
+        public static bool IsCfgITypeString(string typeString)
+        {
+            if (string.IsNullOrEmpty(typeString))
+                return false;
+            
+            return typeString.StartsWith("CfgI<") || typeString == "CfgI";
         }
     }
 }

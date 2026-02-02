@@ -17,8 +17,6 @@ namespace XM
 
     public interface IXConfig
     {
-        /// <summary>由 ConfigDataCenter 在 RegisterData 时分配并写回，用于 CfgI→TUnmanaged 映射</summary>
-        public CfgI Data{get;set;}
     }
 
     public interface IXConfig<T, TUnmanaged>
@@ -27,8 +25,13 @@ namespace XM
         where TUnmanaged : unmanaged, IConfigUnManaged<TUnmanaged>
     {
     }
+    
+    public interface IConfigUnManaged
+    {
+        public string ToString(object dataContainer);
+    }
 
-    public interface IConfigUnManaged<T>
+    public interface IConfigUnManaged<T>:IConfigUnManaged
         where T : unmanaged, IConfigUnManaged<T>
     {
     }

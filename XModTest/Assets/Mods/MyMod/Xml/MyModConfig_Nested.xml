@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MyMod 嵌套配置测试：复杂嵌套结构、多层嵌套 -->
+<Root>
+  <ConfigItem cls="TestConfig" id="nested_001">
+    <Id>MyMod::nested_001</Id>
+    <TestInt>1001</TestInt>
+    <TestNested>
+      <RequiredId>1</RequiredId>
+      <OptionalWithDefault>自定义值A</OptionalWithDefault>
+      <Test>100</Test>
+      <TestCustom>10,20</TestCustom>
+      <TestGlobalConvert>5,15</TestGlobalConvert>
+      <StrIndex>索引字符串1</StrIndex>
+      <Str32>固定32字符串</Str32>
+      <Str64>固定64字符串</Str64>
+      <Str>普通字符串</Str>
+    </TestNested>
+    <TestIndex1>1001</TestIndex1>
+    <TestIndex2>MyMod::nested_001</TestIndex2>
+    <TestIndex3>MyMod::nested_001</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="nested_002">
+    <Id>MyMod::nested_002</Id>
+    <TestInt>1002</TestInt>
+    <TestNestedConfig>
+      <Item>
+        <RequiredId>2</RequiredId>
+        <Test>200</Test>
+        <TestCustom>1,2</TestCustom>
+        <Str>嵌套配置1</Str>
+      </Item>
+      <Item>
+        <RequiredId>3</RequiredId>
+        <Test>300</Test>
+        <TestCustom>3,4</TestCustom>
+        <Str>嵌套配置2</Str>
+      </Item>
+    </TestNestedConfig>
+    <TestIndex1>1002</TestIndex1>
+    <TestIndex2>MyMod::nested_002</TestIndex2>
+    <TestIndex3>MyMod::nested_002</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="nested_003">
+    <Id>MyMod::nested_003</Id>
+    <TestInt>1003</TestInt>
+    <TestNested>
+      <RequiredId>10</RequiredId>
+      <TestKeyList>MyMod::test_001;MyMod::test_002</TestKeyList>
+      <StrIndex>中文索引</StrIndex>
+      <Str>包含特殊字符!@#$%</Str>
+    </TestNested>
+    <TestIndex1>1003</TestIndex1>
+    <TestIndex2>MyMod::nested_003</TestIndex2>
+    <TestIndex3>MyMod::nested_003</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="nested_004">
+    <Id>MyMod::nested_004</Id>
+    <TestInt>1004</TestInt>
+    <TestNestedConfig>
+      <Item>
+        <RequiredId>100</RequiredId>
+        <OptionalWithDefault>默认值测试</OptionalWithDefault>
+        <Test>0</Test>
+        <TestCustom>0,0</TestCustom>
+        <TestGlobalConvert>-1,-1</TestGlobalConvert>
+      </Item>
+    </TestNestedConfig>
+    <TestIndex1>1004</TestIndex1>
+    <TestIndex2>MyMod::nested_004</TestIndex2>
+    <TestIndex3>MyMod::nested_004</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="nested_005">
+    <Id>MyMod::nested_005</Id>
+    <TestInt>1005</TestInt>
+    <ConfigDict>
+      1:{1:[{RequiredId:5,Test:50}],2:[{RequiredId:6,Test:60}]},
+      2:{1:[{RequiredId:7,Test:70}]}
+    </ConfigDict>
+    <TestIndex1>1005</TestIndex1>
+    <TestIndex2>MyMod::nested_005</TestIndex2>
+    <TestIndex3>MyMod::nested_005</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="nested_006">
+    <Id>MyMod::nested_006</Id>
+    <TestInt>1006</TestInt>
+    <TestNestedConfig>
+      <Item>
+        <RequiredId>1</RequiredId>
+        <Str32>32位固定长度字符串测试ABCDEFG</Str32>
+        <Str64>64位固定长度字符串测试ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890</Str64>
+      </Item>
+      <Item>
+        <RequiredId>2</RequiredId>
+        <StrIndex>索引A</StrIndex>
+        <Str>变长字符串</Str>
+      </Item>
+      <Item>
+        <RequiredId>3</RequiredId>
+        <Test>999</Test>
+      </Item>
+    </TestNestedConfig>
+    <TestIndex1>1006</TestIndex1>
+    <TestIndex2>MyMod::nested_006</TestIndex2>
+    <TestIndex3>MyMod::nested_006</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="nested_007">
+    <Id>MyMod::nested_007</Id>
+    <TestInt>1007</TestInt>
+    <TestNested>
+      <RequiredId>777</RequiredId>
+      <TestCustom>7,77</TestCustom>
+      <TestGlobalConvert>777,7777</TestGlobalConvert>
+      <TestKeyList>MyMod::test_001,MyMod::test_002,MyMod::test_003</TestKeyList>
+    </TestNested>
+    <TestIndex1>1007</TestIndex1>
+    <TestIndex2>MyMod::nested_007</TestIndex2>
+    <TestIndex3>MyMod::nested_007</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="nested_008">
+    <Id>MyMod::nested_008</Id>
+    <TestInt>1008</TestInt>
+    <TestNestedConfig>
+      <Item>
+        <RequiredId>-1</RequiredId>
+        <Test>-100</Test>
+        <TestCustom>-10,-20</TestCustom>
+      </Item>
+      <Item>
+        <RequiredId>-2</RequiredId>
+        <Test>-200</Test>
+        <TestCustom>-30,-40</TestCustom>
+      </Item>
+      <Item>
+        <RequiredId>-3</RequiredId>
+        <Test>-300</Test>
+        <TestCustom>-50,-60</TestCustom>
+      </Item>
+    </TestNestedConfig>
+    <TestIndex1>1008</TestIndex1>
+    <TestIndex2>MyMod::nested_008</TestIndex2>
+    <TestIndex3>MyMod::nested_008</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="nested_009">
+    <Id>MyMod::nested_009</Id>
+    <TestInt>1009</TestInt>
+    <TestNested>
+      <RequiredId>2147483647</RequiredId>
+      <OptionalWithDefault>极限值测试</OptionalWithDefault>
+      <Test>2147483647</Test>
+      <TestCustom>2147483647,2147483647</TestCustom>
+    </TestNested>
+    <TestIndex1>1009</TestIndex1>
+    <TestIndex2>MyMod::nested_009</TestIndex2>
+    <TestIndex3>MyMod::nested_009</TestIndex3>
+  </ConfigItem>
+  
+  <ConfigItem cls="TestConfig" id="nested_010">
+    <Id>MyMod::nested_010</Id>
+    <TestInt>1010</TestInt>
+    <TestNestedConfig>
+      <Item><RequiredId>1</RequiredId><Str>配置A</Str></Item>
+      <Item><RequiredId>2</RequiredId><Str>配置B</Str></Item>
+      <Item><RequiredId>3</RequiredId><Str>配置C</Str></Item>
+      <Item><RequiredId>4</RequiredId><Str>配置D</Str></Item>
+      <Item><RequiredId>5</RequiredId><Str>配置E</Str></Item>
+    </TestNestedConfig>
+    <TestIndex1>1010</TestIndex1>
+    <TestIndex2>MyMod::nested_010</TestIndex2>
+    <TestIndex3>MyMod::nested_010</TestIndex3>
+  </ConfigItem>
+</Root>

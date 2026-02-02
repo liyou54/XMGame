@@ -35,22 +35,9 @@ public sealed class MyItemConfigClassHelper : ConfigClassHelper<MyItemConfig, My
         return TblS;
     }
 
-    /// <summary>由 TblI 分配时一并确定，无需单独字段。</summary>
-    public static ModI DefinedInMod => TblI.DefinedMod;
-
-    public override void SetTblIDefinedInMod(TblI c)
+    public override void SetTblIDefinedInMod(TblI tbl)
     {
-        TblI = c;
-    }
-
-    public override IXConfig DeserializeConfigFromXml(XmlElement configItem, ModS mod, string configName)
-    {
-        return DeserializeConfigFromXml(configItem, mod, configName, default);
-    }
-
-    public override void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName)
-    {
-        ParseAndFillFromXml(target, configItem, mod, configName, default);
+        _definedInMod = tbl;
     }
 
     public override void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
@@ -62,56 +49,119 @@ public sealed class MyItemConfigClassHelper : ConfigClassHelper<MyItemConfig, My
         config.Tags = ParseTags(configItem, mod, configName, context);
     }
 
+    public override Type GetLinkHelperType()
+    {
+        return null;
+    }
+
     #region 字段解析 (ParseXXX)
 
-    private static CfgS<MyItemConfigUnManaged> ParseId(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
+    private static CfgS<MyItemConfigUnManaged> ParseId(XmlElement configItem, ModS mod, string configName,
+        in ConfigParseContext context)
+    {
+        try
         {
-            try
-            {
-                var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Id");
+            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Id");
             if (string.IsNullOrEmpty(s)) return default;
-            if (!ConfigParseHelper.TryParseCfgSString(s, "Id", out var modName, out var cfgName)) return default;
-            return new CfgS<MyItemConfigUnManaged>(new ModS(modName), cfgName);
-            }
-            catch (Exception ex)
-            {
-                if (ConfigParseHelper.IsStrictMode(context)) ConfigParseHelper.LogParseError(context, "Id", ex); else ConfigParseHelper.LogParseWarning("Id", ConfigParseHelper.GetXmlFieldValue(configItem, "Id"), ex);
+            if (!ConfigParseHelper.TryParseCfgSString(s, "Id", out var modName, out var cfgName))
                 return default;
-            }
+            return new CfgS<MyItemConfigUnManaged>(new ModS(modName), cfgName);
         }
-
-    private static string ParseName(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
+        catch (Exception ex)
         {
-            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Name");
-            return s ?? "";
+            if (ConfigParseHelper.IsStrictMode(context))
+                ConfigParseHelper.LogParseError(context, "Id", ex);
+            else
+                ConfigParseHelper.LogParseWarning("Id",
+                    ConfigParseHelper.GetXmlFieldValue(configItem, "Id"), ex);
+            return default;
         }
+    }
 
-    private static int ParseLevel(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
-        {
-            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Level");
-            if (string.IsNullOrEmpty(s)) return default;
-            return ConfigParseHelper.TryParseInt(s, "Level", out var v) ? v : default;
-        }
+    private static string ParseName(XmlElement configItem, ModS mod, string configName,
+        in ConfigParseContext context)
+    {
+        var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Name");
+        return s ?? "";
+    }
 
-    private static List<int> ParseTags(XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
+    private static int ParseLevel(XmlElement configItem, ModS mod, string configName,
+        in ConfigParseContext context)
+    {
+        var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Level");
+        if (string.IsNullOrEmpty(s)) return default;
+        return ConfigParseHelper.TryParseInt(s, "Level", out var v) ? v : default;
+    }
+
+    private static List<int> ParseTags(XmlElement configItem, ModS mod, string configName,
+        in ConfigParseContext context)
+    {
+        try
         {
-            try
-            {
-                var list = new List<int>();
+            var list = new List<int>();
             var nodes = configItem.SelectNodes("Tags");
             if (nodes != null)
             foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigParseHelper.TryParseInt(t, "Tags", out var vi)) list.Add(vi); }
             if (list.Count == 0) { var csv = ConfigParseHelper.GetXmlFieldValue(configItem, "Tags"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigParseHelper.TryParseInt(p.Trim(), "Tags", out var vi)) list.Add(vi); }
             return list;
-            }
-            catch (Exception ex)
-            {
-                if (ConfigParseHelper.IsStrictMode(context)) ConfigParseHelper.LogParseError(context, "Tags", ex); else ConfigParseHelper.LogParseWarning("Tags", null, ex);
-                return new List<int>();
-            }
         }
+        catch (Exception ex)
+        {
+            if (ConfigParseHelper.IsStrictMode(context))
+                ConfigParseHelper.LogParseError(context, "Tags", ex);
+            else
+                ConfigParseHelper.LogParseWarning("Tags",
+                    null, ex);
+            return new List<int>();
+        }
+    }
 
     #endregion
+
+    public override void AllocContainerWithFillImpl(
+        IXConfig value,
+        TblI tbli,
+        CfgI cfgi,
+        ref MyItemConfigUnManaged data,
+        XM.ConfigDataCenter.ConfigDataHolder configHolderData,
+        XBlobPtr? linkParent = null)
+    {
+        var config = (MyItemConfig)value;
+        AllocTags(config, ref data, cfgi, configHolderData);
+
+        // 填充基本类型和引用类型字段
+        if (IConfigDataCenter.I.TryGetCfgI(config.Id.AsNonGeneric(), out var cfgI_Id))
+        {
+            data.Id = cfgI_Id.As<MyItemConfigUnManaged>();
+        }
+        data.Name = ConvertToStrI(config.Name);
+        data.Level = config.Level;
+    }
+
+    #region 容器分配辅助方法
+
+    private void AllocTags(
+        MyItemConfig config,
+        ref MyItemConfigUnManaged data,
+        CfgI cfgi,
+        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.Tags != null && config.Tags.Count > 0)
+        {
+            var allocated = configHolderData.Data.BlobContainer.AllocArray<Int32>(config.Tags.Count);
+            data.Tags = allocated;
+
+            // 填充数据
+            for (int i0 = 0; i0 < config.Tags.Count; i0++)
+            {
+                allocated[configHolderData.Data.BlobContainer, i0] = config.Tags[i0];
+            }
+        }
+    }
+
+    #endregion
+
+    private TblI _definedInMod;
 }
 
 }

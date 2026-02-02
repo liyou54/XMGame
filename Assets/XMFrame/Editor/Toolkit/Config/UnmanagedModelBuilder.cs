@@ -32,7 +32,18 @@ namespace XModToolkit
                     ["needs_converter"] = f.NeedsConverter,
                     ["source_type"] = f.SourceType ?? "",
                     ["target_type"] = f.TargetType ?? "",
-                    ["converter_domain_escaped"] = f.ConverterDomainEscaped ?? ""
+                    ["converter_domain_escaped"] = f.ConverterDomainEscaped ?? "",
+                    ["is_cfgi"] = f.IsCfgI,
+                    ["is_xblobptr"] = f.IsXBlobPtr,
+                    ["associated_cfgi_field"] = f.AssociatedCfgIField ?? "",
+                    ["is_container"] = f.IsContainer,
+                    ["container_kind"] = f.ContainerKind ?? "",
+                    ["element_type"] = f.ElementType ?? "",
+                    ["key_type"] = f.KeyType ?? "",
+                    ["value_type"] = f.ValueType ?? "",
+                    ["element_type_is_cfgi"] = f.ElementTypeIsCfgI,
+                    ["key_type_is_cfgi"] = f.KeyTypeIsCfgI,
+                    ["value_type_is_cfgi"] = f.ValueTypeIsCfgI
                 });
             }
             scriptObject["fields"] = fields;

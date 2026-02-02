@@ -30,6 +30,9 @@ namespace XM
         public CfgI<UIConfigUnManaged> Id;
         public CfgI UIHandle;
         public AssetI Prefab;
-        public TypeI TypeI;
+        public string ToString(object dataContainer)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -1725,7 +1725,6 @@ namespace XM
             if (handle == null)
             {
                 loadUI.Status = EAssetStatus.Failed;
-                XLog.ErrorFormat("创建资源句柄失败: {0}", config.TypeI);
                 return loadUI;
             }
 
@@ -1735,7 +1734,6 @@ namespace XM
             {
                 loadUI.AssetHandle.Release();
                 loadUI.Status = EAssetStatus.ErrorAndRelease;
-                XLog.ErrorFormat("获取UI预制体失败: {0}", config.TypeI);
                 return loadUI;
             }
 
@@ -1744,7 +1742,6 @@ namespace XM
             {
                 loadUI.AssetHandle.Release();
                 loadUI.Status = EAssetStatus.ErrorAndRelease;
-                XLog.ErrorFormat("预制体上未找到UI控制器组件: {0}", config.TypeI);
                 return loadUI;
             }
 
@@ -1761,12 +1758,10 @@ namespace XM
                 windowConfig.IsShowMask = windowCtrl.IsShowMask;
                 loadUI.Config = windowConfig;
 
-                XLog.InfoFormat("UI配置加载成功: {0}, Layer={1}, Type={2}",
-                    config.TypeI, windowCtrl.Layer, windowCtrl.UIType);
+
             }
             else
             {
-                XLog.WarningFormat("UI控制器类型未识别，使用默认配置: {0}", config.TypeI);
                 // TODO: 处理UIWidgetCtrlBase等其他类型
             }
 
