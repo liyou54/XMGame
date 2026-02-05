@@ -160,18 +160,14 @@ namespace XM.ConfigNew.CodeGen.Builders
             
             var configFieldAccess = CodeBuilder.BuildConfigFieldAccess(fieldName);
             builder.AppendAllocArray("array", unmanagedElementTypeName, $"{configFieldAccess}.{CodeGenConstants.CountProperty}");
-            builder.AppendVarDeclaration("helper", $"{helperTypeName}.{CodeGenConstants.InstanceProperty}");
-            builder.BeginIfBlock(CodeBuilder.BuildNotNullCondition("helper"));
-            
             builder.BeginIndexLoop("i", configFieldAccess);
-            builder.BeginIfBlock(CodeBuilder.BuildNotNullCondition(CodeBuilder.BuildConfigFieldIndexAccess(fieldName, "i")));
-            builder.AppendNewVarDeclaration("itemData", unmanagedElementTypeName);
-            builder.AppendLine($"helper.{CodeGenConstants.AllocContainerWithFillImplMethod}({CodeBuilder.BuildConfigFieldIndexAccess(fieldName, "i")}, {CodeGenConstants.DefaultTblI}, {CodeGenConstants.CfgIVar}, ref itemData, {CodeGenConstants.ConfigHolderDataVar});");
-            builder.AppendBlobIndexAssign("array", "i", "itemData");
-            builder.EndBlock(); // if != null
-            builder.EndBlock(); // for
             
-            builder.EndBlock(); // if helper != null
+            // 使用统一的配置类型赋值方法
+            ConfigHelperInvoker.GenerateIndexAssignment(
+                builder, elementType, CodeBuilder.BuildConfigFieldIndexAccess(fieldName, "i"), 
+                "array", "i");
+            
+            builder.EndBlock(); // for
             builder.AppendLine();
             builder.AppendAssignment(CodeBuilder.BuildDataFieldAccess(fieldName), "array");
         }

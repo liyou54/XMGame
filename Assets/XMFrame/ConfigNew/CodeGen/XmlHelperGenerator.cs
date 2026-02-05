@@ -404,63 +404,11 @@ namespace XM.ConfigNew.CodeGen
         }
         
         /// <summary>
-        /// 生成简单字段的赋值代码
+        /// 生成简单字段的赋值代码（使用统一的字段赋值生成器）
         /// </summary>
         private void GenerateSimpleFieldAssignment(ConfigFieldMetadata field)
         {
-            if (field.IsXmlLink)
-            {
-                // CfgS -> CfgI 转换（链接阶段解析）
-                _builder.AppendComment($"TODO: {field.FieldName} - CfgS 转 CfgI (链接阶段解析)");
-                _builder.BeginIfBlock($"TryGetCfgI(config.{field.FieldName}, out var {field.FieldName}CfgI)");
-                // 获取目标非托管类型名称
-                var targetUnmanagedTypeName = GetXmlLinkUnmanagedTypeName(field.XmlLinkTargetType);
-                _builder.AppendLine($"data.{field.FieldName} = {field.FieldName}CfgI.As<{targetUnmanagedTypeName}>();");
-                _builder.EndBlock();
-            }
-            else if (field.TypeInfo?.IsNullable == true)
-            {
-                // 可空类型需要转换为非空: int? -> int
-                _builder.AppendLine($"data.{field.FieldName} = config.{field.FieldName}.GetValueOrDefault();");
-            }
-            else if (field.TypeInfo?.IsEnum == true)
-            {
-                // 枚举类型直接赋值
-                _builder.AppendLine($"data.{field.FieldName} = config.{field.FieldName};");
-            }
-            else if (field.TypeInfo?.ManagedFieldType == typeof(string))
-            {
-                // 根据 StringMode 生成不同的转换代码
-                switch (field.StringMode)
-                {
-                    case EXmlStrMode.EFix32:
-                        // FixedString32Bytes 直接赋值
-                        _builder.AppendLine($"data.{field.FieldName} = new global::Unity.Collections.FixedString32Bytes(config.{field.FieldName} ?? string.Empty);");
-                        break;
-                    case EXmlStrMode.EFix64:
-                        // FixedString64Bytes 直接赋值
-                        _builder.AppendLine($"data.{field.FieldName} = new global::Unity.Collections.FixedString64Bytes(config.{field.FieldName} ?? string.Empty);");
-                        break;
-                    case EXmlStrMode.ELabelI:
-                        // LabelI 需要转换
-                        _builder.BeginIfBlock($"TryGetLabelI({CodeBuilder.BuildConfigFieldAccess(field.FieldName)}, out var {field.FieldName}LabelI)");
-                        _builder.AppendAssignment(CodeBuilder.BuildDataFieldAccess(field.FieldName), $"{field.FieldName}LabelI");
-                        _builder.EndBlock();
-                        break;
-                    case EXmlStrMode.EStrI:
-                    default:
-                        // StrI 需要转换（默认）
-                        _builder.BeginIfBlock($"{CodeGenConstants.TryGetStrIMethod}({CodeBuilder.BuildConfigFieldAccess(field.FieldName)}, out var {field.FieldName}StrI)");
-                        _builder.AppendAssignment(CodeBuilder.BuildDataFieldAccess(field.FieldName), $"{field.FieldName}StrI");
-                        _builder.EndBlock();
-                        break;
-                }
-            }
-            else
-            {
-                // 基本类型直接赋值
-                _builder.AppendAssignment(CodeBuilder.BuildDataFieldAccess(field.FieldName), CodeBuilder.BuildConfigFieldAccess(field.FieldName));
-            }
+            Builders.FieldAssignmentGenerator.GenerateAssignment(_builder, field, GetXmlLinkUnmanagedTypeName);
         }
         
         #endregion
