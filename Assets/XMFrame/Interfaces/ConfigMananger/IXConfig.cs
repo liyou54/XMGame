@@ -1,3 +1,5 @@
+using System;
+
 namespace XM
 {
     /// <summary>
@@ -28,7 +30,6 @@ namespace XM
     
     public interface IConfigUnManaged
     {
-        public string ToString(object dataContainer);
     }
 
     public interface IConfigUnManaged<T>:IConfigUnManaged
@@ -41,9 +42,24 @@ namespace XM
     {
     }
 
-    public struct StrI
+    public struct StrI:IEquatable<StrI>
     {
         public int Id;
+
+        public bool Equals(StrI other)
+        {
+            return Id == other.Id;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is StrI other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return Id;
+        }
     }
 
     public struct LabelI

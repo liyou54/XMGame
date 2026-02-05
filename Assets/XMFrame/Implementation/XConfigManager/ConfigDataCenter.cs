@@ -526,34 +526,16 @@ namespace XM
             throw new NotImplementedException();
         }
 
-        /// <remarks>主要步骤：按 domain 从 TypeConverterRegistry 取转换器。</remarks>
-        public ITypeConverter<TSource, TTarget> GetConverter<TSource, TTarget>(string domain = "")
-        {
-            return TypeConverterRegistry.GetConverter<TSource, TTarget>(domain);
-        }
-
-        /// <remarks>主要步骤：按类型从 TypeConverterRegistry 取转换器。</remarks>
-        public ITypeConverter<TSource, TTarget> GetConverterByType<TSource, TTarget>()
-        {
-            return TypeConverterRegistry.GetConverterByType<TSource, TTarget>();
-        }
-
-        public T GetConverter<T>()
-        {
-            return TypeConverterRegistry.GetConverter<T>();
-        }
-
-        /// <remarks>主要步骤：按 domain 查询是否存在转换器。</remarks>
         public bool HasConverter<TSource, TTarget>(string domain = "")
         {
-            return TypeConverterRegistry.HasConverter<TSource, TTarget>(domain);
+            throw new NotImplementedException();
         }
 
-        /// <remarks>主要步骤：按类型查询是否存在转换器。</remarks>
         public bool HasConverterByType<TSource, TTarget>()
         {
-            return TypeConverterRegistry.GetConverterByType<TSource, TTarget>() != null;
+            throw new NotImplementedException();
         }
+
 
         /// <remarks>主要步骤：根据表定义、Mod、配置名构造 CfgS，然后从 _cfgLookUp 查询 CfgI。</remarks>
         public bool TryGetCfgI(TblS tableDefine, ModS mod, string configName, out CfgI cfgI)

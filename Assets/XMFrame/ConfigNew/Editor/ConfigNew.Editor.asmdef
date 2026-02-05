@@ -1,0 +1,21 @@
+{
+    "name": "XMFrame.ConfigNew.Editor",
+    "rootNamespace": "XM.ConfigNew.Editor",
+    "references": [
+        "XMFrame.ConfigNew",
+        "XMFrame.Interfaces",
+        "XMFrame.Utils",
+        "Unity.Collections"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

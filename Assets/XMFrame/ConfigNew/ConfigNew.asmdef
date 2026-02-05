@@ -1,0 +1,20 @@
+{
+    "name": "XMFrame.ConfigNew",
+    "rootNamespace": "XM.ConfigNew",
+    "references": [
+        "Unity.Collections",
+        "XM.Utils",
+        "XM.Contracts",
+        "XM.Runtime",
+        "XMFrame.ConfigNew.TestConfigs"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -189,7 +189,7 @@ namespace UnityToolkit
                         {
                             fieldInfo.NeedsConverter = true;
                             fieldInfo.ConverterTypeName = converterAttr.ConverterType.FullName ?? converterAttr.ConverterType.Name;
-                            fieldInfo.ConverterDomain = converterAttr.Domain ?? "";
+                            // fieldInfo.ConverterDomain = converterAttr.Domain ?? "";
                             fieldInfo.SourceType = GetTypeName(genericArgs[0]);
                             fieldInfo.TargetType = GetTypeName(genericArgs[1]);
                             fieldInfo.UnmanagedType = fieldInfo.SourceType;
@@ -201,18 +201,18 @@ namespace UnityToolkit
 
                 if (!fieldInfo.NeedsConverter)
                 {
-                    var globalAttr = field.GetCustomAttribute<XmlGlobalConvertAttribute>();
-                    if (globalAttr != null && globalAttr.ConverterType != null)
-                    {
-                        fieldInfo.NeedsConverter = true;
-                        fieldInfo.ConverterTypeName = globalAttr.ConverterType.FullName ?? globalAttr.ConverterType.Name;
-                        fieldInfo.ConverterDomain = globalAttr.Domain ?? "";
-                        fieldInfo.SourceType = GetTypeName(typeof(string));
-                        fieldInfo.TargetType = GetTypeName(field.FieldType);
-                        fieldInfo.UnmanagedType = fieldInfo.TargetType;
-                        if (!string.IsNullOrEmpty(globalAttr.ConverterType.Namespace))
-                            info.RequiredUsings.Add(globalAttr.ConverterType.Namespace);
-                    }
+                    // var globalAttr = field.GetCustomAttribute<XmlGlobalConvertAttribute>();
+                    // if (globalAttr != null && globalAttr.ConverterType != null)
+                    // {
+                    //     fieldInfo.NeedsConverter = true;
+                    //     fieldInfo.ConverterTypeName = globalAttr.ConverterType.FullName ?? globalAttr.ConverterType.Name;
+                    //     fieldInfo.ConverterDomain = globalAttr.Domain ?? "";
+                    //     fieldInfo.SourceType = GetTypeName(typeof(string));
+                    //     fieldInfo.TargetType = GetTypeName(field.FieldType);
+                    //     fieldInfo.UnmanagedType = fieldInfo.TargetType;
+                    //     if (!string.IsNullOrEmpty(globalAttr.ConverterType.Namespace))
+                    //         info.RequiredUsings.Add(globalAttr.ConverterType.Namespace);
+                    // }
                 }
 
                 if (!fieldInfo.NeedsConverter)
@@ -416,6 +416,8 @@ namespace UnityToolkit
         public static (Type sourceType, Type targetType) GetConverterTypePair(Type converterType)
         {
             if (converterType == null) return (null, null);
+            
+            // 先尝试从接口获取（向后兼容）
             foreach (var i in converterType.GetInterfaces())
             {
                 if (!i.IsGenericType || i.GetGenericArguments().Length < 2) continue;
@@ -424,6 +426,20 @@ namespace UnityToolkit
                 var args = i.GetGenericArguments();
                 return (args[0], args[1]);
             }
+            
+            // 如果没有接口，尝试从静态方法签名获取（TryConvert 方法）
+            var method = converterType.GetMethod("TryConvert", BindingFlags.Public | BindingFlags.Static);
+            if (method != null)
+            {
+                var parameters = method.GetParameters();
+                if (parameters.Length == 2 && parameters[1].IsOut)
+                {
+                    var sourceType = parameters[0].ParameterType;
+                    var targetType = parameters[1].ParameterType.GetElementType(); // out 参数是引用类型
+                    return (sourceType, targetType);
+                }
+            }
+            
             return (null, null);
         }
 
@@ -516,38 +532,38 @@ namespace UnityToolkit
             
             try
             {
-                foreach (var attr in asm.GetCustomAttributes(typeof(XmlGlobalConvertAttribute), false))
-                {
-                    if (!(attr is XmlGlobalConvertAttribute ga) || ga.ConverterType == null) continue;
-                    
-                    // 获取转换器的源类型和目标类型对
-                    var (sourceType, targetType) = GetConverterTypePair(ga.ConverterType);
-                    UnityEngine.Debug.Log($"[UnityToolkit.TypeAnalyzer] 程序集 {asm.GetName().Name}: 转换器 {ga.ConverterType.Name}, 源={sourceType?.Name}, 目标={targetType?.Name}");
-                    
-                    if (targetType != null)
-                    {
-                        var domain = ga.Domain ?? "";
-                        
-                        // 如果源类型是 string，添加到原有缓存（向后兼容）
-                        if (sourceType == typeof(string) && !dict.ContainsKey(targetType))
-                        {
-                            dict[targetType] = domain;
-                        }
-                        
-                        // 同时添加到源类型->目标类型缓存（支持所有类型对）
-                        if (sourceType != null && !sourceTargetDict.ContainsKey(sourceType))
-                        {
-                            sourceTargetDict[sourceType] = (targetType, domain);
-                            UnityEngine.Debug.Log($"[UnityToolkit.TypeAnalyzer] 注册转换器: {sourceType.Name} -> {targetType.Name}, 域={domain}");
-                        }
-                        
-                        // 添加到完整缓存（包含转换器类型）
-                        if (sourceType != null && !fullCacheDict.ContainsKey(sourceType))
-                        {
-                            fullCacheDict[sourceType] = (targetType, domain, ga.ConverterType);
-                        }
-                    }
-                }
+                // foreach (var attr in asm.GetCustomAttributes(typeof(XmlGlobalConvertAttribute), false))
+                // {
+                //     if (!(attr is XmlGlobalConvertAttribute ga) || ga.ConverterType == null) continue;
+                //     
+                //     // 获取转换器的源类型和目标类型对
+                //     var (sourceType, targetType) = GetConverterTypePair(ga.ConverterType);
+                //     UnityEngine.Debug.Log($"[UnityToolkit.TypeAnalyzer] 程序集 {asm.GetName().Name}: 转换器 {ga.ConverterType.Name}, 源={sourceType?.Name}, 目标={targetType?.Name}");
+                //     
+                //     if (targetType != null)
+                //     {
+                //         var domain = ga.Domain ?? "";
+                //         
+                //         // 如果源类型是 string，添加到原有缓存（向后兼容）
+                //         if (sourceType == typeof(string) && !dict.ContainsKey(targetType))
+                //         {
+                //             dict[targetType] = domain;
+                //         }
+                //         
+                //         // 同时添加到源类型->目标类型缓存（支持所有类型对）
+                //         if (sourceType != null && !sourceTargetDict.ContainsKey(sourceType))
+                //         {
+                //             sourceTargetDict[sourceType] = (targetType, domain);
+                //             UnityEngine.Debug.Log($"[UnityToolkit.TypeAnalyzer] 注册转换器: {sourceType.Name} -> {targetType.Name}, 域={domain}");
+                //         }
+                //         
+                //         // 添加到完整缓存（包含转换器类型）
+                //         if (sourceType != null && !fullCacheDict.ContainsKey(sourceType))
+                //         {
+                //             fullCacheDict[sourceType] = (targetType, domain, ga.ConverterType);
+                //         }
+                //     }
+                // }
             }
             catch { }
             
@@ -560,7 +576,7 @@ namespace UnityToolkit
                         if (!IsXConfigType(type)) continue;
                         foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
                         {
-                            var ga = field.GetCustomAttribute<XmlGlobalConvertAttribute>();
+                            var ga = field.GetCustomAttribute<XmlTypeConverterAttribute>();
                             var ta = field.GetCustomAttribute<XmlTypeConverterAttribute>();
                             Type targetType = null;
                             Type sourceType = null;
@@ -570,13 +586,13 @@ namespace UnityToolkit
                             { 
                                 targetType = field.FieldType; 
                                 sourceType = typeof(string);
-                                domain = ga.Domain ?? ""; 
+                                // domain = ga.Domain ?? ""; 
                             }
                             else if (ta != null && ta.ConverterType != null) 
                             { 
                                 targetType = GetTargetTypeFromConverterType(ta.ConverterType) ?? field.FieldType; 
                                 sourceType = typeof(string);
-                                domain = ta.Domain ?? ""; 
+                                // domain = ta.Domain ?? ""; 
                             }
                             
                             if (targetType != null && !dict.ContainsKey(targetType))

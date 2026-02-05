@@ -238,7 +238,7 @@ namespace XM.Editor
                             fieldInfo.NeedsConverter = true;
                             // 保存转换器类型的完整名称（包括命名空间）
                             fieldInfo.ConverterTypeName = converterAttr.ConverterType.FullName ?? converterAttr.ConverterType.Name;
-                            fieldInfo.ConverterDomain = converterAttr.Domain ?? "";
+                            // fieldInfo.ConverterDomain = converterAttr.Domain ?? "";
                             fieldInfo.SourceType = GetTypeName(genericArgs[0]);
                             fieldInfo.TargetType = GetTypeName(genericArgs[1]);
                             
@@ -666,7 +666,6 @@ namespace XM.Editor
                             {
                                 targetType = GetTargetTypeFromConverterType(ta.ConverterType) ?? field.FieldType;
                                 sourceType = typeof(string);
-                                domain = ta.Domain ?? "";
                             }
                             
                             if (targetType != null && !dict.ContainsKey(targetType))

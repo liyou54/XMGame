@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace XM.Utils.Attribute
 {
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
     public class XmlIndexAttribute : System.Attribute
     {
         public string IndexName;
@@ -41,7 +42,9 @@ namespace XM.Utils.Attribute
     /// 标记字段为必要：XML 中缺失时打告警（LogParseWarning），仍使用默认值或 [XmlDefault]。
     /// 容器类型暂不参与默认值逻辑，仅支持缺失告警。
     /// </summary>
-    public class XmlNotNullAttribute : System.Attribute { }
+    public class XmlNotNullAttribute : System.Attribute
+    {
+    }
 
     /// <summary>
     /// 标量字段的默认值（XML 缺失或空时使用）。值为字符串，解析方式与从 XML 读取时一致。
@@ -57,18 +60,6 @@ namespace XM.Utils.Attribute
         }
     }
 
-    [AttributeUsage(AttributeTargets.All, AllowMultiple = true)]
-    public class XmlGlobalConvertAttribute : System.Attribute
-    {
-        public Type ConverterType;
-        public string Domain;
-
-        public XmlGlobalConvertAttribute(Type converterType, string domain = "")
-        {
-            ConverterType = converterType;
-            Domain = domain;
-        }
-    }
 
     public enum EXmlStrMode
     {
@@ -93,22 +84,37 @@ namespace XM.Utils.Attribute
     /// 类型转换特性，用于标记字段需要进行类型转换
     /// 使用 XmlUnManagedConvert 转换器进行转换
     /// </summary>
+    [AttributeUsage(AttributeTargets.All, AllowMultiple = true)]
     public class XmlTypeConverterAttribute : System.Attribute
     {
         /// <summary>
-        /// 转换器类型（继承自 XmlUnManagedConvert）
+        /// 转换器类型(需要有静态Convert方法)
         /// </summary>
         public Type ConverterType { get; set; }
-        
-        /// <summary>
-        /// 转换域（用于区分全局和局部转换器，空字符串表示全局）
-        /// </summary>
-        public string Domain { get; set; }
 
-        public XmlTypeConverterAttribute(Type converterType, string domain = "")
+        public bool BGlobal;
+        
+        public XmlTypeConverterAttribute(Type converterType, bool bGlobal = false)
+        {
+            ConverterType = converterType;
+            BGlobal = bGlobal;
+        }
+    }
+    
+    /// <summary>
+    /// 程序集级全局转换器特性
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+    public class XmlGlobalConvertAttribute : System.Attribute
+    {
+        public Type ConverterType { get; }
+        public string Domain { get; }
+
+        public XmlGlobalConvertAttribute(Type converterType, string domain = "")
         {
             ConverterType = converterType;
             Domain = domain ?? "";
         }
     }
+    
 }

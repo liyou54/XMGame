@@ -20,18 +20,6 @@ namespace XM.Contracts
             where TData : unmanaged, IConfigUnManaged<TData>;
 
         bool TryGetConfig<T>(out T data) where T : unmanaged, IConfigUnManaged<T>;
-
-        /// <summary>
-        /// 从配置中心获取转换器
-        /// </summary>
-        ITypeConverter<TSource, TTarget> GetConverter<TSource, TTarget>(string domain = "");
-
-        /// <summary>
-        /// 根据类型获取转换器（不需要domain）
-        /// </summary>
-        ITypeConverter<TSource, TTarget> GetConverterByType<TSource, TTarget>();
-
-        T GetConverter<T>();
         
         /// <summary>
         /// 检查是否存在转换器
