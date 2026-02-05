@@ -91,8 +91,8 @@ namespace XM.ConfigNew.CodeGen
         private void GenerateClass()
         {
             var className = _metadata.HelperTypeName;
-            var managedTypeName = GetQualifiedTypeName(_metadata.ManagedType);
-            var unmanagedTypeName = GetQualifiedTypeName(_metadata.UnmanagedType);
+            var managedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.ManagedType);
+            var unmanagedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.UnmanagedType);
             var baseClass = $"ConfigClassHelper<{managedTypeName}, {unmanagedTypeName}>";
             
             // 类注释
@@ -155,7 +155,7 @@ namespace XM.ConfigNew.CodeGen
             var className = _metadata.HelperTypeName;
             var tableName = _metadata.TableName ?? _metadata.ManagedTypeName;
             var modName = _metadata.ModName ?? CodeGenConstants.DefaultModName;
-            var unmanagedTypeName = GetQualifiedTypeName(_metadata.UnmanagedType);
+            var unmanagedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.UnmanagedType);
             
             // 静态构造函数不能有访问修饰符
             _builder.AppendXmlComment("静态构造函数");
@@ -236,7 +236,7 @@ namespace XM.ConfigNew.CodeGen
         /// </summary>
         private void GenerateParseAndFillFromXmlMethod()
         {
-            var managedTypeName = GetQualifiedTypeName(_metadata.ManagedType);
+            var managedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.ManagedType);
             
             _builder.AppendXmlComment("从 XML 解析并填充配置对象", 
                 new System.Collections.Generic.Dictionary<string, string>
@@ -336,8 +336,8 @@ namespace XM.ConfigNew.CodeGen
         /// </summary>
         private void GenerateAllocContainerWithFillImpl()
         {
-            var managedTypeName = GetQualifiedTypeName(_metadata.ManagedType);
-            var unmanagedTypeName = GetQualifiedTypeName(_metadata.UnmanagedType);
+            var managedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.ManagedType);
+            var unmanagedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.UnmanagedType);
             
             _builder.AppendXmlComment("分配容器并填充非托管数据",
                 new System.Collections.Generic.Dictionary<string, string>
@@ -420,8 +420,8 @@ namespace XM.ConfigNew.CodeGen
         /// </summary>
         private void GenerateEstablishLinksMethod()
         {
-            var managedTypeName = GetQualifiedTypeName(_metadata.ManagedType);
-            var unmanagedTypeName = GetQualifiedTypeName(_metadata.UnmanagedType);
+            var managedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.ManagedType);
+            var unmanagedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.UnmanagedType);
             
             _builder.AppendXmlComment("建立 Link 双向引用（链接阶段调用）",
                 new System.Collections.Generic.Dictionary<string, string>
@@ -484,8 +484,8 @@ namespace XM.ConfigNew.CodeGen
         /// </summary>
         private void GenerateAllocMethodStub(ConfigFieldMetadata field)
         {
-            var managedTypeName = GetQualifiedTypeName(_metadata.ManagedType);
-            var unmanagedTypeName = GetQualifiedTypeName(_metadata.UnmanagedType);
+            var managedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.ManagedType);
+            var unmanagedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.UnmanagedType);
             
             // 使用 ContainerAllocBuilder 生成完整的容器分配代码
             ContainerAllocBuilder.GenerateAllocMethod(_builder, field, managedTypeName, unmanagedTypeName);
@@ -496,8 +496,8 @@ namespace XM.ConfigNew.CodeGen
         /// </summary>
         private void GenerateFillMethodStub(ConfigFieldMetadata field)
         {
-            var managedTypeName = GetQualifiedTypeName(_metadata.ManagedType);
-            var unmanagedTypeName = GetQualifiedTypeName(_metadata.UnmanagedType);
+            var managedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.ManagedType);
+            var unmanagedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.UnmanagedType);
             
             // 使用 NestedConfigAllocBuilder 生成完整的嵌套配置填充代码
             NestedConfigAllocBuilder.GenerateFillMethod(_builder, field, managedTypeName, unmanagedTypeName);
@@ -519,17 +519,6 @@ namespace XM.ConfigNew.CodeGen
         #endregion
         
         #region 辅助方法
-        
-        /// <summary>
-        /// 获取全局限定的类型名称（避免命名冲突）
-        /// </summary>
-        private string GetQualifiedTypeName(Type type)
-        {
-            if (type == null)
-                return _metadata.ManagedTypeName ?? "object";
-            
-            return TypeHelper.GetGlobalQualifiedTypeName(type);
-        }
         
         /// <summary>
         /// 获取 XmlLink 目标的非托管类型名称（全局限定）

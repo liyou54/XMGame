@@ -111,7 +111,7 @@ namespace XM.ConfigNew.CodeGen
         private void GenerateStruct()
         {
             var structName = _metadata.UnmanagedTypeName;
-            var unmanagedTypeName = GetQualifiedTypeName(_metadata.UnmanagedType);
+            var unmanagedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_metadata.UnmanagedType);
             var interfaceName = $"IConfigUnManaged<{unmanagedTypeName}>";
             
             _builder.AppendXmlComment($"{_metadata.ManagedTypeName} 的非托管数据结构 (代码生成)");
@@ -336,19 +336,5 @@ namespace XM.ConfigNew.CodeGen
         
         #endregion
         
-        #region 辅助方法
-        
-        /// <summary>
-        /// 获取全局限定的类型名称（避免命名冲突）
-        /// </summary>
-        private string GetQualifiedTypeName(Type type)
-        {
-            if (type == null)
-                return _metadata.UnmanagedTypeName ?? "object";
-            
-            return TypeHelper.GetGlobalQualifiedTypeName(type);
-        }
-        
-        #endregion
     }
 }

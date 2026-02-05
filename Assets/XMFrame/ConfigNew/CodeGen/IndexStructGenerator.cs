@@ -94,7 +94,7 @@ namespace XM.ConfigNew.CodeGen
         private void GenerateIndexStruct()
         {
             var structName = _indexMetadata.GeneratedStructName;
-            var unmanagedTypeName = GetQualifiedTypeName(_classMetadata.UnmanagedType);
+            var unmanagedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_classMetadata.UnmanagedType);
             // 实现 IConfigIndexGroup<T> 和 IEquatable<T>
             var interfaceName = $"IConfigIndexGroup<{unmanagedTypeName}>, IEquatable<{structName}>";
             
@@ -152,7 +152,7 @@ namespace XM.ConfigNew.CodeGen
             
             // 枚举类型（使用全局限定名）
             if (typeInfo.IsEnum && typeInfo.SingleValueType != null)
-                return GetQualifiedTypeName(typeInfo.SingleValueType);
+                return TypeHelper.GetGlobalQualifiedTypeName(typeInfo.SingleValueType);
             
             // 基本类型
             if (typeInfo.SingleValueType == typeof(int))
@@ -287,7 +287,7 @@ namespace XM.ConfigNew.CodeGen
         /// </summary>
         private void GenerateGetValMethod(string unmanagedTypeName, string methodName)
         {
-            var qualifiedUnmanagedTypeName = GetQualifiedTypeName(_classMetadata.UnmanagedType);
+            var qualifiedUnmanagedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_classMetadata.UnmanagedType);
             
             _builder.AppendXmlComment(
                 "获取索引对应的配置数据(唯一索引)",
@@ -314,7 +314,7 @@ namespace XM.ConfigNew.CodeGen
         /// </summary>
         private void GenerateGetValsMethod(string unmanagedTypeName, string methodName)
         {
-            var qualifiedUnmanagedTypeName = GetQualifiedTypeName(_classMetadata.UnmanagedType);
+            var qualifiedUnmanagedTypeName = TypeHelper.GetGlobalQualifiedTypeName(_classMetadata.UnmanagedType);
             
             _builder.AppendXmlComment(
                 "获取索引对应的配置数据列表(多值索引)",
@@ -375,19 +375,5 @@ namespace XM.ConfigNew.CodeGen
         
         #endregion
         
-        #region 辅助方法
-        
-        /// <summary>
-        /// 获取全局限定的类型名称（避免命名冲突）
-        /// </summary>
-        private string GetQualifiedTypeName(Type type)
-        {
-            if (type == null)
-                return "object";
-            
-            return TypeHelper.GetGlobalQualifiedTypeName(type);
-        }
-        
-        #endregion
     }
 }
