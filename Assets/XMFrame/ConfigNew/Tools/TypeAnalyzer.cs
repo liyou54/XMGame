@@ -334,54 +334,8 @@ namespace XM.ConfigNew.Tools
                     targetType = fieldMetadata.TypeInfo.UnderlyingType;
                 }
                 
-                if (fieldMetadata.TypeInfo.IsContainer)
-                {
-                    // 容器类型: XBlobArray<T>, XBlobMap<K,V>, XBlobSet<T>
-                    fieldMetadata.UnmanagedFieldTypeName = TypeHelper.GetXBlobTypeName(fieldMetadata.TypeInfo);
-                }
-                else if (fieldMetadata.TypeInfo.IsNestedConfig)
-                {
-                    // 嵌套配置: 使用Unmanaged类型的全局限定名
-                    if (fieldMetadata.TypeInfo.NestedConfigMetadata != null && fieldMetadata.TypeInfo.NestedConfigMetadata.UnmanagedType != null)
-                    {
-                        fieldMetadata.UnmanagedFieldTypeName = TypeHelper.GetGlobalQualifiedTypeName(fieldMetadata.TypeInfo.NestedConfigMetadata.UnmanagedType);
-                    }
-                    else if (fieldMetadata.TypeInfo.SingleValueType != null)
-                    {
-                        // 根据类型推断 Unmanaged 类型
-                        var unmanagedTypeName = fieldMetadata.TypeInfo.SingleValueType.Name + CodeGenConstants.UnmanagedSuffix;
-                        var unmanagedNamespace = fieldMetadata.TypeInfo.SingleValueType.Namespace;
-                        if (!string.IsNullOrEmpty(unmanagedNamespace))
-                            fieldMetadata.UnmanagedFieldTypeName = $"global::{unmanagedNamespace}.{unmanagedTypeName}";
-                        else
-                            fieldMetadata.UnmanagedFieldTypeName = unmanagedTypeName;
-                    }
-                    else
-                    {
-                        fieldMetadata.UnmanagedFieldTypeName = CodeGenConstants.ObjectTypeName;
-                    }
-                }
-                else if (fieldMetadata.IsXmlLink)
-                {
-                    // Link类型: CfgI<T>
-                    fieldMetadata.UnmanagedFieldTypeName = TypeHelper.GetCfgITypeName(fieldMetadata.XmlLinkTargetType);
-                }
-                else if (targetType.IsEnum)
-                {
-                    // 枚举类型: 使用全局限定名（可空枚举也使用基础枚举类型）
-                    fieldMetadata.UnmanagedFieldTypeName = TypeHelper.GetGlobalQualifiedTypeName(targetType);
-                }
-                else if (targetType == typeof(string))
-                {
-                    // 字符串类型: 根据StringMode转换（使用全局限定名）
-                    fieldMetadata.UnmanagedFieldTypeName = GetStringModeTypeNameQualified(fieldMetadata.StringMode);
-                }
-                else
-                {
-                    // 基本类型（包括可空类型的基础类型）
-                    // 注意: int? -> int, float? -> float
-                    fieldMetadata.UnmanagedFieldTypeName = TypeHelper.GetUnmanagedTypeName(targetType);
-                }
+                // 使用统一的字段类型获取方法（避免硬编码和遗漏）
+                fieldMetadata.UnmanagedFieldTypeName = TypeHelper.GetUnmanagedFieldTypeName(fieldMetadata, GetStringModeTypeNameQualified);
             }
         }
         
@@ -1026,6 +980,55 @@ namespace XM.ConfigNew.Tools
         
         #endregion
         
+        #region 程序集扫描
+        
+        /// <summary>
+        /// 查找程序集中所有的配置类型
+        /// </summary>
+        /// <param name="assembly">要扫描的程序集</param>
+        /// <returns>配置类型列表</returns>
+        public static List<Type> FindConfigTypesInAssembly(Assembly assembly)
+        {
+            var configTypes = new List<Type>();
+            
+            if (assembly == null)
+                return configTypes;
+            
+            try
+            {
+                var types = assembly.GetTypes();
+                foreach (var type in types)
+                {
+                    if (IsXConfigType(type) && !type.IsAbstract)
+                    {
+                        configTypes.Add(type);
+                    }
+                }
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                // 处理加载异常，返回已成功加载的类型
+                if (ex.Types != null)
+                {
+                    foreach (var type in ex.Types)
+                    {
+                        if (type != null && IsXConfigType(type) && !type.IsAbstract)
+                        {
+                            configTypes.Add(type);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"[TypeAnalyzer] 扫描程序集失败: {assembly.GetName().Name}, {ex.Message}");
+            }
+            
+            return configTypes;
+        }
+        
+        #endregion
+        
         #region 类型判断辅助方法
         
         /// <summary>
@@ -1044,6 +1047,33 @@ namespace XM.ConfigNew.Tools
             return type.GetInterfaces().Any(i => 
                 i == targetInterface || 
                 (i.IsGenericType && i.GetGenericTypeDefinition() == targetGenericInterface));
+        }
+        
+        /// <summary>
+        /// 从配置类型获取 Unmanaged 类型（从 IXConfig&lt;T, TUnmanaged&gt; 泛型参数获取）
+        /// 这是正确的方式，避免通过类型名拼接导致的大小写和命名问题
+        /// </summary>
+        /// <param name="configType">配置类型（Managed）</param>
+        /// <returns>Unmanaged 类型，如果获取失败返回 null</returns>
+        public static Type GetUnmanagedTypeFromConfig(Type configType)
+        {
+            if (configType == null || !IsXConfigType(configType))
+                return null;
+            
+            // 1. 检查是否实现 IXConfig<T, TUnmanaged> 接口
+            foreach (var iface in configType.GetInterfaces())
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IXConfig<,>))
+                {
+                    var genericArgs = iface.GetGenericArguments();
+                    if (genericArgs.Length >= 2)
+                    {
+                        return genericArgs[1]; // TUnmanaged
+                    }
+                }
+            }
+            
+            return null;
         }
         
         

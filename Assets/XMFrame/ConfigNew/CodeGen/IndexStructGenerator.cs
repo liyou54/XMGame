@@ -23,7 +23,7 @@ namespace XM.ConfigNew.CodeGen
             _builder = new CodeBuilder();
         }
         
-        #region 主生成方法
+        #region 主生成方法 
         
         /// <summary>
         /// 生成索引结构体代码
@@ -35,8 +35,11 @@ namespace XM.ConfigNew.CodeGen
             // 1. 生成文件头
             GenerateFileHeader();
             
-            // 2. 生成命名空间
-            _builder.BeginNamespace(_classMetadata.Namespace);
+            // 2. 生成命名空间（如果有）
+            if (!string.IsNullOrEmpty(_classMetadata.Namespace))
+            {
+                _builder.BeginNamespace(_classMetadata.Namespace);
+            }
             
             // 3. 生成Unmanaged部分类声明
             _builder.AppendComment($"{_classMetadata.UnmanagedTypeName} 的部分类 - {_indexMetadata.IndexName}索引");
@@ -56,8 +59,11 @@ namespace XM.ConfigNew.CodeGen
             // 6. 生成扩展方法静态类
             GenerateExtensionClass();
             
-            // 7. 结束命名空间
-            _builder.EndNamespace();
+            // 7. 结束命名空间（如果有）
+            if (!string.IsNullOrEmpty(_classMetadata.Namespace))
+            {
+                _builder.EndNamespace();
+            }
             
             return _builder.Build();
         }

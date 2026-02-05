@@ -14,8 +14,11 @@ namespace XM.ConfigNew.CodeGen.Builders
         /// </summary>
         public static void GenerateFillMethod(CodeBuilder builder, ConfigFieldMetadata field, string managedTypeName, string unmanagedTypeName)
         {
-            var nestedTypeName = TypeHelper.GetGlobalQualifiedTypeName(field.TypeInfo.ManagedFieldType);
-            var nestedUnmanagedTypeName = nestedTypeName + CodeGenConstants.UnmanagedSuffix;
+            // 使用统一方法获取类型名（确保全局限定名和正确的 Unmanaged 类型）
+            var nestedManagedType = field.TypeInfo.ManagedFieldType;
+            var nestedTypeName = TypeHelper.GetGlobalQualifiedTypeName(nestedManagedType);
+            var helperTypeName = nestedTypeName + CodeGenConstants.ClassHelperSuffix;
+            var nestedUnmanagedTypeName = TypeHelper.GetConfigUnmanagedTypeName(nestedManagedType);
             
             builder.AppendXmlComment($"填充 {field.FieldName} 嵌套配置");
             builder.BeginPrivateMethod(
@@ -29,7 +32,6 @@ namespace XM.ConfigNew.CodeGen.Builders
             builder.AppendLine();
             
             // 获取嵌套配置的 Helper（使用静态实例）
-            var helperTypeName = nestedTypeName + CodeGenConstants.ClassHelperSuffix;
             builder.AppendVarDeclaration("helper", $"{helperTypeName}.{CodeGenConstants.InstanceProperty}");
             builder.BeginIfBlock(CodeBuilder.BuildNotNullCondition("helper"));
             

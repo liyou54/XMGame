@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using XM.ConfigNew.CodeGen;
 using XM.ConfigNew.Tools;
 
 namespace XM.ConfigNew.Editor
@@ -40,7 +39,7 @@ namespace XM.ConfigNew.Editor
             }
         }
         
-        [Serializable]
+        [Serializable] 
         private class ConfigTypeInfo
         {
             public string Name;
@@ -59,10 +58,11 @@ namespace XM.ConfigNew.Editor
             }
         }
         
-        [MenuItem("XMFrame/ConfigNew/代码生成器(测试)")]
+        [MenuItem("XMFrame/Config/代码生成器")]
+        [MenuItem("XMFrame/Config/Generate Code")]
         public static void ShowWindow()
         {
-            var window = GetWindow<ConfigNewCodeGenWindow>("ConfigNew 代码生成器");
+            var window = GetWindow<ConfigNewCodeGenWindow>("配置代码生成器");
             window.minSize = new Vector2(600, 500);
             window.RefreshData();
         }
@@ -339,7 +339,7 @@ namespace XM.ConfigNew.Editor
             
             try
             {
-                var manager = new CodeGenerationManager();
+                var manager = new CodeGen.CodeGenerationManager();
                 var allGeneratedFiles = new List<string>();
                 var successCount = 0;
                 var errorCount = 0;

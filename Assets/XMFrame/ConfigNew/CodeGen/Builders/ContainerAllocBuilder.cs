@@ -155,8 +155,8 @@ namespace XM.ConfigNew.CodeGen.Builders
             var fieldName = field.FieldName;
             var elementType = field.TypeInfo.NestedValueType;
             var elementTypeName = TypeHelper.GetGlobalQualifiedTypeName(elementType);
-            var unmanagedElementTypeName = elementTypeName + CodeGenConstants.UnmanagedSuffix;
             var helperTypeName = elementTypeName + CodeGenConstants.ClassHelperSuffix;
+            var unmanagedElementTypeName = TypeHelper.GetConfigUnmanagedTypeName(elementType);
             
             var configFieldAccess = CodeBuilder.BuildConfigFieldAccess(fieldName);
             builder.AppendAllocArray("array", unmanagedElementTypeName, $"{configFieldAccess}.{CodeGenConstants.CountProperty}");
@@ -201,7 +201,7 @@ namespace XM.ConfigNew.CodeGen.Builders
             builder.AppendAllocMap("map", unmanagedKeyType, unmanagedValueType, $"{configFieldAccess}.{CodeGenConstants.CountProperty}");
             builder.BeginForeachLoop("var", CodeGenConstants.KvpVar, configFieldAccess);
             
-            // 处理 Key
+            // 处理 Key（使用统一转换器）
             var kvpKeyAccess = $"{CodeGenConstants.KvpVar}.Key";
             var keyResult = DictionaryKeyValueHelper.GenerateKeyProcessing(builder, keyType, kvpKeyAccess, "");
             

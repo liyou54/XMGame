@@ -166,6 +166,20 @@ public abstract class ConfigClassHelper<T, TUnmanaged> :
     }
 
     /// <summary>
+    /// 尝试将字符串转换为 LabelI（标签索引）
+    /// </summary>
+    /// <param name="value">字符串值</param>
+    /// <param name="labelI">输出的标签索引</param>
+    /// <returns>是否转换成功</returns>
+    protected static bool TryGetLabelI(LabelS value, out LabelI labelI)
+    {
+        // TODO: 实现字符串到 LabelI 的转换逻辑
+        // 需要将标签字符串注册到全局标签池，获取对应的索引
+        labelI = default;
+        return false;
+    }
+    
+    /// <summary>
     /// 尝试将 CfgS 转换为 CfgI（配置实例索引）
     /// </summary>
     /// <typeparam name="T">配置类型</typeparam>
@@ -185,12 +199,8 @@ public abstract class ConfigClassHelper<T, TUnmanaged> :
         if (string.IsNullOrEmpty(value))
             return default;
 
-        // var converter = XM.Utils.TypeConverterRegistry.GetConverter<string, StrI>();
-        // if (converter != null && converter.Convert(value, out var result))
-        // {
-        //     return result;
-        // }
-
+        // TODO: 实现字符串到 StrI 的转换逻辑
+        // 需要将字符串注册到全局字符串池，获取对应的索引
         return default;
     }
 

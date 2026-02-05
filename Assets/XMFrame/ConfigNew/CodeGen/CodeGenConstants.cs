@@ -82,7 +82,7 @@ namespace XM.ConfigNew.CodeGen
         public const string DefaultValueSeparator = ",";
         
         #endregion
-        
+         
         #region 哈希码计算常量
         
         /// <summary>哈希码初始值</summary>

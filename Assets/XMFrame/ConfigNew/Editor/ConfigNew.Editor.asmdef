@@ -2,9 +2,8 @@
     "name": "XMFrame.ConfigNew.Editor",
     "rootNamespace": "XM.ConfigNew.Editor",
     "references": [
-        "XMFrame.ConfigNew",
-        "XMFrame.Interfaces",
-        "XMFrame.Utils",
+        "XMFrame.ConfigNew.CodeGen",
+        "XM.Utils",
         "Unity.Collections"
     ],
     "includePlatforms": [

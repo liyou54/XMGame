@@ -30,7 +30,7 @@ namespace XM.ConfigNew.CodeGen.Builders
             }
             
             // 获取 XML 值
-            builder.AppendLine($"var xmlValue = {CodeGenConstants.ConfigParseHelperFullName}.GetXmlFieldValue(configItem, \"{xmlName}\");");
+            builder.AppendVarDeclaration("xmlValue", $"{CodeGenConstants.ConfigParseHelperFullName}.GetXmlFieldValue(configItem, \"{xmlName}\")");
             builder.AppendLine();
             
             // 处理默认值

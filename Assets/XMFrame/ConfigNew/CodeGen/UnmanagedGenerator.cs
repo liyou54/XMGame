@@ -35,14 +35,20 @@ namespace XM.ConfigNew.CodeGen
             // 1. 生成文件头
             GenerateFileHeader();
             
-            // 2. 生成命名空间
-            _builder.BeginNamespace(_metadata.Namespace);
+            // 2. 生成命名空间（如果有）
+            if (!string.IsNullOrEmpty(_metadata.Namespace))
+            {
+                _builder.BeginNamespace(_metadata.Namespace);
+            }
             
             // 3. 生成结构体
             GenerateStruct();
             
-            // 4. 结束命名空间
-            _builder.EndNamespace();
+            // 4. 结束命名空间（如果有）
+            if (!string.IsNullOrEmpty(_metadata.Namespace))
+            {
+                _builder.EndNamespace();
+            }
             
             return _builder.Build();
         }
@@ -167,66 +173,11 @@ namespace XM.ConfigNew.CodeGen
         }
         
         /// <summary>
-        /// 获取字段的非托管类型字符串
+        /// 获取字段的非托管类型字符串（委托给 TypeHelper 统一方法）
         /// </summary>
         private string GetUnmanagedFieldType(ConfigFieldMetadata field)
         {
-            var typeInfo = field.TypeInfo;
-            
-            // 如果已经预计算，直接使用
-            if (!string.IsNullOrEmpty(field.UnmanagedFieldTypeName))
-            {
-                return field.UnmanagedFieldTypeName;
-            }
-            
-            // 获取实际类型（处理可空类型）
-            Type targetType = typeInfo.ManagedFieldType;
-            if (typeInfo.IsNullable && typeInfo.UnderlyingType != null)
-            {
-                targetType = typeInfo.UnderlyingType;
-            }
-            
-            // 1.2 容器类型 -> XBlobArray<T> / XBlobMap<K,V> / XBlobSet<T> (支持嵌套)
-            if (typeInfo.IsContainer)
-            {
-                return TypeHelper.GetXBlobTypeName(typeInfo);
-            }
-            
-            // 1.2 嵌套配置 -> 嵌套的Unmanaged类型
-            if (typeInfo.IsNestedConfig)
-            {
-                // 如果有嵌套元数据,使用元数据中的名称
-                if (typeInfo.NestedConfigMetadata != null)
-                    return typeInfo.NestedConfigMetadata.UnmanagedTypeName;
-                
-                // 否则根据类型名称推断
-                if (typeInfo.SingleValueType != null)
-                    return typeInfo.SingleValueType.Name + CodeGenConstants.UnmanagedSuffix;
-                
-                return CodeGenConstants.ObjectTypeName;
-            }
-            
-            // Link类型 -> CfgI<T>
-            if (field.IsXmlLink)
-            {
-                return TypeHelper.GetCfgITypeName(field.XmlLinkTargetType);
-            }
-            
-            // 枚举类型 -> 使用全局限定名
-            if (targetType.IsEnum)
-            {
-                return TypeHelper.GetGlobalQualifiedTypeName(targetType);
-            }
-            
-            // 字符串类型特殊处理
-            if (targetType == typeof(string))
-            {
-                // 使用全局限定名
-                return GetStringModeTypeNameQualified(field.StringMode);
-            }
-            
-            // 基本类型（包括可空类型的基础类型）
-            return TypeHelper.GetUnmanagedTypeName(targetType);
+            return TypeHelper.GetUnmanagedFieldTypeName(field, GetStringModeTypeNameQualified);
         }
         
         /// <summary>
@@ -313,7 +264,7 @@ namespace XM.ConfigNew.CodeGen
             string targetUnmanagedTypeName;
             if (field.XmlLinkTargetType != null)
             {
-                var unmanagedType = field.XmlLinkTargetType.Name + CodeGenConstants.UnmanagedSuffix;
+                var unmanagedType = TypeHelper.EnsureUnmanagedSuffix(field.XmlLinkTargetType.Name);
                 var targetNamespace = field.XmlLinkTargetType.Namespace;
                 if (!string.IsNullOrEmpty(targetNamespace))
                     targetUnmanagedTypeName = $"global::{targetNamespace}.{unmanagedType}";

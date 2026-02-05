@@ -8,6 +8,7 @@ using System.Xml;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
+using XM.ConfigNew.CodeGen;
 using YooAsset;
 using YooAsset.Editor;
 using Assembly = System.Reflection.Assembly;
@@ -112,9 +113,9 @@ namespace XMod.Editor
             string outputPath = Path.GetFullPath(Path.Combine(Application.dataPath, ModsFolderName, modName, "Config", "Code.Gen"));
             try
             {
-                UnityToolkit.ClassHelperCodeGenerator.GenerateClassHelperForAssemblies(new List<Assembly> { assembly }, outputPath);
-                UnityToolkit.UnmanagedCodeGenerator.GenerateUnmanagedCodeForAssemblies(new List<Assembly> { assembly }, outputPath);
-                Debug.Log($"[ModPackAndExport] 已为 Mod \"{modName}\" 生成配置代码 -> {outputPath}");
+                // 直接调用 ConfigNew 代码生成器 API
+                int fileCount = CodeGenerationManager.GenerateForAssemblies(new List<Assembly> { assembly }, outputPath);
+                Debug.Log($"[ModPackAndExport] 已为 Mod \"{modName}\" 生成配置代码 ({fileCount} 个文件) -> {outputPath}");
                 return true;
             }
             catch (Exception ex)
@@ -391,7 +392,7 @@ namespace XMod.Editor
                         CompressOption = ECompressOption.LZ4,
                         ClearBuildCacheFiles = false,
                         UseAssetDependencyDB = true,
-                        BuiltinShadersBundleName = GetBuiltinShaderBundleName(packageName)
+                        BuiltinShadersBundleName = GetBuiltinShaderBundleName(packageName) 
                     };
                     var pipeline = new ScriptableBuildPipeline();
                     result = pipeline.Run(buildParameters, true);

@@ -50,12 +50,12 @@ namespace XM.ConfigNew.CodeGen.Builders
             var elementTypeName = TypeHelper.GetGlobalQualifiedTypeName(elementType);
             var listTypeName = field.ManagedFieldTypeName;
             
-            builder.AppendLine($"var list = new {listTypeName}();");
+            builder.AppendNewVarDeclaration("list", listTypeName);
             builder.AppendLine();
             
             // 1. 尝试从 XML 节点解析
             builder.AppendComment("尝试从 XML 节点解析");
-            builder.AppendLine($"var nodes = configItem.SelectNodes(\"{xmlName}\");");
+            builder.AppendVarDeclaration("nodes", $"configItem.SelectNodes(\"{xmlName}\")");
             builder.BeginIfBlock("nodes != null");
             builder.BeginForeachLoop(CodeGenConstants.XmlNodeFullName, "node", "nodes");
             
@@ -63,7 +63,7 @@ namespace XM.ConfigNew.CodeGen.Builders
             builder.AppendNullContinue("element");
             builder.AppendLine();
             
-            builder.AppendLine("var text = element.InnerText?.Trim();");
+            builder.AppendVarDeclaration("text", "element.InnerText?.Trim()");
             builder.BeginIfBlock("string.IsNullOrEmpty(text)");
             builder.AppendLine("continue;");
             builder.EndBlock();
@@ -85,7 +85,7 @@ namespace XM.ConfigNew.CodeGen.Builders
             {
                 builder.AppendComment("如果没有节点，尝试 CSV 格式");
                 builder.BeginIfBlock("list.Count == 0");
-                builder.AppendLine($"var csvValue = {CodeGenConstants.ConfigParseHelperFullName}.GetXmlFieldValue(configItem, \"{xmlName}\");");
+                builder.AppendVarDeclaration("csvValue", $"{CodeGenConstants.ConfigParseHelperFullName}.GetXmlFieldValue(configItem, \"{xmlName}\")");
                 builder.BeginIfBlock("!string.IsNullOrEmpty(csvValue)");
                 
                 GenerateCSVParse(builder, elementType, fieldName, "csvValue");
@@ -114,9 +114,9 @@ namespace XM.ConfigNew.CodeGen.Builders
         /// </summary>
         private static void GenerateCSVParse(CodeBuilder builder, Type elementType, string fieldName, string csvVariable)
         {
-            builder.AppendLine($"var parts = {csvVariable}.Split(new[] {{ {CodeGenConstants.CsvSeparatorsCode} }}, {CodeGenConstants.StringSplitOptionsFullName}.RemoveEmptyEntries);");
+            builder.AppendVarDeclaration("parts", $"{csvVariable}.Split(new[] {{ {CodeGenConstants.CsvSeparatorsCode} }}, {CodeGenConstants.StringSplitOptionsFullName}.RemoveEmptyEntries)");
             builder.BeginForeachLoop("var", "part", "parts");
-            builder.AppendLine("var trimmed = part.Trim();");
+            builder.AppendVarDeclaration("trimmed", "part.Trim()");
             builder.BeginIfBlock("string.IsNullOrEmpty(trimmed)");
             builder.AppendLine("continue;");
             builder.EndBlock();
@@ -173,7 +173,7 @@ namespace XM.ConfigNew.CodeGen.Builders
             }
             else if (elementType == typeof(string))
             {
-                builder.AppendLine($"var {targetVar} = {sourceVar};");
+                builder.AppendVarDeclaration(targetVar, sourceVar);
                 builder.BeginIfBlock($"!string.IsNullOrEmpty({targetVar})");
                 return true;
             }
@@ -207,11 +207,11 @@ namespace XM.ConfigNew.CodeGen.Builders
             var valueType = field.TypeInfo.NestedValueType;
             var dictTypeName = field.ManagedFieldTypeName;
             
-            builder.AppendLine($"var dict = new {dictTypeName}();");
+            builder.AppendNewVarDeclaration("dict", dictTypeName);
             builder.AppendLine();
             
             builder.AppendComment("解析 Dictionary Item 节点");
-            builder.AppendLine($"var dictNodes = configItem.SelectNodes(\"{xmlName}/Item\");");
+            builder.AppendVarDeclaration("dictNodes", $"configItem.SelectNodes(\"{xmlName}/Item\")");
             builder.BeginIfBlock("dictNodes != null");
             builder.BeginForeachLoop(CodeGenConstants.XmlNodeFullName, "node", "dictNodes");
             
@@ -220,8 +220,8 @@ namespace XM.ConfigNew.CodeGen.Builders
             builder.AppendLine();
             
             // 获取 Key 和 Value
-            builder.AppendLine("var keyText = element.GetAttribute(\"Key\");");
-            builder.AppendLine("var valueText = element.InnerText?.Trim();");
+            builder.AppendVarDeclaration("keyText", "element.GetAttribute(\"Key\")");
+            builder.AppendVarDeclaration("valueText", "element.InnerText?.Trim()");
             builder.AppendLine();
             
             // 解析 Key
@@ -257,12 +257,12 @@ namespace XM.ConfigNew.CodeGen.Builders
             var elementType = field.TypeInfo.NestedValueType;
             var setTypeName = field.ManagedFieldTypeName;
             
-            builder.AppendLine($"var set = new {setTypeName}();");
+            builder.AppendNewVarDeclaration("set", setTypeName);
             builder.AppendLine();
             
             // 从 XML 节点解析
             builder.AppendComment("从 XML 节点解析");
-            builder.AppendLine($"var nodes = configItem.SelectNodes(\"{xmlName}\");");
+            builder.AppendVarDeclaration("nodes", $"configItem.SelectNodes(\"{xmlName}\")");
             builder.BeginIfBlock("nodes != null");
             builder.BeginForeachLoop(CodeGenConstants.XmlNodeFullName, "node", "nodes");
             
@@ -270,7 +270,7 @@ namespace XM.ConfigNew.CodeGen.Builders
             builder.AppendNullContinue("element");
             builder.AppendLine();
             
-            builder.AppendLine("var text = element.InnerText?.Trim();");
+            builder.AppendVarDeclaration("text", "element.InnerText?.Trim()");
             builder.BeginIfBlock("string.IsNullOrEmpty(text)");
             builder.AppendLine("continue;");
             builder.EndBlock();
@@ -291,7 +291,7 @@ namespace XM.ConfigNew.CodeGen.Builders
             {
                 builder.AppendComment("CSV 格式备用");
                 builder.BeginIfBlock("set.Count == 0");
-                builder.AppendLine($"var csvValue = {CodeGenConstants.ConfigParseHelperFullName}.GetXmlFieldValue(configItem, \"{xmlName}\");");
+                builder.AppendVarDeclaration("csvValue", $"{CodeGenConstants.ConfigParseHelperFullName}.GetXmlFieldValue(configItem, \"{xmlName}\")");
                 builder.BeginIfBlock("!string.IsNullOrEmpty(csvValue)");
                 
                 builder.AppendLine($"var parts = csvValue.Split(new[] {{ {CodeGenConstants.CsvSeparatorsCode} }}, {CodeGenConstants.StringSplitOptionsFullName}.RemoveEmptyEntries);");

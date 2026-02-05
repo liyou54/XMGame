@@ -28,7 +28,7 @@ public class NestedConfig : IXConfig<NestedConfig, NestedConfigUnManaged>
     public int2 TestCustom;
 
     public int2 TestGlobalConvert;
-    public List<CfgS<TestConfigUnManaged>> TestKeyList;
+    public List<CfgS<TestConfig>> TestKeyList;
 
     [XmlStringMode(EXmlStrMode.ELabelI)]
     public string StrIndex;
@@ -50,33 +50,33 @@ public partial struct NestedConfigUnManaged : IConfigUnManaged<NestedConfigUnMan
 
 
 [XmlDefined()]
-public class TestConfig : IXConfig<TestConfig, TestConfigUnManaged>
+public class TestConfig : IXConfig<TestConfig, TestConfigUnmanaged>
 {
     public CfgI Data { get; set; }
 
-    public CfgS<TestConfigUnManaged> Id;
+    public CfgS<TestConfig> Id;
     public int TestInt;
     public List<int> TestSample;
     public Dictionary<int, int> TestDictSample;
-    public List<CfgS<TestConfigUnManaged>> TestKeyList;
-    public Dictionary<int, List<List<CfgS<TestConfigUnManaged>>>> TestKeyList1;
-    public Dictionary<CfgS<TestConfigUnManaged>, List<List<CfgS<TestConfigUnManaged>>>> TestKeyList2;
+    public List<CfgS<TestConfig>> TestKeyList;
+    public Dictionary<int, List<List<CfgS<TestConfig>>>> TestKeyList1;
+    public Dictionary<CfgS<TestConfig>, List<List<CfgS<TestConfig>>>> TestKeyList2;
     public HashSet<int> TestKeyHashSet;
-    public Dictionary<CfgS<TestConfigUnManaged>, CfgS<TestConfigUnManaged>> TestKeyDict;
-    public HashSet<CfgS<TestConfigUnManaged>> TestSetKey;
+    public Dictionary<CfgS<TestConfig>, CfgS<TestConfig>> TestKeyDict;
+    public HashSet<CfgS<TestConfig>> TestSetKey;
     public HashSet<int> TestSetSample;
     public NestedConfig TestNested;
     public List<NestedConfig> TestNestedConfig;
-    public CfgS<TestConfigUnManaged> Foreign;
+    public CfgS<TestConfig> Foreign;
     
     public Dictionary<int, Dictionary<int, List<NestedConfig>>> ConfigDict;
     
     [XmlIndex("Index1", false, 0)] public int TestIndex1;
-    [XmlIndex("Index1", false, 1)] public CfgS<TestConfigUnManaged> TestIndex2;
-    [XmlIndex("Index2", true, 0)] public CfgS<TestConfigUnManaged> TestIndex3;
+    [XmlIndex("Index1", false, 1)] public CfgS<TestConfig> TestIndex2;
+    [XmlIndex("Index2", true, 0)] public CfgS<TestConfig> TestIndex3;
 }
 
-public partial struct TestConfigUnManaged : IConfigUnManaged<TestConfigUnManaged>
+public partial struct TestConfigUnmanaged : IConfigUnManaged<TestConfigUnmanaged>
 {
 
 }

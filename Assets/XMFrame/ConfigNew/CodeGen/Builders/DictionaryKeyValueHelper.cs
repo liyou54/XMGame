@@ -4,66 +4,47 @@ namespace XM.ConfigNew.CodeGen.Builders
 {
     /// <summary>
     /// Dictionary Key/Value 处理辅助类
-    /// 封装 Dictionary 中 Key 和 Value 的转换逻辑，消除重复代码块
+    /// 使用统一值转换器处理所有类型转换
     /// </summary>
     public static class DictionaryKeyValueHelper
     {
         /// <summary>
-        /// Key 处理结果
+        /// Key/Value 处理结果（使用统一转换结果）
         /// </summary>
         public class KeyProcessResult
         {
             /// <summary>Key 表达式变量名</summary>
             public string KeyExprVar { get; set; }
             
-            /// <summary>是否需要关闭 if 块（string 类型的 TryGetStrI）</summary>
+            /// <summary>是否需要关闭 if 块</summary>
             public bool NeedsCloseBlock { get; set; }
         }
         
         /// <summary>
-        /// 生成 Dictionary Key 的处理代码
+        /// 生成 Dictionary Key 的处理代码（使用统一值转换器）
         /// </summary>
         /// <param name="builder">代码构建器</param>
-        /// <param name="keyType">Key 的类型</param>
+        /// <param name="keyType">Key 的类型（Managed）</param>
         /// <param name="kvpKeyAccess">kvp.Key 访问表达式</param>
         /// <param name="suffix">变量名后缀（用于区分不同嵌套层级）</param>
         /// <returns>Key 处理结果</returns>
-        public static KeyProcessResult GenerateKeyProcessing(CodeBuilder builder, Type keyType, string kvpKeyAccess, string suffix = "")
+        public static KeyProcessResult GenerateKeyProcessing(
+            CodeBuilder builder, 
+            Type keyType, 
+            string kvpKeyAccess, 
+            string suffix = "")
         {
-            var result = new KeyProcessResult();
+            var resultPrefix = string.IsNullOrEmpty(suffix) ? "key" : $"key{suffix}";
             
-            // 获取实际类型（处理可空）
-            var isNullable = TypeHelper.IsNullableType(keyType);
-            var actualKeyType = isNullable ? Nullable.GetUnderlyingType(keyType) ?? keyType : keyType;
-            var keyAccess = isNullable ? CodeBuilder.BuildGetValueOrDefault(kvpKeyAccess) : kvpKeyAccess;
+            // 使用统一转换器（自动处理所有类型）
+            var conversion = UnifiedValueConverter.GenerateConversion(
+                builder, keyType, kvpKeyAccess, resultPrefix, UnifiedValueConverter.UsageContext.Alloc);
             
-            if (actualKeyType == typeof(string))
+            return new KeyProcessResult
             {
-                // string 类型需要转换为 StrI
-                var keyStrVar = string.IsNullOrEmpty(suffix) ? "keyStrI" : $"keyStr{suffix}";
-                builder.BeginIfBlock($"{CodeGenConstants.TryGetStrIMethod}({kvpKeyAccess}, out var {keyStrVar})");
-                result.KeyExprVar = keyStrVar;
-                result.NeedsCloseBlock = true;
-            }
-            else if (actualKeyType.IsEnum)
-            {
-                // enum 类型需要包装
-                var enumTypeName = TypeHelper.GetGlobalQualifiedTypeName(actualKeyType);
-                var keyVar = string.IsNullOrEmpty(suffix) ? "key" : $"key{suffix}";
-                builder.AppendVarDeclaration(keyVar, CodeBuilder.BuildEnumWrapper(enumTypeName, keyAccess));
-                result.KeyExprVar = keyVar;
-                result.NeedsCloseBlock = false;
-            }
-            else
-            {
-                // 基本类型直接使用
-                var keyVar = string.IsNullOrEmpty(suffix) ? "key" : $"key{suffix}";
-                builder.AppendVarDeclaration(keyVar, keyAccess);
-                result.KeyExprVar = keyVar;
-                result.NeedsCloseBlock = false;
-            }
-            
-            return result;
+                KeyExprVar = conversion.ConvertedValueVar,
+                NeedsCloseBlock = conversion.NeedsCloseBlock
+            };
         }
         
         /// <summary>

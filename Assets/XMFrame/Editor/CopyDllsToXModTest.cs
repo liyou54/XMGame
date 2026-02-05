@@ -21,8 +21,9 @@ namespace XM.Editor
         private static readonly string[] RuntimeDllNames = { "XM.Utils.dll", "XM.Contracts.dll", "XM.ModAPI.dll", "XM.Runtime.dll" };
         /// <summary>运行时依赖（仅 UniTask）；不拷贝 YooAsset，Mod 工程用 Package</summary>
         private static readonly string[] RuntimeDependencyDllNames = { "UniTask.dll" };
-        private static readonly string[] EditorToolDllNames = { "XModToolkit.dll", "UnityToolkit.dll", "XM.Editor.dll" };
-        /// <summary>Editor 依赖；不拷贝 YooAsset.Editor</summary>
+        /// <summary>Editor 工具 DLL（已移除 UnityToolkit.dll 和 XModToolkit.dll，代码生成器已迁移到 ConfigNew）</summary>
+        private static readonly string[] EditorToolDllNames = { "XM.Editor.dll", "XMFrame.ConfigNew.CodeGen.dll", "XMFrame.ConfigNew.Editor.dll" };
+        /// <summary>Editor 依赖；不拷贝 YooAsset.Editor 和 Scriban（已移除）</summary>
         private static readonly string[] EditorDependencyDllNames = Array.Empty<string>();
 
         private static bool CopyForce(string srcPath, string destPath, string logLabel)
@@ -83,11 +84,8 @@ namespace XM.Editor
                 foreach (string dllName in EditorDependencyDllNames)
                     if (CopyForce(Path.Combine(sourceDir, dllName), Path.Combine(destEditor, dllName), $"Editor 依赖 {dllName}")) totalCopied++;
 
-                string scribanInMain = Path.Combine(Application.dataPath, "XMFrame", "Editor", "Plugins", "Scriban.dll");
-                if (CopyForce(scribanInMain, Path.Combine(destEditor, "Scriban.dll"), "Scriban.dll")) totalCopied++;
-
                 AssetDatabase.Refresh();
-                Debug.Log($"[CopyDllsToXModTest] 已拷贝 {totalCopied} 个文件到 XModTest（未拷贝 YooAsset，Mod 工程用 Package）。");
+                Debug.Log($"[CopyDllsToXModTest] 已拷贝 {totalCopied} 个文件到 XModTest。注意：已移除 Scriban、UnityToolkit、XModToolkit（代码生成器已迁移到 ConfigNew）。");
             }
             catch (Exception ex)
             {

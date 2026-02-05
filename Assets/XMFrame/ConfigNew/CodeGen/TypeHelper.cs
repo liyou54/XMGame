@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using XM.ConfigNew.Metadata;
+using XM.Utils.Attribute;
 
 namespace XM.ConfigNew.CodeGen
 {
@@ -295,24 +296,71 @@ namespace XM.ConfigNew.CodeGen
         public static string LinkParentIndexSuffix => "_ParentIndex";
         
         /// <summary>
+        /// 从 CfgS&lt;T&gt; 类型获取其泛型参数的 Unmanaged 类型名
+        /// 用于容器 Key/Value 的类型转换
+        /// </summary>
+        /// <param name="cfgSType">CfgS&lt;T&gt; 类型</param>
+        /// <returns>T 的 Unmanaged 类型名</returns>
+        public static string GetCfgSUnmanagedTypeName(Type cfgSType)
+        {
+            if (!IsCfgSType(cfgSType))
+                return null;
+            
+            var innerType = GetContainerElementType(cfgSType);
+            if (innerType == null)
+                return null;
+            
+            return GetConfigUnmanagedTypeName(innerType);
+        }
+        
+        /// <summary>
+        /// 从配置类型获取其 Unmanaged 类型的全局限定名
+        /// 统一方法：优先从泛型参数获取，确保使用 global:: 前缀
+        /// </summary>
+        /// <param name="configType">配置类型（Managed）</param>
+        /// <returns>Unmanaged 类型的全局限定名</returns>
+        public static string GetConfigUnmanagedTypeName(Type configType)
+        {
+            if (configType == null)
+                return CodeGenConstants.ObjectTypeName;
+            
+            // 尝试从泛型参数获取 Unmanaged 类型（正确方式）
+            var unmanagedType = Tools.TypeAnalyzer.GetUnmanagedTypeFromConfig(configType);
+            if (unmanagedType != null)
+                return GetGlobalQualifiedTypeName(unmanagedType);
+            
+            // 回退到名称拼接（确保全局限定）
+            var configTypeName = GetGlobalQualifiedTypeName(configType);
+            return EnsureUnmanagedSuffix(configTypeName);
+        }
+        
+        /// <summary>
         /// 获取CfgI泛型类型名称
-        /// 使用Unmanaged类型作为泛型参数，带全局限定名
+        /// 优先从 IXConfig&lt;T, TUnmanaged&gt; 泛型参数获取，避免拼接导致的大小写问题
         /// </summary>
         public static string GetCfgITypeName(Type targetManagedType)
         {
             if (targetManagedType == null)
                 return "CfgI";
             
-            // 使用Unmanaged类型的全局限定名
-            var unmanagedTypeName = targetManagedType.Name + CodeGenConstants.UnmanagedSuffix;
+            // 尝试从泛型参数获取 Unmanaged 类型（正确方式）
+            var unmanagedType = Tools.TypeAnalyzer.GetUnmanagedTypeFromConfig(targetManagedType);
+            if (unmanagedType != null)
+            {
+                var unmanagedTypeName = GetGlobalQualifiedTypeName(unmanagedType);
+                return CodeBuilder.BuildCfgITypeName(unmanagedTypeName);
+            }
+            
+            // 回退到名称拼接方式
+            var fallbackUnmanagedTypeName = EnsureUnmanagedSuffix(targetManagedType.Name);
             var unmanagedNamespace = targetManagedType.Namespace;
             
             if (!string.IsNullOrEmpty(unmanagedNamespace))
             {
-                return $"CfgI<global::{unmanagedNamespace}.{unmanagedTypeName}>";
+                return $"CfgI<global::{unmanagedNamespace}.{fallbackUnmanagedTypeName}>";
             }
             
-            return $"CfgI<{unmanagedTypeName}>";
+            return $"CfgI<{fallbackUnmanagedTypeName}>";
         }
         
         #endregion
@@ -376,43 +424,54 @@ namespace XM.ConfigNew.CodeGen
         /// <summary>
         /// 获取非托管类型名称(枚举需要包装)
         /// 用于需要IEquatable约束的容器(XBlobSet, XBlobMap的Key)
+        /// 已统一到 GetUnmanagedElementTypeName，此方法仅作委托
         /// </summary>
         public static string GetUnmanagedTypeNameWithWrapper(Type managedType)
         {
-            if (managedType == null)
-                return "int";
+            // 委托给统一方法
+            return GetUnmanagedElementTypeName(managedType);
+        }
+        
+        #endregion
+        
+        #region Unmanaged 类型名称处理
+        
+        /// <summary>
+        /// 确保类型名称带有 Unmanaged 后缀（智能添加，避免重复）
+        /// 用于兼容两种情况：CfgS&lt;TestConfig&gt; 和 CfgS&lt;TestConfigUnmanaged&gt;
+        /// </summary>
+        /// <param name="typeName">类型名称（可能已带 Unmanaged 后缀）</param>
+        /// <returns>确保带 Unmanaged 后缀的类型名</returns>
+        public static string EnsureUnmanagedSuffix(string typeName)
+        {
+            if (string.IsNullOrEmpty(typeName))
+                return typeName;
             
-            // 可空类型 T? -> T
-            if (IsNullableType(managedType))
-            {
-                var underlyingType = Nullable.GetUnderlyingType(managedType);
-                if (underlyingType != null)
-                {
-                    managedType = underlyingType;
-                }
-            }
+            // 如果已经以 Unmanaged 结尾，直接返回
+            if (typeName.EndsWith(CodeGenConstants.UnmanagedSuffix))
+                return typeName;
             
-            // CfgS<T> -> CfgI<TUnmanaged>
-            if (IsCfgSType(managedType))
-            {
-                var innerType = GetContainerElementType(managedType);
-                if (innerType != null)
-                {
-                    var unmanagedTypeName = GetGlobalQualifiedTypeName(innerType) + CodeGenConstants.UnmanagedSuffix;
-                    return $"CfgI<{unmanagedTypeName}>";
-                }
-            }
+            // 否则添加 Unmanaged 后缀
+            return typeName + CodeGenConstants.UnmanagedSuffix;
+        }
+        
+        /// <summary>
+        /// 从类型获取 Unmanaged 类型名称
+        /// 配置类型优先从泛型参数获取，其他类型使用名称拼接
+        /// </summary>
+        /// <param name="type">类型</param>
+        /// <returns>Unmanaged 类型的全局限定名</returns>
+        public static string GetUnmanagedTypeNameSafe(Type type)
+        {
+            if (type == null)
+                return CodeGenConstants.ObjectTypeName;
             
-            // 枚举类型需要包装，并使用全局限定名
-            if (managedType.IsEnum)
-                return $"global::XM.ConfigNew.CodeGen.EnumWrapper<{GetGlobalQualifiedTypeName(managedType)}>";
+            // 配置类型委托给专用方法（从泛型参数获取）
+            if (IsConfigType(type))
+                return GetConfigUnmanagedTypeName(type);
             
-            // 字符串类型 -> StrI
-            if (managedType == typeof(string))
-                return "StrI";
-            
-            // 其他类型直接返回
-            return GetUnmanagedTypeName(managedType);
+            // 其他类型使用名称拼接
+            return EnsureUnmanagedSuffix(GetGlobalQualifiedTypeName(type));
         }
         
         #endregion
@@ -449,14 +508,21 @@ namespace XM.ConfigNew.CodeGen
                 var innerType = GetContainerElementType(type);
                 if (innerType != null)
                 {
-                    var unmanagedTypeName = GetGlobalQualifiedTypeName(innerType) + CodeGenConstants.UnmanagedSuffix;
+                    // 智能添加 Unmanaged 后缀（兼容 managed 和 unmanaged 类型）
+                    var unmanagedTypeName = GetUnmanagedTypeNameSafe(innerType);
                     return CodeBuilder.BuildCfgITypeName(unmanagedTypeName);
                 }
                 return GetGlobalQualifiedTypeName(type);
             }
             else if (IsConfigType(type))
             {
-                return GetGlobalQualifiedTypeName(type) + CodeGenConstants.UnmanagedSuffix;
+                // 尝试从泛型参数获取（正确方式）
+                var unmanagedType = Tools.TypeAnalyzer.GetUnmanagedTypeFromConfig(type);
+                if (unmanagedType != null)
+                    return GetGlobalQualifiedTypeName(unmanagedType);
+                
+                // 回退到名称推断
+                return GetUnmanagedTypeNameSafe(type);
             }
             else if (IsContainerType(type))
             {
@@ -500,6 +566,177 @@ namespace XM.ConfigNew.CodeGen
             }
             
             return CodeGenConstants.ObjectTypeName;
+        }
+        
+        #endregion
+        
+        #region 字段类型获取（统一入口）
+        
+        /// <summary>
+        /// 获取字段的非托管类型名称（统一方法，所有生成器都应使用此方法）
+        /// </summary>
+        /// <param name="field">字段元数据</param>
+        /// <param name="getStringModeTypeName">字符串模式类型名称获取函数（可选）</param>
+        /// <returns>非托管类型名称</returns>
+        public static string GetUnmanagedFieldTypeName(ConfigFieldMetadata field, Func<EXmlStrMode, string> getStringModeTypeName = null)
+        {
+            var typeInfo = field.TypeInfo;
+            
+            // 如果已经预计算，直接使用
+            if (!string.IsNullOrEmpty(field.UnmanagedFieldTypeName))
+            {
+                return field.UnmanagedFieldTypeName;
+            }
+            
+            // 获取实际类型（处理可空类型）
+            Type targetType = typeInfo.ManagedFieldType;
+            if (typeInfo.IsNullable && typeInfo.UnderlyingType != null)
+            {
+                targetType = typeInfo.UnderlyingType;
+            }
+            
+            // 1. CfgS<T> 类型 -> CfgI<TUnmanaged>（优先级最高）
+            if (IsCfgSType(targetType))
+            {
+                var innerType = GetContainerElementType(targetType);
+                return GetCfgITypeName(innerType);
+            }
+            
+            // 2. 容器类型 -> XBlobArray<T> / XBlobMap<K,V> / XBlobSet<T>
+            if (typeInfo.IsContainer)
+            {
+                return GetXBlobTypeName(typeInfo);
+            }
+            
+            // 3. 嵌套配置 -> 嵌套的Unmanaged类型
+            if (typeInfo.IsNestedConfig)
+            {
+                // 优先使用元数据中的类型名
+                if (typeInfo.NestedConfigMetadata != null)
+                    return typeInfo.NestedConfigMetadata.UnmanagedTypeName;
+                
+                // 尝试从 IXConfig<T, TUnmanaged> 泛型参数获取（正确方式）
+                if (typeInfo.SingleValueType != null)
+                {
+                    var unmanagedType = Tools.TypeAnalyzer.GetUnmanagedTypeFromConfig(typeInfo.SingleValueType);
+                    if (unmanagedType != null)
+                        return GetGlobalQualifiedTypeName(unmanagedType);
+                    
+                    // 如果获取失败，回退到类型名推断
+                    return EnsureUnmanagedSuffix(typeInfo.SingleValueType.Name);
+                }
+                
+                return CodeGenConstants.ObjectTypeName;
+            }
+            
+            // 4. XMLLink 类型 -> CfgI<T>（已由 CfgS 处理，保留兼容）
+            if (field.IsXmlLink && !IsCfgSType(targetType))
+            {
+                return GetCfgITypeName(field.XmlLinkTargetType);
+            }
+            
+            // 5. 枚举类型 -> 使用全局限定名
+            if (targetType.IsEnum)
+            {
+                return GetGlobalQualifiedTypeName(targetType);
+            }
+            
+            // 6. 字符串类型 -> 根据 StringMode
+            if (targetType == typeof(string))
+            {
+                if (getStringModeTypeName != null)
+                    return getStringModeTypeName(field.StringMode);
+                
+                // 默认使用 StrI
+                return CodeGenConstants.StrITypeName;
+            }
+            
+            // 7. 特殊转换类型（LabelS -> LabelI, ModS -> ModI 等）
+            if (targetType.Name == "LabelS")
+            {
+                // LabelS 转换为 LabelI
+                var ns = targetType.Namespace;
+                return !string.IsNullOrEmpty(ns) ? $"global::{ns}.LabelI" : "LabelI";
+            }
+            if (targetType.Name == "ModS")
+            {
+                // ModS 转换为 ModI
+                var ns = targetType.Namespace;
+                return !string.IsNullOrEmpty(ns) ? $"global::{ns}.ModI" : "ModI";
+            }
+            if (targetType.Name == "TblS")
+            {
+                // TblS 转换为 TblI
+                var ns = targetType.Namespace;
+                return !string.IsNullOrEmpty(ns) ? $"global::{ns}.TblI" : "TblI";
+            }
+            
+            // 8. 非托管结构体类型（int2, float2, Labels, LabelI 等）-> 保持原类型
+            if (IsUnmanagedStructType(targetType))
+            {
+                return GetGlobalQualifiedTypeName(targetType);
+            }
+            
+            // 9. 基本类型（int, float, bool 等）
+            return GetUnmanagedTypeName(targetType);
+        }
+        
+        /// <summary>
+        /// 判断是否是非托管结构体类型（可直接在 Unmanaged 结构体中使用）
+        /// 包括：Unity.Mathematics 类型、XM 命名空间的非托管值类型、已生成的 Unmanaged 结构体
+        /// </summary>
+        public static bool IsUnmanagedStructType(Type type)
+        {
+            if (type == null)
+                return false;
+            
+            // 检查是否是值类型且不是基本类型
+            if (!type.IsValueType || type.IsPrimitive || type.IsEnum)
+                return false;
+            
+            var typeName = type.Name;
+            
+            // 检查命名空间
+            var ns = type.Namespace;
+            if (ns != null)
+            {
+                // Unity.Mathematics (int2, float2, quaternion, etc.)
+                if (ns.StartsWith("Unity.Mathematics"))
+                    return true;
+                
+                // Unity.Collections 的非托管类型（FixedString 已在 string 处理）
+                if (ns == "Unity.Collections")
+                {
+                    // 排除托管集合类型
+                    if (!typeName.StartsWith("Native"))
+                        return true;
+                }
+                
+                // XM 命名空间的值类型
+                if (ns.StartsWith("XM"))
+                {
+                    // 排除托管类型：LabelS, ModS, TblS, CfgS（这些需要转换为 I 结尾的）
+                    if (typeName == "LabelS" || typeName == "ModS" || typeName == "TblS")
+                        return false;
+                    
+                    // CfgS 是泛型，已在前面处理
+                    if (typeName.StartsWith("CfgS"))
+                        return false;
+                    
+                    // 其他 XM 类型（LabelI, ModI, TblI, CfgI, Labels 等）可以直接使用
+                    return true;
+                }
+            }
+            
+            // 检查是否实现 IConfigUnManaged 接口（已生成的 Unmanaged 结构体）
+            var interfaces = type.GetInterfaces();
+            foreach (var i in interfaces)
+            {
+                if (i.IsGenericType && i.GetGenericTypeDefinition().Name == "IConfigUnManaged`1")
+                    return true;
+            }
+            
+            return false;
         }
         
         #endregion

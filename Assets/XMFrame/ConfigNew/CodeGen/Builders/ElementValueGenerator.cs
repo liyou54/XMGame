@@ -91,7 +91,7 @@ namespace XM.ConfigNew.CodeGen.Builders
                 case ElementCategory.CfgS:
                     var innerType = TypeHelper.GetContainerElementType(actualType);
                     var unmanagedTypeName = innerType != null 
-                        ? TypeHelper.GetGlobalQualifiedTypeName(innerType) + CodeGenConstants.UnmanagedSuffix 
+                        ? TypeHelper.GetUnmanagedTypeNameSafe(innerType)
                         : CodeGenConstants.ObjectTypeName;
                     builder.BeginIfBlock($"{CodeGenConstants.TryGetCfgIMethod}({elementAccess}, out var cfgI)");
                     builder.AppendBlobIndexAssign(arrayVar, indexVar, $"cfgI.{CodeGenConstants.AsMethod}<{unmanagedTypeName}>()");
@@ -119,9 +119,10 @@ namespace XM.ConfigNew.CodeGen.Builders
         /// </summary>
         private static void GenerateConfigIndexAssignment(CodeBuilder builder, Type configType, string elementAccess, string arrayVar, string indexVar)
         {
+            // 使用统一方法获取类型名（确保全局限定名和正确的 Unmanaged 类型）
             var configTypeName = TypeHelper.GetGlobalQualifiedTypeName(configType);
-            var unmanagedTypeName = configTypeName + CodeGenConstants.UnmanagedSuffix;
             var helperTypeName = configTypeName + CodeGenConstants.ClassHelperSuffix;
+            var unmanagedTypeName = TypeHelper.GetConfigUnmanagedTypeName(configType);
             
             builder.BeginIfBlock(CodeBuilder.BuildNotNullCondition(elementAccess));
             builder.AppendVarDeclaration($"leafHelper_{indexVar}", $"{helperTypeName}.{CodeGenConstants.InstanceProperty}");
@@ -163,7 +164,7 @@ namespace XM.ConfigNew.CodeGen.Builders
                 case ElementCategory.CfgS:
                     var innerType = TypeHelper.GetContainerElementType(actualType);
                     var unmanagedTypeName = innerType != null 
-                        ? TypeHelper.GetGlobalQualifiedTypeName(innerType) + CodeGenConstants.UnmanagedSuffix 
+                        ? TypeHelper.GetUnmanagedTypeNameSafe(innerType)
                         : CodeGenConstants.ObjectTypeName;
                     builder.BeginIfBlock($"{CodeGenConstants.TryGetCfgIMethod}({itemAccess}, out var cfgI)");
                     builder.AppendBlobSetAdd(setVar, $"cfgI.{CodeGenConstants.AsMethod}<{unmanagedTypeName}>()");
@@ -178,29 +179,27 @@ namespace XM.ConfigNew.CodeGen.Builders
         }
         
         /// <summary>
-        /// 生成元素值表达式（用于 Dictionary Value 等直接赋值场景）
+        /// 生成元素值表达式（用于简单赋值场景，不支持需要 Try 的类型）
+        /// 注意：对于 CfgS, string, LabelS 应使用 UnifiedValueConverter.GenerateConversion
         /// </summary>
         /// <param name="elementType">元素类型</param>
         /// <param name="valueAccess">值访问表达式</param>
         /// <returns>转换后的值表达式</returns>
         public static string GenerateValueExpression(Type elementType, string valueAccess)
         {
-            var category = GetCategory(elementType);
-            var isNullable = TypeHelper.IsNullableType(elementType);
-            var actualType = isNullable ? Nullable.GetUnderlyingType(elementType) ?? elementType : elementType;
-            var access = isNullable ? CodeBuilder.BuildGetValueOrDefault(valueAccess) : valueAccess;
+            var nullableInfo = NullableTypeHelper.Analyze(elementType, valueAccess);
+            var actualType = nullableInfo.ActualType;
+            var access = nullableInfo.ValueAccessExpr;
             
-            switch (category)
+            // 枚举类型
+            if (actualType.IsEnum)
             {
-                case ElementCategory.Enum:
-                    var enumTypeName = TypeHelper.GetGlobalQualifiedTypeName(actualType);
-                    return CodeBuilder.BuildEnumWrapper(enumTypeName, access);
-                
-                case ElementCategory.Primitive:
-                case ElementCategory.String:
-                default:
-                    return access;
+                var enumTypeName = TypeHelper.GetGlobalQualifiedTypeName(actualType);
+                return CodeBuilder.BuildEnumWrapper(enumTypeName, access);
             }
+            
+            // 其他类型直接返回
+            return access;
         }
         
         /// <summary>
@@ -214,9 +213,10 @@ namespace XM.ConfigNew.CodeGen.Builders
         /// <param name="suffix">变量名后缀（用于唯一命名）</param>
         public static void GenerateConfigMapAssignment(CodeBuilder builder, Type configType, string sourceAccess, string targetMapVar, string keyExpr, string suffix)
         {
+            // 使用统一方法获取类型名（确保全局限定名和正确的 Unmanaged 类型）
             var configTypeName = TypeHelper.GetGlobalQualifiedTypeName(configType);
-            var unmanagedTypeName = configTypeName + CodeGenConstants.UnmanagedSuffix;
             var helperTypeName = configTypeName + CodeGenConstants.ClassHelperSuffix;
+            var unmanagedTypeName = TypeHelper.GetConfigUnmanagedTypeName(configType);
             
             builder.BeginIfBlock(CodeBuilder.BuildNotNullCondition(sourceAccess));
             builder.AppendVarDeclaration($"cfgHelper{suffix}", $"{helperTypeName}.{CodeGenConstants.InstanceProperty}");

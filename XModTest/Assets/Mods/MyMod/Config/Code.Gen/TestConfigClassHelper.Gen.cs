@@ -1,51 +1,72 @@
 using System;
 using System.Collections.Generic;
 using System.Xml;
+using Unity.Collections;
 using XM;
 using XM.Contracts;
 using XM.Contracts.Config;
 
-
 /// <summary>
 /// TestConfig 的配置加载辅助类，用于从 XML 反序列化（静态代码生成，无反射）。
 /// </summary>
-public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnManaged>
+public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnmanaged>
 {
+    public static TestConfigClassHelper Instance { get; private set; }
     public static TblI TblI { get; private set; }
     public static TblS TblS { get; private set; }
 
+    /// <summary>
+    /// 静态构造函数
+    /// </summary>
     static TestConfigClassHelper()
     {
         const string __tableName = "TestConfig";
         const string __modName = "MyMod";
-        CfgS<TestConfigUnManaged>.Table = new TblS(new ModS(__modName), __tableName);
+        CfgS<TestConfigUnmanaged>.Table = new TblS(new ModS(__modName), __tableName);
         TblS = new TblS(new ModS(__modName), __tableName);
+        Instance = new TestConfigClassHelper();
     }
-
-    public TestConfigClassHelper(IConfigDataCenter dataCenter)
-        : base(dataCenter)
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    public TestConfigClassHelper()
     {
     }
-
+    /// <summary>获取表静态标识</summary>
     public override TblS GetTblS()
     {
         return TblS;
     }
-
+    /// <summary>设置表所属Mod</summary>
     public override void SetTblIDefinedInMod(TblI tbl)
     {
         _definedInMod = tbl;
     }
-
-    public override void ParseAndFillFromXml(IXConfig target, XmlElement configItem, ModS mod, string configName, in ConfigParseContext context)
+    /// <summary>
+    /// 从 XML 解析并填充配置对象
+    /// </summary>
+    /// <param name="target">目标配置对象</param>
+    /// <param name="configItem">XML 元素</param>
+    /// <param name="mod">Mod 标识</param>
+    /// <param name="configName">配置名称</param>
+    /// <param name="context">解析上下文</param>
+    public override void ParseAndFillFromXml(
+        IXConfig target,
+        XmlElement configItem,
+        ModS mod,
+        string configName,
+        in ConfigParseContext context)
     {
         var config = (TestConfig)target;
+
+        // 解析所有字段
         config.Id = ParseId(configItem, mod, configName, context);
         config.TestInt = ParseTestInt(configItem, mod, configName, context);
         config.TestSample = ParseTestSample(configItem, mod, configName, context);
         config.TestDictSample = ParseTestDictSample(configItem, mod, configName, context);
         config.TestKeyList = ParseTestKeyList(configItem, mod, configName, context);
         config.TestKeyList1 = ParseTestKeyList1(configItem, mod, configName, context);
+        config.TestKeyList2 = ParseTestKeyList2(configItem, mod, configName, context);
         config.TestKeyHashSet = ParseTestKeyHashSet(configItem, mod, configName, context);
         config.TestKeyDict = ParseTestKeyDict(configItem, mod, configName, context);
         config.TestSetKey = ParseTestSetKey(configItem, mod, configName, context);
@@ -53,358 +74,722 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
         config.TestNested = ParseTestNested(configItem, mod, configName, context);
         config.TestNestedConfig = ParseTestNestedConfig(configItem, mod, configName, context);
         config.Foreign = ParseForeign(configItem, mod, configName, context);
+        config.ConfigDict = ParseConfigDict(configItem, mod, configName, context);
         config.TestIndex1 = ParseTestIndex1(configItem, mod, configName, context);
         config.TestIndex2 = ParseTestIndex2(configItem, mod, configName, context);
         config.TestIndex3 = ParseTestIndex3(configItem, mod, configName, context);
     }
-
+    /// <summary>获取 Link Helper 类型</summary>
     public override Type GetLinkHelperType()
     {
         return null;
     }
+    #region 字段解析方法 (ParseXXX)
 
-    #region 字段解析 (ParseXXX)
-
-    private static CfgS<TestConfigUnManaged> ParseId(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 Id 字段
+    /// </summary>
+    private static global::XM.Contracts.Config.CfgS<TestConfig> ParseId(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var xmlValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "Id");
+
+        if (string.IsNullOrEmpty(xmlValue))
         {
-            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Id");
-            if (string.IsNullOrEmpty(s)) return default;
-            if (!ConfigParseHelper.TryParseCfgSString(s, "Id", out var modName, out var cfgName))
-                return default;
-            return new CfgS<TestConfigUnManaged>(new ModS(modName), cfgName);
-        }
-        catch (Exception ex)
-        {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "Id", ex);
-            else
-                ConfigParseHelper.LogParseWarning("Id",
-                    ConfigParseHelper.GetXmlFieldValue(configItem, "Id"), ex);
             return default;
         }
+
+        // 未知类型: XM.Contracts.Config.CfgS`1[[TestConfig, MyMod, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]
+        return default;
     }
 
-    private static int ParseTestInt(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 TestInt 字段
+    /// </summary>
+    private static int ParseTestInt(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        var s = ConfigParseHelper.GetXmlFieldValue(configItem, "TestInt");
-        if (string.IsNullOrEmpty(s)) return default;
-        return ConfigParseHelper.TryParseInt(s, "TestInt", out var v) ? v : default;
+        var xmlValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "TestInt");
+
+        if (string.IsNullOrEmpty(xmlValue))
+        {
+            return default;
+        }
+
+        if (global::XM.Contracts.Config.ConfigParseHelper.TryParseInt(xmlValue, "TestInt", out var parsedValue))
+        {
+            return parsedValue;
+        }
+
+        return default;
     }
 
-    private static List<int> ParseTestSample(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 TestSample 字段
+    /// </summary>
+    private static global::System.Collections.Generic.List<int> ParseTestSample(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var list = new global::System.Collections.Generic.List<int>();
+
+        // 尝试从 XML 节点解析
+        var nodes = configItem.SelectNodes("TestSample");
+        if (nodes != null)
         {
-            var list = new List<int>();
-            var nodes = configItem.SelectNodes("TestSample");
-            if (nodes != null)
-            foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigParseHelper.TryParseInt(t, "TestSample", out var vi)) list.Add(vi); }
-            if (list.Count == 0) { var csv = ConfigParseHelper.GetXmlFieldValue(configItem, "TestSample"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigParseHelper.TryParseInt(p.Trim(), "TestSample", out var vi)) list.Add(vi); }
-            return list;
+            foreach (var node in nodes)
+            {
+                var element = node as global::System.Xml.XmlElement;
+                if (element == null)
+                {
+                    continue;
+                }
+
+                var text = element.InnerText?.Trim();
+                if (string.IsNullOrEmpty(text))
+                {
+                    continue;
+                }
+
+                if (global::XM.Contracts.Config.ConfigParseHelper.TryParseInt(text, "TestSample", out var parsedItem))
+                {
+                    list.Add(parsedItem);
+                }
+            }
         }
-        catch (Exception ex)
+
+        // 如果没有节点，尝试 CSV 格式
+        if (list.Count == 0)
         {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestSample", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestSample",
-                    null, ex);
-            return new List<int>();
+            var csvValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "TestSample");
+            if (!string.IsNullOrEmpty(csvValue))
+            {
+                var parts = csvValue.Split(new[] { ',', ';', '|' }, global::System.StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    var trimmed = part.Trim();
+                    if (string.IsNullOrEmpty(trimmed))
+                    {
+                        continue;
+                    }
+
+                    if (global::XM.Contracts.Config.ConfigParseHelper.TryParseInt(trimmed, "TestSample", out var parsedItem))
+                    {
+                        list.Add(parsedItem);
+                    }
+                }
+            }
         }
+
+        return list;
     }
 
-    private static Dictionary<int, int> ParseTestDictSample(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 TestDictSample 字段
+    /// </summary>
+    private static global::System.Collections.Generic.Dictionary<int, int> ParseTestDictSample(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var dict = new global::System.Collections.Generic.Dictionary<int, int>();
+
+        // 解析 Dictionary Item 节点
+        var dictNodes = configItem.SelectNodes("TestDictSample/Item");
+        if (dictNodes != null)
         {
-            var dict = new Dictionary<int, int>();
-            var dictNodes = configItem.SelectNodes("TestDictSample/Item");
-            if (dictNodes != null)
-            foreach (System.Xml.XmlNode n in dictNodes) { var el = n as System.Xml.XmlElement; if (el == null) continue; var k = el.GetAttribute("Key"); var v = el.InnerText?.Trim(); if (!string.IsNullOrEmpty(k) && !string.IsNullOrEmpty(v) && ConfigParseHelper.TryParseInt(k, "TestDictSample.Key", out var kv) && ConfigParseHelper.TryParseInt(v, "TestDictSample.Value", out var vv)) dict[kv] = vv; }
-            return dict;
+            foreach (var node in dictNodes)
+            {
+                var element = node as global::System.Xml.XmlElement;
+                if (element == null)
+                {
+                    continue;
+                }
+
+                var keyText = element.GetAttribute("Key");
+                var valueText = element.InnerText?.Trim();
+
+                if (global::XM.Contracts.Config.ConfigParseHelper.TryParseInt(keyText, "TestDictSample.Key", out var parsedKey))
+                {
+                    if (global::XM.Contracts.Config.ConfigParseHelper.TryParseInt(valueText, "TestDictSample.Value", out var parsedValue))
+                    {
+                        dict[parsedKey] = parsedValue;
+                    }
+                }
+            }
         }
-        catch (Exception ex)
-        {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestDictSample", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestDictSample",
-                    null, ex);
-            return new Dictionary<int, int>();
-        }
+
+        return dict;
     }
 
-    private static List<CfgS<TestConfigUnManaged>> ParseTestKeyList(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 TestKeyList 字段
+    /// </summary>
+    private static global::System.Collections.Generic.List<global::XM.Contracts.Config.CfgS<TestConfig>> ParseTestKeyList(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var list = new global::System.Collections.Generic.List<global::XM.Contracts.Config.CfgS<TestConfig>>();
+
+        // 尝试从 XML 节点解析
+        var nodes = configItem.SelectNodes("TestKeyList");
+        if (nodes != null)
         {
-            var list = new List<CfgS<TestConfigUnManaged>>();
-            var nodes = configItem.SelectNodes("TestKeyList");
-            if (nodes != null)
-            foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigParseHelper.TryParseCfgSString(t, "TestKeyList", out var mn, out var cn)) list.Add(new CfgS<TestConfigUnManaged>(new ModS(mn), cn)); }
-            return list;
+            foreach (var node in nodes)
+            {
+                var element = node as global::System.Xml.XmlElement;
+                if (element == null)
+                {
+                    continue;
+                }
+
+                var text = element.InnerText?.Trim();
+                if (string.IsNullOrEmpty(text))
+                {
+                    continue;
+                }
+
+                // 类型 CfgS<TestConfig> 不支持从文本解析
+                continue;
+            }
         }
-        catch (Exception ex)
+
+        // 如果没有节点，尝试 CSV 格式
+        if (list.Count == 0)
         {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestKeyList", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestKeyList",
-                    null, ex);
-            return new List<CfgS<TestConfigUnManaged>>();
+            var csvValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "TestKeyList");
+            if (!string.IsNullOrEmpty(csvValue))
+            {
+                var parts = csvValue.Split(new[] { ',', ';', '|' }, global::System.StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    var trimmed = part.Trim();
+                    if (string.IsNullOrEmpty(trimmed))
+                    {
+                        continue;
+                    }
+
+                    // 类型 CfgS<TestConfig> 不支持从文本解析
+                    continue;
+                }
+            }
         }
+
+        return list;
     }
 
-    private static Dictionary<int, List<List<CfgS<TestConfigUnManaged>>>> ParseTestKeyList1(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 TestKeyList1 字段
+    /// </summary>
+    private static global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.List<global::System.Collections.Generic.List<global::XM.Contracts.Config.CfgS<TestConfig>>>> ParseTestKeyList1(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var dict = new global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.List<global::System.Collections.Generic.List<global::XM.Contracts.Config.CfgS<TestConfig>>>>();
+
+        // 解析 Dictionary Item 节点
+        var dictNodes = configItem.SelectNodes("TestKeyList1/Item");
+        if (dictNodes != null)
         {
-            var dict = new Dictionary<int, List<List<CfgS<TestConfigUnManaged>>>>();
-            var dictNodes = configItem.SelectNodes("TestKeyList1/Item");
-            if (dictNodes != null)
-            foreach (System.Xml.XmlNode keyNode in dictNodes) { var keyEl = keyNode as System.Xml.XmlElement; if (keyEl == null) continue; var kStr = keyEl.GetAttribute("Key"); if (!string.IsNullOrEmpty(kStr) && ConfigParseHelper.TryParseInt(kStr, "TestKeyList1.Key", out var key)) { var outerList = new List<List<CfgS<TestConfigUnManaged>>>(); var midNodes = keyEl.SelectNodes("Item"); if (midNodes != null) foreach (System.Xml.XmlNode midNode in midNodes) { var midEl = midNode as System.Xml.XmlElement; if (midEl == null) continue; var innerList = new List<CfgS<TestConfigUnManaged>>(); var leafNodes = midEl.SelectNodes("Item"); if (leafNodes != null) foreach (System.Xml.XmlNode leafNode in leafNodes) { var leafText = (leafNode as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(leafText) && ConfigParseHelper.TryParseCfgSString(leafText, "TestKeyList1", out var lm, out var lc)) innerList.Add(new CfgS<TestConfigUnManaged>(new ModS(lm), lc)); } outerList.Add(innerList); } dict[key] = outerList; } }
-            return dict;
+            foreach (var node in dictNodes)
+            {
+                var element = node as global::System.Xml.XmlElement;
+                if (element == null)
+                {
+                    continue;
+                }
+
+                var keyText = element.GetAttribute("Key");
+                var valueText = element.InnerText?.Trim();
+
+                if (global::XM.Contracts.Config.ConfigParseHelper.TryParseInt(keyText, "TestKeyList1.Key", out var parsedKey))
+                {
+                    // 嵌套容器不支持从文本解析: List<List<CfgS<TestConfig>>>
+                    continue;
+                }
+            }
         }
-        catch (Exception ex)
-        {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestKeyList1", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestKeyList1",
-                    null, ex);
-            return new Dictionary<int, List<List<CfgS<TestConfigUnManaged>>>>();
-        }
+
+        return dict;
     }
 
-    private static HashSet<int> ParseTestKeyHashSet(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 TestKeyList2 字段
+    /// </summary>
+    private static global::System.Collections.Generic.Dictionary<global::XM.Contracts.Config.CfgS<TestConfig>, global::System.Collections.Generic.List<global::System.Collections.Generic.List<global::XM.Contracts.Config.CfgS<TestConfig>>>> ParseTestKeyList2(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var dict = new global::System.Collections.Generic.Dictionary<global::XM.Contracts.Config.CfgS<TestConfig>, global::System.Collections.Generic.List<global::System.Collections.Generic.List<global::XM.Contracts.Config.CfgS<TestConfig>>>>();
+
+        // 解析 Dictionary Item 节点
+        var dictNodes = configItem.SelectNodes("TestKeyList2/Item");
+        if (dictNodes != null)
         {
-            var set = new HashSet<int>();
-            var nodes = configItem.SelectNodes("TestKeyHashSet");
-            if (nodes != null)
-            foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigParseHelper.TryParseInt(t, "TestKeyHashSet", out var vi)) set.Add(vi); }
-            if (set.Count == 0) { var csv = ConfigParseHelper.GetXmlFieldValue(configItem, "TestKeyHashSet"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigParseHelper.TryParseInt(p.Trim(), "TestKeyHashSet", out var vi)) set.Add(vi); }
-            return set;
+            foreach (var node in dictNodes)
+            {
+                var element = node as global::System.Xml.XmlElement;
+                if (element == null)
+                {
+                    continue;
+                }
+
+                var keyText = element.GetAttribute("Key");
+                var valueText = element.InnerText?.Trim();
+
+                // 类型 CfgS<TestConfig> 不支持从文本解析
+                continue;
+            }
         }
-        catch (Exception ex)
-        {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestKeyHashSet", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestKeyHashSet",
-                    ConfigParseHelper.GetXmlFieldValue(configItem, "TestKeyHashSet"), ex);
-            return new HashSet<int>();
-        }
+
+        return dict;
     }
 
-    private static Dictionary<CfgS<TestConfigUnManaged>, CfgS<TestConfigUnManaged>> ParseTestKeyDict(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 TestKeyHashSet 字段
+    /// </summary>
+    private static global::System.Collections.Generic.HashSet<int> ParseTestKeyHashSet(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var set = new global::System.Collections.Generic.HashSet<int>();
+
+        // 从 XML 节点解析
+        var nodes = configItem.SelectNodes("TestKeyHashSet");
+        if (nodes != null)
         {
-            var dict = new Dictionary<CfgS<TestConfigUnManaged>, CfgS<TestConfigUnManaged>>();
-            var dictNodes = configItem.SelectNodes("TestKeyDict/Item");
-            if (dictNodes != null)
-            foreach (System.Xml.XmlNode n in dictNodes) { var el = n as System.Xml.XmlElement; if (el == null) continue; var kStr = el.GetAttribute("Key") ?? (el.SelectSingleNode("Key") as System.Xml.XmlElement)?.InnerText?.Trim(); var vStr = el.GetAttribute("Value") ?? (el.SelectSingleNode("Value") as System.Xml.XmlElement)?.InnerText?.Trim() ?? el.InnerText?.Trim(); if (!string.IsNullOrEmpty(kStr) && ConfigParseHelper.TryParseCfgSString(kStr, "TestKeyDict.Key", out var km, out var kc) && !string.IsNullOrEmpty(vStr) && ConfigParseHelper.TryParseCfgSString(vStr, "TestKeyDict.Value", out var vm, out var vc)) dict[new CfgS<TestConfigUnManaged>(new ModS(km), kc)] = new CfgS<TestConfigUnManaged>(new ModS(vm), vc); }
-            return dict;
+            foreach (var node in nodes)
+            {
+                var element = node as global::System.Xml.XmlElement;
+                if (element == null)
+                {
+                    continue;
+                }
+
+                var text = element.InnerText?.Trim();
+                if (string.IsNullOrEmpty(text))
+                {
+                    continue;
+                }
+
+                if (global::XM.Contracts.Config.ConfigParseHelper.TryParseInt(text, "TestKeyHashSet", out var parsedItem))
+                {
+                    set.Add(parsedItem);
+                }
+            }
         }
-        catch (Exception ex)
+
+        // CSV 格式备用
+        if (set.Count == 0)
         {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestKeyDict", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestKeyDict",
-                    null, ex);
-            return new Dictionary<CfgS<TestConfigUnManaged>, CfgS<TestConfigUnManaged>>();
+            var csvValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "TestKeyHashSet");
+            if (!string.IsNullOrEmpty(csvValue))
+            {
+                var parts = csvValue.Split(new[] { ',', ';', '|' }, global::System.StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    var trimmed = part.Trim();
+                    if (global::XM.Contracts.Config.ConfigParseHelper.TryParseInt(trimmed, "TestKeyHashSet", out var parsedItem))
+                    {
+                        set.Add(parsedItem);
+                    }
+                }
+            }
         }
+
+        return set;
     }
 
-    private static HashSet<CfgS<TestConfigUnManaged>> ParseTestSetKey(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 TestKeyDict 字段
+    /// </summary>
+    private static global::System.Collections.Generic.Dictionary<global::XM.Contracts.Config.CfgS<TestConfig>, global::XM.Contracts.Config.CfgS<TestConfig>> ParseTestKeyDict(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var dict = new global::System.Collections.Generic.Dictionary<global::XM.Contracts.Config.CfgS<TestConfig>, global::XM.Contracts.Config.CfgS<TestConfig>>();
+
+        // 解析 Dictionary Item 节点
+        var dictNodes = configItem.SelectNodes("TestKeyDict/Item");
+        if (dictNodes != null)
         {
-            var set = new HashSet<CfgS<TestConfigUnManaged>>();
-            var nodes = configItem.SelectNodes("TestSetKey");
-            if (nodes != null)
-            foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigParseHelper.TryParseCfgSString(t, "TestSetKey", out var mn, out var cn)) set.Add(new CfgS<TestConfigUnManaged>(new ModS(mn), cn)); }
-            return set;
+            foreach (var node in dictNodes)
+            {
+                var element = node as global::System.Xml.XmlElement;
+                if (element == null)
+                {
+                    continue;
+                }
+
+                var keyText = element.GetAttribute("Key");
+                var valueText = element.InnerText?.Trim();
+
+                // 类型 CfgS<TestConfig> 不支持从文本解析
+                continue;
+            }
         }
-        catch (Exception ex)
-        {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestSetKey", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestSetKey",
-                    ConfigParseHelper.GetXmlFieldValue(configItem, "TestSetKey"), ex);
-            return new HashSet<CfgS<TestConfigUnManaged>>();
-        }
+
+        return dict;
     }
 
-    private static HashSet<int> ParseTestSetSample(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 TestSetKey 字段
+    /// </summary>
+    private static global::System.Collections.Generic.HashSet<global::XM.Contracts.Config.CfgS<TestConfig>> ParseTestSetKey(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var set = new global::System.Collections.Generic.HashSet<global::XM.Contracts.Config.CfgS<TestConfig>>();
+
+        // 从 XML 节点解析
+        var nodes = configItem.SelectNodes("TestSetKey");
+        if (nodes != null)
         {
-            var set = new HashSet<int>();
-            var nodes = configItem.SelectNodes("TestSetSample");
-            if (nodes != null)
-            foreach (System.Xml.XmlNode n in nodes) { var t = (n as System.Xml.XmlElement)?.InnerText?.Trim(); if (!string.IsNullOrEmpty(t) && ConfigParseHelper.TryParseInt(t, "TestSetSample", out var vi)) set.Add(vi); }
-            if (set.Count == 0) { var csv = ConfigParseHelper.GetXmlFieldValue(configItem, "TestSetSample"); if (!string.IsNullOrEmpty(csv)) foreach (var p in csv.Split(',', ';')) if (!string.IsNullOrWhiteSpace(p) && ConfigParseHelper.TryParseInt(p.Trim(), "TestSetSample", out var vi)) set.Add(vi); }
-            return set;
+            foreach (var node in nodes)
+            {
+                var element = node as global::System.Xml.XmlElement;
+                if (element == null)
+                {
+                    continue;
+                }
+
+                var text = element.InnerText?.Trim();
+                if (string.IsNullOrEmpty(text))
+                {
+                    continue;
+                }
+
+                // 类型 CfgS<TestConfig> 不支持从文本解析
+                continue;
+            }
         }
-        catch (Exception ex)
+
+        // CSV 格式备用
+        if (set.Count == 0)
         {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestSetSample", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestSetSample",
-                    ConfigParseHelper.GetXmlFieldValue(configItem, "TestSetSample"), ex);
-            return new HashSet<int>();
+            var csvValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "TestSetKey");
+            if (!string.IsNullOrEmpty(csvValue))
+            {
+                var parts = csvValue.Split(new[] { ',', ';', '|' }, global::System.StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    var trimmed = part.Trim();
+                    // 类型 CfgS<TestConfig> 不支持从文本解析
+                    continue;
+                }
+            }
         }
+
+        return set;
     }
 
-    private static NestedConfig ParseTestNested(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 TestSetSample 字段
+    /// </summary>
+    private static global::System.Collections.Generic.HashSet<int> ParseTestSetSample(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var set = new global::System.Collections.Generic.HashSet<int>();
+
+        // 从 XML 节点解析
+        var nodes = configItem.SelectNodes("TestSetSample");
+        if (nodes != null)
         {
-            var el = configItem.SelectSingleNode("TestNested") as System.Xml.XmlElement;
-            if (el == null) return null;
-            var helper = XM.Contracts.IConfigDataCenter.I?.GetClassHelper(typeof(NestedConfig));
-            return helper != null
-                ? (NestedConfig)helper.DeserializeConfigFromXml(el, mod, configName + "_TestNested", context)
-                : null;
+            foreach (var node in nodes)
+            {
+                var element = node as global::System.Xml.XmlElement;
+                if (element == null)
+                {
+                    continue;
+                }
+
+                var text = element.InnerText?.Trim();
+                if (string.IsNullOrEmpty(text))
+                {
+                    continue;
+                }
+
+                if (global::XM.Contracts.Config.ConfigParseHelper.TryParseInt(text, "TestSetSample", out var parsedItem))
+                {
+                    set.Add(parsedItem);
+                }
+            }
         }
-        catch (Exception ex)
+
+        // CSV 格式备用
+        if (set.Count == 0)
         {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestNested", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestNested",
-                    null, ex);
+            var csvValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "TestSetSample");
+            if (!string.IsNullOrEmpty(csvValue))
+            {
+                var parts = csvValue.Split(new[] { ',', ';', '|' }, global::System.StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    var trimmed = part.Trim();
+                    if (global::XM.Contracts.Config.ConfigParseHelper.TryParseInt(trimmed, "TestSetSample", out var parsedItem))
+                    {
+                        set.Add(parsedItem);
+                    }
+                }
+            }
+        }
+
+        return set;
+    }
+
+    /// <summary>
+    /// 解析 TestNested 字段
+    /// </summary>
+    private static NestedConfig ParseTestNested(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
+    {
+        // 解析嵌套配置
+        var element = configItem.SelectSingleNode("TestNested") as global::System.Xml.XmlElement;
+        if (element != null == false)
+        {
             return null;
         }
+
+        var helper = global::XM.Contracts.IConfigDataCenter.I?.GetClassHelper(typeof(NestedConfig));
+        if (helper != null == false)
+        {
+            global::XM.Contracts.Config.ConfigParseHelper.LogParseError(context, "TestNested", "无法获取嵌套配置 Helper");
+            return null;
+        }
+
+        var nestedConfigName = configName + "_TestNested";
+        return (NestedConfig)helper.DeserializeConfigFromXml(element, mod, nestedConfigName, context);
     }
 
-    private static List<NestedConfig> ParseTestNestedConfig(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 TestNestedConfig 字段
+    /// </summary>
+    private static global::System.Collections.Generic.List<NestedConfig> ParseTestNestedConfig(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var list = new global::System.Collections.Generic.List<NestedConfig>();
+
+        // 尝试从 XML 节点解析
+        var nodes = configItem.SelectNodes("TestNestedConfig");
+        if (nodes != null)
         {
-            var list = new List<NestedConfig>();
-            var dc = XM.Contracts.IConfigDataCenter.I; if (dc == null) return list;
-            var nodes = configItem.SelectNodes("TestNestedConfig");
-            if (nodes != null)
-            foreach (System.Xml.XmlNode n in nodes) { var el = n as System.Xml.XmlElement; if (el == null) continue; var helper = dc.GetClassHelper(typeof(NestedConfig)); if (helper != null) { var item = (NestedConfig)helper.DeserializeConfigFromXml(el, mod, configName + "_TestNestedConfig_" + list.Count); if (item != null) list.Add(item); } }
-            return list;
+            foreach (var node in nodes)
+            {
+                var element = node as global::System.Xml.XmlElement;
+                if (element == null)
+                {
+                    continue;
+                }
+
+                var text = element.InnerText?.Trim();
+                if (string.IsNullOrEmpty(text))
+                {
+                    continue;
+                }
+
+                // 类型 NestedConfig 不支持从文本解析
+                continue;
+            }
         }
-        catch (Exception ex)
+
+        // 如果没有节点，尝试 CSV 格式
+        if (list.Count == 0)
         {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestNestedConfig", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestNestedConfig",
-                    null, ex);
-            return new List<NestedConfig>();
+            var csvValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "TestNestedConfig");
+            if (!string.IsNullOrEmpty(csvValue))
+            {
+                var parts = csvValue.Split(new[] { ',', ';', '|' }, global::System.StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    var trimmed = part.Trim();
+                    if (string.IsNullOrEmpty(trimmed))
+                    {
+                        continue;
+                    }
+
+                    // 类型 NestedConfig 不支持从文本解析
+                    continue;
+                }
+            }
         }
+
+        return list;
     }
 
-    private static CfgS<TestConfigUnManaged> ParseForeign(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 Foreign 字段
+    /// </summary>
+    private static global::XM.Contracts.Config.CfgS<TestConfig> ParseForeign(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var xmlValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "Foreign");
+
+        if (string.IsNullOrEmpty(xmlValue))
         {
-            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "Foreign");
-            if (string.IsNullOrEmpty(s)) return default;
-            if (!ConfigParseHelper.TryParseCfgSString(s, "Foreign", out var modName, out var cfgName))
-                return default;
-            return new CfgS<TestConfigUnManaged>(new ModS(modName), cfgName);
-        }
-        catch (Exception ex)
-        {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "Foreign", ex);
-            else
-                ConfigParseHelper.LogParseWarning("Foreign",
-                    ConfigParseHelper.GetXmlFieldValue(configItem, "Foreign"), ex);
             return default;
         }
+
+        // 未知类型: XM.Contracts.Config.CfgS`1[[TestConfig, MyMod, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]
+        return default;
     }
 
-    private static int ParseTestIndex1(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 ConfigDict 字段
+    /// </summary>
+    private static global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.List<NestedConfig>>> ParseConfigDict(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        var s = ConfigParseHelper.GetXmlFieldValue(configItem, "TestIndex1");
-        if (string.IsNullOrEmpty(s)) return default;
-        return ConfigParseHelper.TryParseInt(s, "TestIndex1", out var v) ? v : default;
-    }
+        var dict = new global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.Dictionary<int, global::System.Collections.Generic.List<NestedConfig>>>();
 
-    private static CfgS<TestConfigUnManaged> ParseTestIndex2(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
-    {
-        try
+        // 解析 Dictionary Item 节点
+        var dictNodes = configItem.SelectNodes("ConfigDict/Item");
+        if (dictNodes != null)
         {
-            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "TestIndex2");
-            if (string.IsNullOrEmpty(s)) return default;
-            if (!ConfigParseHelper.TryParseCfgSString(s, "TestIndex2", out var modName, out var cfgName))
-                return default;
-            return new CfgS<TestConfigUnManaged>(new ModS(modName), cfgName);
+            foreach (var node in dictNodes)
+            {
+                var element = node as global::System.Xml.XmlElement;
+                if (element == null)
+                {
+                    continue;
+                }
+
+                var keyText = element.GetAttribute("Key");
+                var valueText = element.InnerText?.Trim();
+
+                if (global::XM.Contracts.Config.ConfigParseHelper.TryParseInt(keyText, "ConfigDict.Key", out var parsedKey))
+                {
+                    // 嵌套容器不支持从文本解析: Dictionary<Int32, List<NestedConfig>>
+                    continue;
+                }
+            }
         }
-        catch (Exception ex)
+
+        return dict;
+    }
+
+    /// <summary>
+    /// 解析 TestIndex1 字段
+    /// </summary>
+    private static int ParseTestIndex1(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
+    {
+        var xmlValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "TestIndex1");
+
+        if (string.IsNullOrEmpty(xmlValue))
         {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestIndex2", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestIndex2",
-                    ConfigParseHelper.GetXmlFieldValue(configItem, "TestIndex2"), ex);
             return default;
         }
+
+        if (global::XM.Contracts.Config.ConfigParseHelper.TryParseInt(xmlValue, "TestIndex1", out var parsedValue))
+        {
+            return parsedValue;
+        }
+
+        return default;
     }
 
-    private static CfgS<TestConfigUnManaged> ParseTestIndex3(XmlElement configItem, ModS mod, string configName,
-        in ConfigParseContext context)
+    /// <summary>
+    /// 解析 TestIndex2 字段
+    /// </summary>
+    private static global::XM.Contracts.Config.CfgS<TestConfig> ParseTestIndex2(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        try
+        var xmlValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "TestIndex2");
+
+        if (string.IsNullOrEmpty(xmlValue))
         {
-            var s = ConfigParseHelper.GetXmlFieldValue(configItem, "TestIndex3");
-            if (string.IsNullOrEmpty(s)) return default;
-            if (!ConfigParseHelper.TryParseCfgSString(s, "TestIndex3", out var modName, out var cfgName))
-                return default;
-            return new CfgS<TestConfigUnManaged>(new ModS(modName), cfgName);
-        }
-        catch (Exception ex)
-        {
-            if (ConfigParseHelper.IsStrictMode(context))
-                ConfigParseHelper.LogParseError(context, "TestIndex3", ex);
-            else
-                ConfigParseHelper.LogParseWarning("TestIndex3",
-                    ConfigParseHelper.GetXmlFieldValue(configItem, "TestIndex3"), ex);
             return default;
         }
+
+        // 未知类型: XM.Contracts.Config.CfgS`1[[TestConfig, MyMod, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]
+        return default;
     }
+
+    /// <summary>
+    /// 解析 TestIndex3 字段
+    /// </summary>
+    private static global::XM.Contracts.Config.CfgS<TestConfig> ParseTestIndex3(
+        global::System.Xml.XmlElement configItem,
+        global::XM.Contracts.Config.ModS mod,
+        string configName,
+        in global::XM.Contracts.Config.ConfigParseContext context)
+    {
+        var xmlValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "TestIndex3");
+
+        if (string.IsNullOrEmpty(xmlValue))
+        {
+            return default;
+        }
+
+        // 未知类型: XM.Contracts.Config.CfgS`1[[TestConfig, MyMod, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]
+        return default;
+    }
+
 
     #endregion
 
+    /// <summary>
+    /// 分配容器并填充非托管数据
+    /// </summary>
+    /// <param name="value">托管配置对象</param>
+    /// <param name="tbli">表ID</param>
+    /// <param name="cfgi">配置ID</param>
+    /// <param name="data">非托管数据结构（ref 传递）</param>
+    /// <param name="configHolderData">配置数据持有者</param>
+    /// <param name="linkParent">Link 父节点指针</param>
     public override void AllocContainerWithFillImpl(
         IXConfig value,
         TblI tbli,
         CfgI cfgi,
-        ref TestConfigUnManaged data,
+        ref TestConfigUnmanaged data,
         XM.ConfigDataCenter.ConfigDataHolder configHolderData,
         XBlobPtr? linkParent = null)
     {
         var config = (TestConfig)value;
+
+        // 分配容器和嵌套配置
         AllocTestSample(config, ref data, cfgi, configHolderData);
         AllocTestDictSample(config, ref data, cfgi, configHolderData);
         AllocTestKeyList(config, ref data, cfgi, configHolderData);
@@ -418,382 +803,376 @@ public sealed class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestCo
         AllocTestNestedConfig(config, ref data, cfgi, configHolderData);
         AllocConfigDict(config, ref data, cfgi, configHolderData);
 
-        // 填充基本类型和引用类型字段
-        if (IConfigDataCenter.I.TryGetCfgI(config.Id.AsNonGeneric(), out var cfgI_Id))
+        // 填充基本类型字段
+        if (TryGetCfgI(config.Id, out var IdCfgI))
         {
-            data.Id = cfgI_Id.As<TestConfigUnManaged>();
+            data.Id = IdCfgI.As<TestConfigUnmanaged>();
         }
         data.TestInt = config.TestInt;
-        if (IConfigDataCenter.I.TryGetCfgI(config.Foreign.AsNonGeneric(), out var cfgI_Foreign))
+        if (TryGetCfgI(config.Foreign, out var ForeignCfgI))
         {
-            data.Foreign = cfgI_Foreign.As<TestConfigUnManaged>();
+            data.Foreign = ForeignCfgI.As<TestConfigUnmanaged>();
         }
         data.TestIndex1 = config.TestIndex1;
-        if (IConfigDataCenter.I.TryGetCfgI(config.TestIndex2.AsNonGeneric(), out var cfgI_TestIndex2))
+        if (TryGetCfgI(config.TestIndex2, out var TestIndex2CfgI))
         {
-            data.TestIndex2 = cfgI_TestIndex2.As<TestConfigUnManaged>();
+            data.TestIndex2 = TestIndex2CfgI.As<TestConfigUnmanaged>();
         }
-        if (IConfigDataCenter.I.TryGetCfgI(config.TestIndex3.AsNonGeneric(), out var cfgI_TestIndex3))
+        if (TryGetCfgI(config.TestIndex3, out var TestIndex3CfgI))
         {
-            data.TestIndex3 = cfgI_TestIndex3.As<TestConfigUnManaged>();
+            data.TestIndex3 = TestIndex3CfgI.As<TestConfigUnmanaged>();
         }
     }
-
-    #region 容器分配辅助方法
-
-    private void AllocTestSample(
+    /// <summary>
+    /// 建立 Link 双向引用（链接阶段调用）
+    /// </summary>
+    /// <param name="config">托管配置对象</param>
+    /// <param name="data">非托管数据结构（ref 传递）</param>
+    /// <param name="configHolderData">配置数据持有者</param>
+    public virtual void EstablishLinks(
         TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
+        ref TestConfigUnmanaged data,
         XM.ConfigDataCenter.ConfigDataHolder configHolderData)
     {
-        if (config.TestSample != null && config.TestSample.Count > 0)
-        {
-            var allocated = configHolderData.Data.BlobContainer.AllocArray<Int32>(config.TestSample.Count);
-            data.TestSample = allocated;
+        // TODO: 实现 Link 双向引用
+        // 父→子: 通过 CfgI 查找子配置，填充 XBlobPtr
+        // 子→父: 通过 CfgI 查找父配置，填充引用
+    }
+    #region 容器分配和嵌套配置填充方法
 
-            // 填充数据
-            for (int i0 = 0; i0 < config.TestSample.Count; i0++)
+    /// <summary>
+    /// 分配 TestSample 容器
+    /// </summary>
+    private void AllocTestSample(TestConfig config, ref TestConfigUnmanaged data, CfgI cfgi, XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.TestSample == null || config.TestSample.Count == 0)
+        {
+            return;
+        }
+
+        var array = configHolderData.Data.BlobContainer.AllocArray<int>(config.TestSample.Count);
+        for (int i = 0; i < config.TestSample.Count; i++)
+        {
+            array[configHolderData.Data.BlobContainer, i] = config.TestSample[i];
+        }
+
+        data.TestSample = array;
+    }
+    /// <summary>
+    /// 分配 TestDictSample 容器
+    /// </summary>
+    private void AllocTestDictSample(TestConfig config, ref TestConfigUnmanaged data, CfgI cfgi, XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.TestDictSample == null || config.TestDictSample.Count == 0)
+        {
+            return;
+        }
+
+        var map = configHolderData.Data.BlobContainer.AllocMap<int, int>(config.TestDictSample.Count);
+        foreach (var kvp in config.TestDictSample)
+        {
+            var keyDirect = kvp.Key;
+            var valueDirect = kvp.Value;
+            map[configHolderData.Data.BlobContainer, keyDirect] = valueDirect;
+        }
+
+        data.TestDictSample = map;
+    }
+    /// <summary>
+    /// 分配 TestKeyList 容器
+    /// </summary>
+    private void AllocTestKeyList(TestConfig config, ref TestConfigUnmanaged data, CfgI cfgi, XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.TestKeyList == null || config.TestKeyList.Count == 0)
+        {
+            return;
+        }
+
+        var array = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnmanaged>>(config.TestKeyList.Count);
+        for (int i = 0; i < config.TestKeyList.Count; i++)
+        {
+            if (TryGetCfgI(config.TestKeyList[i], out var cfgI))
             {
-                allocated[configHolderData.Data.BlobContainer, i0] = config.TestSample[i0];
+                array[configHolderData.Data.BlobContainer, i] = cfgI.As<TestConfigUnmanaged>();
             }
         }
+
+        data.TestKeyList = array;
     }
-
-    private void AllocTestDictSample(
-        TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    /// <summary>
+    /// 分配 TestKeyList1 容器
+    /// </summary>
+    private void AllocTestKeyList1(TestConfig config, ref TestConfigUnmanaged data, CfgI cfgi, XM.ConfigDataCenter.ConfigDataHolder configHolderData)
     {
-        if (config.TestDictSample != null && config.TestDictSample.Count > 0)
+        if (config.TestKeyList1 == null || config.TestKeyList1.Count == 0)
         {
-            var allocated = configHolderData.Data.BlobContainer.AllocMap<Int32, Int32>(config.TestDictSample.Count);
-            data.TestDictSample = allocated;
-
-            // 填充数据
-            foreach (var kvp0 in config.TestDictSample)
-            {
-                allocated[configHolderData.Data.BlobContainer, kvp0.Key] = kvp0.Value;
-            }
+            return;
         }
-    }
 
-    private void AllocTestKeyList(
-        TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        if (config.TestKeyList != null && config.TestKeyList.Count > 0)
+        var map = configHolderData.Data.BlobContainer.AllocMap<int, global::XBlobArray<global::XBlobArray<CfgI<TestConfigUnmanaged>>>>(config.TestKeyList1.Count);
+        foreach (var kvp in config.TestKeyList1)
         {
-            var allocated = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnManaged>>(config.TestKeyList.Count);
-            data.TestKeyList = allocated;
-
-            // 填充数据
-            for (int i0 = 0; i0 < config.TestKeyList.Count; i0++)
+            var keyDirect = kvp.Key;
+            var innerVal0 = kvp.Value;
+            if (innerVal0 != null && innerVal0.Count > 0)
             {
-                if (IConfigDataCenter.I.TryGetCfgI(config.TestKeyList[i0].AsNonGeneric(), out var cfgI0))
+                var tempVal = default(global::XBlobArray<global::XBlobArray<CfgI<TestConfigUnmanaged>>>);
+                var innerArr_1 = configHolderData.Data.BlobContainer.AllocArray<global::XBlobArray<CfgI<TestConfigUnmanaged>>>(innerVal0.Count);
+                for (int n1 = 0; n1 < innerVal0.Count; n1++)
                 {
-                    allocated[configHolderData.Data.BlobContainer, i0] = cfgI0.As<TestConfigUnManaged>();
-                }
-            }
-        }
-    }
-
-    private void AllocTestKeyList1(
-        TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        if (config.TestKeyList1 != null && config.TestKeyList1.Count > 0)
-        {
-            var allocated = configHolderData.Data.BlobContainer.AllocMap<Int32, XBlobArray<XBlobArray<CfgI<TestConfigUnManaged>>>>(config.TestKeyList1.Count);
-            data.TestKeyList1 = allocated;
-
-            // 分配嵌套容器并填充
-            foreach (var kvp0 in config.TestKeyList1)
-            {
-            if (kvp0.Value != null && kvp0.Value.Count > 0)
-            {
-                var nested1 = configHolderData.Data.BlobContainer.AllocArray<XBlobArray<CfgI<TestConfigUnManaged>>>(kvp0.Value.Count);
-
-                // 分配更深层的嵌套容器并填充
-                for (int i1 = 0; i1 < kvp0.Value.Count; i1++)
-                {
-                if (kvp0.Value[i1] != null && kvp0.Value[i1].Count > 0)
-                {
-                    var nested2 = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnManaged>>(kvp0.Value[i1].Count);
-
-                    // 填充数据
-                    for (int i2 = 0; i2 < kvp0.Value[i1].Count; i2++)
+                    var inner1 = innerVal0[n1];
+                    if (inner1 != null && inner1.Count > 0)
                     {
-                        if (IConfigDataCenter.I.TryGetCfgI(kvp0.Value[i1][i2].AsNonGeneric(), out var cfgI2_i2))
+                        var temp_1 = default(global::XBlobArray<CfgI<TestConfigUnmanaged>>);
+                        var innerArr_2 = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnmanaged>>(inner1.Count);
+                        for (int n2 = 0; n2 < inner1.Count; n2++)
                         {
-                            nested2[configHolderData.Data.BlobContainer, i2] = cfgI2_i2.As<TestConfigUnManaged>();
-                        }
-                    }
-                    nested1[configHolderData.Data.BlobContainer, i1] = nested2;
-                }
-                }
-
-                // 将分配的容器赋值到顶层数据
-                data.TestKeyList1[configHolderData.Data.BlobContainer, kvp0.Key] = nested1;
-            }
-            }
-        }
-    }
-
-    private void AllocTestKeyList2(
-        TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        if (config.TestKeyList2 != null && config.TestKeyList2.Count > 0)
-        {
-            var allocated = configHolderData.Data.BlobContainer.AllocMap<CfgI<TestConfigUnManaged>, XBlobArray<XBlobArray<CfgI<TestConfigUnManaged>>>>(config.TestKeyList2.Count);
-            data.TestKeyList2 = allocated;
-
-            // 分配嵌套容器并填充
-            foreach (var kvp0 in config.TestKeyList2)
-            {
-                if (!IConfigDataCenter.I.TryGetCfgI(kvp0.Key.AsNonGeneric(), out var kvp0_cfgI))
-                {
-                    XM.XLog.Error($"[Config] 无法找到配置 {kvp0.Key.ConfigName}, 跳过该项嵌套容器分配");
-                    continue;
-                }
-            if (kvp0.Value != null && kvp0.Value.Count > 0)
-            {
-                var nested1 = configHolderData.Data.BlobContainer.AllocArray<XBlobArray<CfgI<TestConfigUnManaged>>>(kvp0.Value.Count);
-
-                // 分配更深层的嵌套容器并填充
-                for (int i1 = 0; i1 < kvp0.Value.Count; i1++)
-                {
-                if (kvp0.Value[i1] != null && kvp0.Value[i1].Count > 0)
-                {
-                    var nested2 = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnManaged>>(kvp0.Value[i1].Count);
-
-                    // 填充数据
-                    for (int i2 = 0; i2 < kvp0.Value[i1].Count; i2++)
-                    {
-                        if (IConfigDataCenter.I.TryGetCfgI(kvp0.Value[i1][i2].AsNonGeneric(), out var cfgI2_i2))
-                        {
-                            nested2[configHolderData.Data.BlobContainer, i2] = cfgI2_i2.As<TestConfigUnManaged>();
-                        }
-                    }
-                    nested1[configHolderData.Data.BlobContainer, i1] = nested2;
-                }
-                }
-
-                // 将分配的容器赋值到顶层数据
-                data.TestKeyList2[configHolderData.Data.BlobContainer, kvp0_cfgI.As<TestConfigUnManaged>()] = nested1;
-            }
-            }
-        }
-    }
-
-    private void AllocTestKeyHashSet(
-        TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        if (config.TestKeyHashSet != null && config.TestKeyHashSet.Count > 0)
-        {
-            var allocated = configHolderData.Data.BlobContainer.AllocSet<Int32>(config.TestKeyHashSet.Count);
-            data.TestKeyHashSet = allocated;
-
-            // 填充数据
-            foreach (var item in config.TestKeyHashSet)
-            {
-                allocated.Add(configHolderData.Data.BlobContainer, item);
-            }
-        }
-    }
-
-    private void AllocTestKeyDict(
-        TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        if (config.TestKeyDict != null && config.TestKeyDict.Count > 0)
-        {
-            var allocated = configHolderData.Data.BlobContainer.AllocMap<CfgI<TestConfigUnManaged>, CfgI<TestConfigUnManaged>>(config.TestKeyDict.Count);
-            data.TestKeyDict = allocated;
-
-            // 填充数据
-            foreach (var kvp0 in config.TestKeyDict)
-            {
-                if (!IConfigDataCenter.I.TryGetCfgI(kvp0.Key.AsNonGeneric(), out var kvp0_cfgI))
-                {
-                    XM.XLog.Error($"[Config] 无法找到配置 {kvp0.Key.ConfigName}, 跳过该项嵌套容器分配");
-                    continue;
-                }
-                if (IConfigDataCenter.I.TryGetCfgI(kvp0.Value.AsNonGeneric(), out var cfgIVal0))
-                {
-                    allocated[configHolderData.Data.BlobContainer, kvp0_cfgI.As<TestConfigUnManaged>()] = cfgIVal0.As<TestConfigUnManaged>();
-                }
-            }
-        }
-    }
-
-    private void AllocTestSetKey(
-        TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        if (config.TestSetKey != null && config.TestSetKey.Count > 0)
-        {
-            var allocated = configHolderData.Data.BlobContainer.AllocSet<CfgI<TestConfigUnManaged>>(config.TestSetKey.Count);
-            data.TestSetKey = allocated;
-
-            // 填充数据
-            foreach (var item in config.TestSetKey)
-            {
-                if (IConfigDataCenter.I.TryGetCfgI(item.AsNonGeneric(), out var cfgI))
-                {
-                    allocated.Add(configHolderData.Data.BlobContainer, cfgI.As<TestConfigUnManaged>());
-                }
-            }
-        }
-    }
-
-    private void AllocTestSetSample(
-        TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        if (config.TestSetSample != null && config.TestSetSample.Count > 0)
-        {
-            var allocated = configHolderData.Data.BlobContainer.AllocSet<Int32>(config.TestSetSample.Count);
-            data.TestSetSample = allocated;
-
-            // 填充数据
-            foreach (var item in config.TestSetSample)
-            {
-                allocated.Add(configHolderData.Data.BlobContainer, item);
-            }
-        }
-    }
-
-    private void FillTestNested(
-        TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        if (config.TestNested != null)
-        {
-            var nestedHelper = IConfigDataCenter.I.GetClassHelper<NestedConfig>() as NestedConfigClassHelper;
-            if (nestedHelper != null)
-            {
-                // 递归填充嵌套配置，直接在当前 data 的嵌套字段上操作
-                // 使用 ref 传递嵌套字段，确保修改能够生效
-                nestedHelper.AllocContainerWithFillImpl(
-                    config.TestNested,
-                    _definedInMod,
-                    cfgi,
-                    ref data.TestNested,
-                    configHolderData);
-            }
-        }
-    }
-
-    private void AllocTestNestedConfig(
-        TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        if (config.TestNestedConfig != null && config.TestNestedConfig.Count > 0)
-        {
-            var allocated = configHolderData.Data.BlobContainer.AllocArray<NestedConfigUnManaged>(config.TestNestedConfig.Count);
-            data.TestNestedConfig = allocated;
-
-            // 填充嵌套配置数据
-            var nestedHelper0 = IConfigDataCenter.I.GetClassHelper<NestedConfig>() as NestedConfigClassHelper;
-            if (nestedHelper0 != null)
-            {
-                for (int i0 = 0; i0 < config.TestNestedConfig.Count; i0++)
-                {
-                    if (config.TestNestedConfig[i0] != null)
-                    {
-                        var nestedData0 = allocated[configHolderData.Data.BlobContainer, i0];
-                        nestedHelper0.AllocContainerWithFillImpl(
-                            config.TestNestedConfig[i0],
-                            _definedInMod,
-                            cfgi,
-                            ref nestedData0,
-                            configHolderData);
-                        allocated[configHolderData.Data.BlobContainer, i0] = nestedData0;
-                    }
-                }
-            }
-        }
-    }
-
-    private void AllocConfigDict(
-        TestConfig config,
-        ref TestConfigUnManaged data,
-        CfgI cfgi,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        if (config.ConfigDict != null && config.ConfigDict.Count > 0)
-        {
-            var allocated = configHolderData.Data.BlobContainer.AllocMap<Int32, XBlobMap<Int32, XBlobArray<NestedConfigUnManaged>>>(config.ConfigDict.Count);
-            data.ConfigDict = allocated;
-
-            // 分配嵌套容器并填充
-            foreach (var kvp0 in config.ConfigDict)
-            {
-            if (kvp0.Value != null && kvp0.Value.Count > 0)
-            {
-                var nested1 = configHolderData.Data.BlobContainer.AllocMap<Int32, XBlobArray<NestedConfigUnManaged>>(kvp0.Value.Count);
-
-                // 分配更深层的嵌套容器并填充
-                foreach (var kvp1 in kvp0.Value)
-                {
-                if (kvp1.Value != null && kvp1.Value.Count > 0)
-                {
-                    var nested2 = configHolderData.Data.BlobContainer.AllocArray<NestedConfigUnManaged>(kvp1.Value.Count);
-
-                    // 填充嵌套配置数据
-                    var nestedHelper2 = IConfigDataCenter.I.GetClassHelper<NestedConfig>() as NestedConfigClassHelper;
-                    if (nestedHelper2 != null)
-                    {
-                        for (int i2 = 0; i2 < kvp1.Value.Count; i2++)
-                        {
-                            if (kvp1.Value[i2] != null)
+                            if (TryGetCfgI(inner1[n2], out var cfgI))
                             {
-                                var nestedData2 = nested2[configHolderData.Data.BlobContainer, i2];
-                                nestedHelper2.AllocContainerWithFillImpl(
-                                    kvp1.Value[i2],
-                                    _definedInMod,
-                                    cfgi,
-                                    ref nestedData2,
-                                    configHolderData);
-                                nested2[configHolderData.Data.BlobContainer, i2] = nestedData2;
+                                innerArr_2[configHolderData.Data.BlobContainer, n2] = cfgI.As<TestConfigUnmanaged>();
                             }
                         }
+                        temp_1 = innerArr_2;
+                        innerArr_1[configHolderData.Data.BlobContainer, n1] = temp_1;
                     }
-                    nested1[configHolderData.Data.BlobContainer, kvp1.Key] = nested2;
                 }
-                }
-
-                // 将分配的容器赋值到顶层数据
-                data.ConfigDict[configHolderData.Data.BlobContainer, kvp0.Key] = nested1;
-            }
+                tempVal = innerArr_1;
+                map[configHolderData.Data.BlobContainer, keyDirect] = tempVal;
             }
         }
+
+        data.TestKeyList1 = map;
+    }
+    /// <summary>
+    /// 分配 TestKeyList2 容器
+    /// </summary>
+    private void AllocTestKeyList2(TestConfig config, ref TestConfigUnmanaged data, CfgI cfgi, XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.TestKeyList2 == null || config.TestKeyList2.Count == 0)
+        {
+            return;
+        }
+
+        var map = configHolderData.Data.BlobContainer.AllocMap<CfgI<TestConfigUnmanaged>, global::XBlobArray<global::XBlobArray<CfgI<TestConfigUnmanaged>>>>(config.TestKeyList2.Count);
+        foreach (var kvp in config.TestKeyList2)
+        {
+            if (TryGetCfgI(kvp.Key, out var keyCfgI))
+            {
+                var keyConverted = keyCfgI.As<TestConfigUnmanaged>();
+                var innerVal0 = kvp.Value;
+                if (innerVal0 != null && innerVal0.Count > 0)
+                {
+                    var tempVal = default(global::XBlobArray<global::XBlobArray<CfgI<TestConfigUnmanaged>>>);
+                    var innerArr_1 = configHolderData.Data.BlobContainer.AllocArray<global::XBlobArray<CfgI<TestConfigUnmanaged>>>(innerVal0.Count);
+                    for (int n1 = 0; n1 < innerVal0.Count; n1++)
+                    {
+                        var inner1 = innerVal0[n1];
+                        if (inner1 != null && inner1.Count > 0)
+                        {
+                            var temp_1 = default(global::XBlobArray<CfgI<TestConfigUnmanaged>>);
+                            var innerArr_2 = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnmanaged>>(inner1.Count);
+                            for (int n2 = 0; n2 < inner1.Count; n2++)
+                            {
+                                if (TryGetCfgI(inner1[n2], out var cfgI))
+                                {
+                                    innerArr_2[configHolderData.Data.BlobContainer, n2] = cfgI.As<TestConfigUnmanaged>();
+                                }
+                            }
+                            temp_1 = innerArr_2;
+                            innerArr_1[configHolderData.Data.BlobContainer, n1] = temp_1;
+                        }
+                    }
+                    tempVal = innerArr_1;
+                    map[configHolderData.Data.BlobContainer, keyConverted] = tempVal;
+                }
+            }
+        }
+
+        data.TestKeyList2 = map;
+    }
+    /// <summary>
+    /// 分配 TestKeyHashSet 容器
+    /// </summary>
+    private void AllocTestKeyHashSet(TestConfig config, ref TestConfigUnmanaged data, CfgI cfgi, XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.TestKeyHashSet == null || config.TestKeyHashSet.Count == 0)
+        {
+            return;
+        }
+
+        var set = configHolderData.Data.BlobContainer.AllocSet<int>(config.TestKeyHashSet.Count);
+        foreach (var item in config.TestKeyHashSet)
+        {
+            set.Add(configHolderData.Data.BlobContainer, item);
+        }
+
+        data.TestKeyHashSet = set;
+    }
+    /// <summary>
+    /// 分配 TestKeyDict 容器
+    /// </summary>
+    private void AllocTestKeyDict(TestConfig config, ref TestConfigUnmanaged data, CfgI cfgi, XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.TestKeyDict == null || config.TestKeyDict.Count == 0)
+        {
+            return;
+        }
+
+        var map = configHolderData.Data.BlobContainer.AllocMap<CfgI<TestConfigUnmanaged>, CfgI<TestConfigUnmanaged>>(config.TestKeyDict.Count);
+        foreach (var kvp in config.TestKeyDict)
+        {
+            if (TryGetCfgI(kvp.Key, out var keyCfgI))
+            {
+                var keyConverted = keyCfgI.As<TestConfigUnmanaged>();
+                if (TryGetCfgI(kvp.Value, out var valueCfgI))
+                {
+                    var valueConverted = valueCfgI.As<TestConfigUnmanaged>();
+                    map[configHolderData.Data.BlobContainer, keyConverted] = valueConverted;
+                }
+            }
+        }
+
+        data.TestKeyDict = map;
+    }
+    /// <summary>
+    /// 分配 TestSetKey 容器
+    /// </summary>
+    private void AllocTestSetKey(TestConfig config, ref TestConfigUnmanaged data, CfgI cfgi, XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.TestSetKey == null || config.TestSetKey.Count == 0)
+        {
+            return;
+        }
+
+        var set = configHolderData.Data.BlobContainer.AllocSet<CfgI<TestConfigUnmanaged>>(config.TestSetKey.Count);
+        foreach (var item in config.TestSetKey)
+        {
+            if (TryGetCfgI(item, out var cfgI))
+            {
+                set.Add(configHolderData.Data.BlobContainer, cfgI.As<TestConfigUnmanaged>());
+            }
+        }
+
+        data.TestSetKey = set;
+    }
+    /// <summary>
+    /// 分配 TestSetSample 容器
+    /// </summary>
+    private void AllocTestSetSample(TestConfig config, ref TestConfigUnmanaged data, CfgI cfgi, XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.TestSetSample == null || config.TestSetSample.Count == 0)
+        {
+            return;
+        }
+
+        var set = configHolderData.Data.BlobContainer.AllocSet<int>(config.TestSetSample.Count);
+        foreach (var item in config.TestSetSample)
+        {
+            set.Add(configHolderData.Data.BlobContainer, item);
+        }
+
+        data.TestSetSample = set;
+    }
+    /// <summary>
+    /// 填充 TestNested 嵌套配置
+    /// </summary>
+    private void FillTestNested(TestConfig config, ref TestConfigUnmanaged data, CfgI cfgi, XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.TestNested != null == false)
+        {
+            return;
+        }
+
+        var helper = NestedConfigClassHelper.Instance;
+        if (helper != null)
+        {
+            var nestedData = new NestedConfigUnManaged();
+            helper.AllocContainerWithFillImpl(config.TestNested, default(TblI), cfgi, ref nestedData, configHolderData);
+            data.TestNested = nestedData;
+        }
+    }
+    /// <summary>
+    /// 分配 TestNestedConfig 容器
+    /// </summary>
+    private void AllocTestNestedConfig(TestConfig config, ref TestConfigUnmanaged data, CfgI cfgi, XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.TestNestedConfig == null || config.TestNestedConfig.Count == 0)
+        {
+            return;
+        }
+
+        var array = configHolderData.Data.BlobContainer.AllocArray<NestedConfigUnManaged>(config.TestNestedConfig.Count);
+        var helper = NestedConfigClassHelper.Instance;
+        if (helper != null)
+        {
+            for (int i = 0; i < config.TestNestedConfig.Count; i++)
+            {
+                if (config.TestNestedConfig[i] != null)
+                {
+                    var itemData = new NestedConfigUnManaged();
+                    helper.AllocContainerWithFillImpl(config.TestNestedConfig[i], default(TblI), cfgi, ref itemData, configHolderData);
+                    array[configHolderData.Data.BlobContainer, i] = itemData;
+                }
+            }
+        }
+
+        data.TestNestedConfig = array;
+    }
+    /// <summary>
+    /// 分配 ConfigDict 容器
+    /// </summary>
+    private void AllocConfigDict(TestConfig config, ref TestConfigUnmanaged data, CfgI cfgi, XM.ConfigDataCenter.ConfigDataHolder configHolderData)
+    {
+        if (config.ConfigDict == null || config.ConfigDict.Count == 0)
+        {
+            return;
+        }
+
+        var map = configHolderData.Data.BlobContainer.AllocMap<int, global::XBlobMap<int, global::XBlobArray<NestedConfigUnManaged>>>(config.ConfigDict.Count);
+        foreach (var kvp in config.ConfigDict)
+        {
+            var keyDirect = kvp.Key;
+            var innerVal0 = kvp.Value;
+            if (innerVal0 != null && innerVal0.Count > 0)
+            {
+                var tempVal = default(global::XBlobMap<int, global::XBlobArray<NestedConfigUnManaged>>);
+                var innerArr_1 = configHolderData.Data.BlobContainer.AllocMap<int, global::XBlobArray<NestedConfigUnManaged>>(innerVal0.Count);
+                foreach (var kvp_1 in innerVal0)
+                {
+                    var key_1Direct = kvp_1.Key;
+                    var innerVal1 = kvp_1.Value;
+                    if (innerVal1 != null && innerVal1.Count > 0)
+                    {
+                        var tempVal_1 = default(global::XBlobArray<NestedConfigUnManaged>);
+                        var innerArr_2 = configHolderData.Data.BlobContainer.AllocArray<NestedConfigUnManaged>(innerVal1.Count);
+                        for (int n2 = 0; n2 < innerVal1.Count; n2++)
+                        {
+                            if (innerVal1[n2] != null)
+                            {
+                                var leafHelper_n2 = NestedConfigClassHelper.Instance;
+                                if (leafHelper_n2 != null)
+                                {
+                                    var leafItemData_n2 = new NestedConfigUnManaged();
+                                    leafHelper_n2.AllocContainerWithFillImpl(innerVal1[n2], default(TblI), cfgi, ref leafItemData_n2, configHolderData);
+                                    innerArr_2[configHolderData.Data.BlobContainer, n2] = leafItemData_n2;
+                                }
+                            }
+                        }
+                        tempVal_1 = innerArr_2;
+                        innerArr_1[configHolderData.Data.BlobContainer, key_1Direct] = tempVal_1;
+                    }
+                }
+                tempVal = innerArr_1;
+                map[configHolderData.Data.BlobContainer, keyDirect] = tempVal;
+            }
+        }
+
+        data.ConfigDict = map;
     }
 
     #endregion
 
-    private TblI _definedInMod;
-}
 
+    /// <summary>配置定义所属的 Mod</summary>
+    public TblI _definedInMod;
+}

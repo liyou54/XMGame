@@ -84,7 +84,7 @@ namespace XM.ConfigNew.CodeGen.Builders
                 builder.AppendAllocMap(mapVar, keyUnmanagedType, valueUnmanagedType, $"{sourceVar}.{CodeGenConstants.CountProperty}");
                 builder.BeginForeachLoop("var", kvpVar, sourceVar);
                 
-                // 处理 Key
+                // 处理 Key（使用统一转换器）
                 var kvpKeyAccess = $"{kvpVar}.Key";
                 var keyResult = DictionaryKeyValueHelper.GenerateKeyProcessing(builder, keyType, kvpKeyAccess, suffix);
                 var keyExpr = keyResult.KeyExprVar;

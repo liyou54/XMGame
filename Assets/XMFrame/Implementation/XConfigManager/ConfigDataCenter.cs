@@ -120,7 +120,7 @@ namespace XM
                         // 先触发静态构造，保证 CfgS&lt;T&gt;.TableName 等生成代码已赋值
                         RuntimeHelpers.RunClassConstructor(helperType.TypeHandle);
                         // 创建 Helper 实例并写入多键缓存
-                        var instance = (ConfigClassHelper)Activator.CreateInstance(helperType, (IConfigDataCenter)this);
+                        var instance = (ConfigClassHelper)Activator.CreateInstance(helperType);
                         var tbls = instance.GetTblS();
                         _classHelperCache.Set(instance, tbls, helperType, configType, unmanagedType);
                     }

@@ -116,7 +116,7 @@ private void FillPrice(Config config, ref Unmanaged data, CfgI cfgi, ConfigDataH
     if (config.Price == null) return;
     
     var helper = ConfigDataCenter.GetClassHelper(typeof(AttributeConfig));
-    if (helper != null)
+    if (helper != null) 
     {
         var nestedData = new AttributeConfigUnmanaged();
         helper.AllocContainerWithFillImpl(config.Price, default(TblI), cfgi, ref nestedData, holder);

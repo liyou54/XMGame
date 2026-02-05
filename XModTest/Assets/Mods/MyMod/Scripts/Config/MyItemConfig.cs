@@ -14,7 +14,7 @@ namespace MyMod
         public CfgI Data { get; set; }
 
         /// <summary>配置键，格式一般为 ModName::ConfigName</summary>
-        public CfgS<MyItemConfigUnManaged> Id;
+        public CfgS<TestConfig> Id;
 
         /// <summary>显示名称</summary>
         public string Name;

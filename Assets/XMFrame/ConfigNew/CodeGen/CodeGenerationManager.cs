@@ -12,6 +12,45 @@ namespace XM.ConfigNew.CodeGen
     public class CodeGenerationManager
     {
         /// <summary>
+        /// 为程序集列表中的所有配置类型生成代码（用于 Mod 工程批量生成）
+        /// </summary>
+        /// <param name="assemblies">程序集列表</param>
+        /// <param name="outputDirectory">输出目录</param>
+        /// <returns>生成的文件数量</returns>
+        public static int GenerateForAssemblies(List<System.Reflection.Assembly> assemblies, string outputDirectory)
+        {
+            if (assemblies == null || assemblies.Count == 0)
+                return 0;
+            
+            var manager = new CodeGenerationManager();
+            var totalFiles = 0;
+            
+            foreach (var assembly in assemblies)
+            {
+                if (assembly == null)
+                    continue;
+                
+                // 获取程序集中所有实现 IXConfig 的配置类型
+                var configTypes = TypeAnalyzer.FindConfigTypesInAssembly(assembly);
+                
+                foreach (var configType in configTypes)
+                {
+                    try
+                    {
+                        var files = manager.GenerateForType(configType, outputDirectory);
+                        totalFiles += files.Count;
+                    }
+                    catch (Exception ex)
+                    {
+                        UnityEngine.Debug.LogError($"[CodeGenerationManager] 生成 {configType.Name} 失败: {ex.Message}");
+                    }
+                }
+            }
+            
+            return totalFiles;
+        }
+        
+        /// <summary>
         /// 为配置类型生成所有代码文件
         /// </summary>
         /// <param name="configType">配置类型</param>
