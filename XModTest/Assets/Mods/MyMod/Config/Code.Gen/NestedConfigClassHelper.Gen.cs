@@ -14,6 +14,7 @@ public class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, NestedCon
     public static NestedConfigClassHelper Instance { get; private set; }
     public static TblI TblI { get; private set; }
     public static TblS TblS { get; private set; }
+    private static readonly string __modName;
 
     /// <summary>
     /// 静态构造函数
@@ -21,7 +22,7 @@ public class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, NestedCon
     static NestedConfigClassHelper()
     {
         const string __tableName = "NestedConfig";
-        const string __modName = "MyMod";
+        __modName = "MyMod";
         CfgS<NestedConfigUnManaged>.Table = new TblS(new ModS(__modName), __tableName);
         TblS = new TblS(new ModS(__modName), __tableName);
         Instance = new NestedConfigClassHelper();
@@ -71,11 +72,6 @@ public class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, NestedCon
         config.Str64 = ParseStr64(configItem, mod, configName, context);
         config.Str = ParseStr(configItem, mod, configName, context);
         config.LabelS = ParseLabelS(configItem, mod, configName, context);
-    }
-    /// <summary>获取 Link Helper 类型</summary>
-    public override Type GetLinkHelperType()
-    {
-        return null;
     }
     #region 字段解析方法 (ParseXXX)
 
@@ -217,7 +213,7 @@ public class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, NestedCon
                     continue;
                 }
 
-                // 类型 CfgS<TestConfig> 不支持从文本解析
+                // CfgS 类型不支持从文本解析（应该从 id 属性读取）: CfgS<TestConfig>
                 continue;
             }
         }
@@ -237,7 +233,7 @@ public class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, NestedCon
                         continue;
                     }
 
-                    // 类型 CfgS<TestConfig> 不支持从文本解析
+                    // CfgS 类型不支持从文本解析（应该从 id 属性读取）: CfgS<TestConfig>
                     continue;
                 }
             }
@@ -373,7 +369,7 @@ public class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, NestedCon
 
         // 填充基本类型字段
         data.RequiredId = config.RequiredId;
-        data.OptionalWithDefault = new global::Unity.Collections.FixedString32Bytes(config.OptionalWithDefault ?? string.Empty);
+        data.OptionalWithDefault = SafeConvertToFixedString32(config.OptionalWithDefault ?? string.Empty);
         data.Test = config.Test;
         data.TestCustom = config.TestCustom;
         data.TestGlobalConvert = config.TestGlobalConvert;
@@ -381,8 +377,8 @@ public class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, NestedCon
         {
             data.StrIndex = StrIndexLabelI;
         }
-        data.Str32 = new global::Unity.Collections.FixedString32Bytes(config.Str32 ?? string.Empty);
-        data.Str64 = new global::Unity.Collections.FixedString64Bytes(config.Str64 ?? string.Empty);
+        data.Str32 = SafeConvertToFixedString32(config.Str32 ?? string.Empty);
+        data.Str64 = SafeConvertToFixedString64(config.Str64 ?? string.Empty);
         if (TryGetStrI(config.Str, out var StrStrI))
         {
             data.Str = StrStrI;
@@ -391,21 +387,6 @@ public class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, NestedCon
         {
             data.LabelS = LabelSLabelI;
         }
-    }
-    /// <summary>
-    /// 建立 Link 双向引用（链接阶段调用）
-    /// </summary>
-    /// <param name="config">托管配置对象</param>
-    /// <param name="data">非托管数据结构（ref 传递）</param>
-    /// <param name="configHolderData">配置数据持有者</param>
-    public virtual void EstablishLinks(
-        NestedConfig config,
-        ref NestedConfigUnManaged data,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        // TODO: 实现 Link 双向引用
-        // 父→子: 通过 CfgI 查找子配置，填充 XBlobPtr
-        // 子→父: 通过 CfgI 查找父配置，填充引用
     }
     #region 容器分配和嵌套配置填充方法
 
@@ -422,9 +403,10 @@ public class NestedConfigClassHelper : ConfigClassHelper<NestedConfig, NestedCon
         var array = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnmanaged>>(config.TestKeyList.Count);
         for (int i = 0; i < config.TestKeyList.Count; i++)
         {
-            if (TryGetCfgI(config.TestKeyList[i], out var cfgI))
+            if (TryGetCfgI(config.TestKeyList[i], out var elemiCfgI))
             {
-                array[configHolderData.Data.BlobContainer, i] = cfgI.As<TestConfigUnmanaged>();
+                var elemiConverted = elemiCfgI.As<TestConfigUnmanaged>();
+                array[configHolderData.Data.BlobContainer, i] = elemiConverted;
             }
         }
 

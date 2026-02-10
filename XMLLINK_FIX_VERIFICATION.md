@@ -30,7 +30,7 @@ dto.Fields.Add(new UnmanagedFieldDto {
 
 **修复前：**
 ```csharp
-sb.AppendLine($"        if (IConfigDataCenter.I.TryGetCfgI({managedVar}.{fieldName}.AsNonGeneric(), out var cfgI_{fieldName}))");
+sb.AppendLine($"        if (IConfigManager.I.TryGetCfgI({managedVar}.{fieldName}.AsNonGeneric(), out var cfgI_{fieldName}))");
 sb.AppendLine($"        {{");
 sb.AppendLine($"            {unmanagedVar}.{fieldName}_Dst = cfgI_{fieldName}.As<{dstType}>();");
 sb.AppendLine($"            {unmanagedVar}.{fieldName} = cfgI_{fieldName}.As<{dstType}>();");  // ❌ 错误
@@ -39,7 +39,7 @@ sb.AppendLine($"        }}");
 
 **修复后：**
 ```csharp
-sb.AppendLine($"        if (IConfigDataCenter.I.TryGetCfgI({managedVar}.{fieldName}.AsNonGeneric(), out var cfgI_{fieldName}))");
+sb.AppendLine($"        if (IConfigManager.I.TryGetCfgI({managedVar}.{fieldName}.AsNonGeneric(), out var cfgI_{fieldName}))");
 sb.AppendLine($"        {{");
 sb.AppendLine($"            {unmanagedVar}.{fieldName}_Dst = cfgI_{fieldName}.As<{dstType}>();");
 sb.AppendLine($"        }}");
@@ -76,7 +76,7 @@ public partial struct TestInhertUnmanaged
 
 **修复前（错误）：**
 ```csharp
-if (IConfigDataCenter.I.TryGetCfgI(config.Link.AsNonGeneric(), out var cfgI_Link))
+if (IConfigManager.I.TryGetCfgI(config.Link.AsNonGeneric(), out var cfgI_Link))
 {
     data.Link_Dst = cfgI_Link.As<TestConfigUnManaged>();
     data.Link = cfgI_Link.As<TestConfigUnManaged>();  // ❌ 错误：指向链接目标
@@ -85,7 +85,7 @@ if (IConfigDataCenter.I.TryGetCfgI(config.Link.AsNonGeneric(), out var cfgI_Link
 
 **修复后（正确）：**
 ```csharp
-if (IConfigDataCenter.I.TryGetCfgI(config.Link.AsNonGeneric(), out var cfgI_Link))
+if (IConfigManager.I.TryGetCfgI(config.Link.AsNonGeneric(), out var cfgI_Link))
 {
     data.Link_Dst = cfgI_Link.As<TestConfigUnManaged>();
 }

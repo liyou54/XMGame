@@ -6,7 +6,8 @@
         "GUID:1c65caa36780d5c4796b606a965a7a4e",
         "GUID:f51ebe6a0ceec4240a699833d6309b23",
         "GUID:e34a5702dd353724aa315fb8011f08c3",
-        "GUID:e0cd26848372d4e5c891c569017e11f1"
+        "GUID:e0cd26848372d4e5c891c569017e11f1",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

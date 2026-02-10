@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 继承解析：基类字段 + 子类附加字段，先调基类解析再填子类 -->
-<Item>
-  <TestInt>999</TestInt>
-  <xxxx>777</xxxx>
-</Item>

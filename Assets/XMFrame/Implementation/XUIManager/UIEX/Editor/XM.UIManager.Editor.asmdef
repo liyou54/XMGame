@@ -1,0 +1,22 @@
+{
+    "name": "XM.UIManager.Editor",
+    "rootNamespace": "XM",
+    "references": [
+        "GUID:2ea90825a47fdb949a437c7c17b6b27c",
+        "UnityEditor",
+        "UnityEngine",
+        "UnityEditor.UI",
+        "Unity.TextMeshPro.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- TestDictSample: Dictionary<int,int>，Item 上 Key 属性，Value 为子节点 InnerText -->
-<Item>
-  <TestDictSample>
-    <Item Key="10">100</Item>
-    <Item Key="20">200</Item>
-    <Item Key="30">300</Item>
-  </TestDictSample>
-</Item>

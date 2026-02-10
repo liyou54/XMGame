@@ -88,7 +88,7 @@ public unsafe struct XBlobContainer : IDisposable
         return new XBlobArray<T>(offset);
     }
 
-    public XBlobMap<TKey, TValue> AllocMap<TKey, TValue>(int capacity) 
+    public readonly XBlobMap<TKey, TValue> AllocMap<TKey, TValue>(int capacity) 
         where TKey : unmanaged, IEquatable<TKey>
         where TValue : unmanaged
     {
@@ -108,7 +108,7 @@ public unsafe struct XBlobContainer : IDisposable
         where TValue : unmanaged
     {
         var map = AllocMap<TKey, TValue>(capacity);
-        return map.Offset;
+        return map.Offset; 
     }
 
     /// <summary>
@@ -143,7 +143,7 @@ public unsafe struct XBlobContainer : IDisposable
         return new XBlobSet<T>(offset);
     }
 
-    internal XBlobMultiMap<TKey, TValue> AllocMultiMap<TKey, TValue>(int capacity) 
+    public XBlobMultiMap<TKey, TValue> AllocMultiMap<TKey, TValue>(int capacity) 
         where TKey : unmanaged, IEquatable<TKey>
         where TValue : unmanaged
     {

@@ -21,7 +21,8 @@ namespace XM
     /// </summary>
     [AutoCreate]
     [ManagerDependency(typeof(IModManager))]
-    public class ConfigDataCenter : ManagerBase<IConfigDataCenter>, IConfigDataCenter
+    [ManagerDependency(typeof(IStringManager))]
+    public class ConfigDataCenter : ManagerBase<IConfigManager>, IConfigManager
     {
         #region 内部类型
 
@@ -83,51 +84,49 @@ namespace XM
 
             foreach (var modConfig in enabledMods)
             {
-                Assembly assembly = modConfig.Assembly;
-
-                // 跳过未加载或无效的程序集
-                if (assembly == null)
-                    continue;
-                // 安全获取程序集内所有类型，避免 ReflectionTypeLoadException 导致整段失败
-                Type[] types;
-                try
+                foreach (var assembly in modConfig.Assemblies)
                 {
-                    types = assembly.GetTypes();
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    types = ex.Types ?? Array.Empty<Type>();
-                }
-
-                // 以 ConfigClassHelper<,> 为基准筛选 Helper 类型
-                var helperBaseDef = typeof(ConfigClassHelper<,>);
-                foreach (var helperType in types)
-                {
-                    // 跳过 null、非类、抽象类
-                    if (helperType == null || !helperType.IsClass || helperType.IsAbstract)
-                        continue;
-                    var baseType = helperType.BaseType;
-                    if (baseType?.IsGenericType != true || baseType.GetGenericTypeDefinition() != helperBaseDef)
-                        continue;
-                    var args = baseType.GetGenericArguments();
-                    if (args.Length != 2)
-                        continue;
-
-                    var configType = args[0];
-                    var unmanagedType = args[1];
+                    // 安全获取程序集内所有类型，避免 ReflectionTypeLoadException 导致整段失败
+                    Type[] types;
                     try
                     {
-                        // 先触发静态构造，保证 CfgS&lt;T&gt;.TableName 等生成代码已赋值
-                        RuntimeHelpers.RunClassConstructor(helperType.TypeHandle);
-                        // 创建 Helper 实例并写入多键缓存
-                        var instance = (ConfigClassHelper)Activator.CreateInstance(helperType);
-                        var tbls = instance.GetTblS();
-                        _classHelperCache.Set(instance, tbls, helperType, configType, unmanagedType);
+                        types = assembly.GetTypes();
                     }
-                    catch (Exception ex)
+                    catch (ReflectionTypeLoadException ex)
                     {
-                        Debug.LogError(
-                            $"注册 ClassHelper 失败: {helperType.Name}, 错误: {ExceptionUtil.GetMessageWithInner(ex)}");
+                        types = ex.Types ?? Array.Empty<Type>();
+                    }
+
+                    // 以 ConfigClassHelper<,> 为基准筛选 Helper 类型
+                    var helperBaseDef = typeof(ConfigClassHelper<,>);
+                    foreach (var helperType in types)
+                    {
+                        // 跳过 null、非类、抽象类
+                        if (helperType == null || !helperType.IsClass || helperType.IsAbstract)
+                            continue;
+                        var baseType = helperType.BaseType;
+                        if (baseType?.IsGenericType != true || baseType.GetGenericTypeDefinition() != helperBaseDef)
+                            continue;
+                        var args = baseType.GetGenericArguments();
+                        if (args.Length != 2)
+                            continue;
+
+                        var configType = args[0];
+                        var unmanagedType = args[1];
+                        try
+                        {
+                            // 先触发静态构造，保证 CfgS&lt;T&gt;.TableName 等生成代码已赋值
+                            RuntimeHelpers.RunClassConstructor(helperType.TypeHandle);
+                            // 创建 Helper 实例并写入多键缓存
+                            var instance = (ConfigClassHelper)Activator.CreateInstance(helperType);
+                            var tbls = instance.GetTblS();
+                            _classHelperCache.Set(instance, tbls, helperType, configType, unmanagedType);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogError(
+                                $"注册 ClassHelper 失败: {helperType.Name}, 错误: {ExceptionUtil.GetFullDiagnostic(ex)}");
+                        }
                     }
                 }
             }
@@ -150,7 +149,7 @@ namespace XM
 
         /// <summary>为每个表分配 Unmanaged 内存并初始化</summary>
         /// <remarks>主要步骤：1. 遍历所有表的待添加配置；2. 获取对应的 ClassHelper；3. 调用 AllocUnManagedAndInitHeadVal 分配内存并初始化。</remarks>
-        private async UniTask FillUnmanagedData(ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> pendingAdds)
+        private void FillUnmanagedData(ConcurrentDictionary<TblS, ConcurrentDictionary<CfgS, IXConfig>> pendingAdds)
         {
             foreach (var tableEntry in pendingAdds)
             {
@@ -208,36 +207,14 @@ namespace XM
         {
             // 从 Mod 程序集扫描并注册所有 ConfigClassHelper
             RegisterModHelper();
-            // 为每个 Helper 注册“谁链接到我”的 SubLinkHelper
-            BuildSubLinkHelpers();
             // 为每个 Helper 分配 TblI 并写入 _typeLookUp
             RegisterDynamicConfigType();
             // 多文件并行解析 XML，结果写入 pending 容器后统一应用
             var paddingAdd = await ReadConfigFromXmlAsync();
             // 为每个表分配 Unmanaged 内存并初始化头部值
-            await FillUnmanagedData(paddingAdd);
+             FillUnmanagedData(paddingAdd);
         }
 
-        /// <summary>
-        /// 构建“谁链接到我”的反向表：对每个 Helper，将 LinkHelperType 指向它的其它 Helper 注册为其 SubLinkHelper。
-        /// </summary>
-        /// <remarks>主要步骤：1. 遍历缓存中每个 Helper 作为 target；2. 遍历其它 Helper，若其 LinkHelperType 指向 target；3. 则注册为 target 的 SubLinkHelper。</remarks>
-        private void BuildSubLinkHelpers()
-        {
-            foreach (var entry in _classHelperCache.Pairs)
-            {
-                var targetHelper = entry.value;
-                var targetType = targetHelper.GetType();
-                // 查找所有“链接到 target”的 Helper 并注册为 SubLinkHelper
-                foreach (var otherEntry in _classHelperCache.Pairs)
-                {
-                    if (otherEntry.value == targetHelper) continue;
-                    var linkType = otherEntry.value.GetLinkHelperType();
-                    if (linkType != null && linkType == targetType)
-                        targetHelper.RegisterSubLinkHelper(otherEntry.value);
-                }
-            }
-        }
 
         #endregion
 
@@ -332,7 +309,7 @@ namespace XM
                     catch (Exception ex)
                     {
                         if (errorBuilder == null) errorBuilder = new System.Text.StringBuilder();
-                        errorBuilder.Append($"[ConfigItem] {xmlFilePath}: {ExceptionUtil.GetMessageWithInner(ex)}; ");
+                        errorBuilder.Append($"[ConfigItem] {xmlFilePath}: {ExceptionUtil.GetFullDiagnostic(ex)}; ");
                     }
                 }
 
@@ -346,7 +323,7 @@ namespace XM
             }
             catch (Exception ex)
             {
-                return $"处理 XML 文件失败: {xmlFilePath} - {ExceptionUtil.GetMessageWithInner(ex)}";
+                return $"处理 XML 文件失败: {xmlFilePath} - {ExceptionUtil.GetFullDiagnostic(ex)}";
             }
         }
 

@@ -11,9 +11,9 @@ namespace MyMod
     [XmlDefined]
     public partial class MyItemConfig : IXConfig<MyItemConfig, MyItemConfigUnManaged>
     {
-        public CfgI Data { get; set; }
 
         /// <summary>配置键，格式一般为 ModName::ConfigName</summary>
+        [XmlKey]
         public CfgS<TestConfig> Id;
 
         /// <summary>显示名称</summary>

@@ -258,6 +258,10 @@ namespace XM
             }
             catch (Exception ex)
             {
+                while (ex.InnerException != null)
+                {
+                    ex = ex.InnerException;
+                }
                 XLog.ErrorFormat("创建管理器失败: {0}, 错误: {1}", managerType.Name, ex.Message);
             }
         }
@@ -364,7 +368,7 @@ namespace XM
             }
             catch (Exception ex)
             {
-                XLog.ErrorFormat("初始化管理器失败: {0}, 错误: {1}", managerType.Name, XM.Utils.ExceptionUtil.GetMessageWithInner(ex));
+                XLog.ErrorFormat("初始化管理器失败: {0}, 错误: {1}", managerType.Name, XM.Utils.ExceptionUtil.GetFullDiagnostic(ex));
             }
         }
     }
@@ -487,7 +491,7 @@ namespace XM
         }
         catch (Exception ex)
         {
-            XLog.ErrorFormat("创建管理器失败: {0}, 错误: {1}", type.Name, XM.Utils.ExceptionUtil.GetMessageWithInner(ex));
+            XLog.ErrorFormat("创建管理器失败: {0}, 错误: {1}", type.Name, XM.Utils.ExceptionUtil.GetFullDiagnostic(ex));
             throw;
         }
     }

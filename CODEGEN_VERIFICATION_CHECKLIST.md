@@ -96,7 +96,7 @@ private void FillTestNested(
 {
     if (config.TestNested != null)
     {
-        var nestedHelper = IConfigDataCenter.I.GetClassHelper<NestedConfig>() as NestedConfigClassHelper;
+        var nestedHelper = IConfigManager.I.GetClassHelper<NestedConfig>() as NestedConfigClassHelper;
         if (nestedHelper != null)
         {
             // ✓ 递归调用，使用 ref 传递嵌套字段
@@ -147,7 +147,7 @@ private void AllocTestNestedConfig(
         data.TestNestedConfig = allocated;
 
         // ✓ 填充嵌套配置数据
-        var nestedHelper0 = IConfigDataCenter.I.GetClassHelper<NestedConfig>() as NestedConfigClassHelper;
+        var nestedHelper0 = IConfigManager.I.GetClassHelper<NestedConfig>() as NestedConfigClassHelper;
         if (nestedHelper0 != null)
         {
             for (int i0 = 0; i0 < config.TestNestedConfig.Count; i0++)

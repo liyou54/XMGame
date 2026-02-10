@@ -14,6 +14,7 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
     public static TestConfigClassHelper Instance { get; private set; }
     public static TblI TblI { get; private set; }
     public static TblS TblS { get; private set; }
+    private static readonly string __modName;
 
     /// <summary>
     /// 静态构造函数
@@ -21,7 +22,7 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
     static TestConfigClassHelper()
     {
         const string __tableName = "TestConfig";
-        const string __modName = "MyMod";
+        __modName = "MyMod";
         CfgS<TestConfigUnmanaged>.Table = new TblS(new ModS(__modName), __tableName);
         TblS = new TblS(new ModS(__modName), __tableName);
         Instance = new TestConfigClassHelper();
@@ -79,11 +80,6 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
         config.TestIndex2 = ParseTestIndex2(configItem, mod, configName, context);
         config.TestIndex3 = ParseTestIndex3(configItem, mod, configName, context);
     }
-    /// <summary>获取 Link Helper 类型</summary>
-    public override Type GetLinkHelperType()
-    {
-        return null;
-    }
     #region 字段解析方法 (ParseXXX)
 
     /// <summary>
@@ -95,15 +91,21 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
         string configName,
         in global::XM.Contracts.Config.ConfigParseContext context)
     {
-        var xmlValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "Id");
-
-        if (string.IsNullOrEmpty(xmlValue))
+        // XmlKey 字段: 从 configName 参数读取
+        // CfgS 类型：从 configName 参数读取并解析
+        if (string.IsNullOrEmpty(configName))
         {
             return default;
         }
 
-        // 未知类型: XM.Contracts.Config.CfgS`1[[TestConfig, MyMod, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]
-        return default;
+        // 尝试解析 CfgS 格式（ModName::ConfigName）
+        if (global::XM.Contracts.Config.ConfigParseHelper.TryParseCfgSString(configName, "Id", out var modName, out var cfgName))
+        {
+            return new global::XM.Contracts.Config.CfgS<TestConfig>(new global::XM.Contracts.Config.ModS(modName), cfgName);
+        }
+
+        // 如果 configName 不包含 :: 分隔符，使用当前 mod.Name 补充
+        return new global::XM.Contracts.Config.CfgS<TestConfig>(mod, configName);
     }
 
     /// <summary>
@@ -260,7 +262,7 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
                     continue;
                 }
 
-                // 类型 CfgS<TestConfig> 不支持从文本解析
+                // CfgS 类型不支持从文本解析（应该从 id 属性读取）: CfgS<TestConfig>
                 continue;
             }
         }
@@ -280,7 +282,7 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
                         continue;
                     }
 
-                    // 类型 CfgS<TestConfig> 不支持从文本解析
+                    // CfgS 类型不支持从文本解析（应该从 id 属性读取）: CfgS<TestConfig>
                     continue;
                 }
             }
@@ -352,7 +354,7 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
                 var keyText = element.GetAttribute("Key");
                 var valueText = element.InnerText?.Trim();
 
-                // 类型 CfgS<TestConfig> 不支持从文本解析
+                // CfgS 类型不支持从文本解析（应该从 id 属性读取）: CfgS<TestConfig>
                 continue;
             }
         }
@@ -443,7 +445,7 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
                 var keyText = element.GetAttribute("Key");
                 var valueText = element.InnerText?.Trim();
 
-                // 类型 CfgS<TestConfig> 不支持从文本解析
+                // CfgS 类型不支持从文本解析（应该从 id 属性读取）: CfgS<TestConfig>
                 continue;
             }
         }
@@ -480,7 +482,7 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
                     continue;
                 }
 
-                // 类型 CfgS<TestConfig> 不支持从文本解析
+                // CfgS 类型不支持从文本解析（应该从 id 属性读取）: CfgS<TestConfig>
                 continue;
             }
         }
@@ -495,7 +497,7 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
                 foreach (var part in parts)
                 {
                     var trimmed = part.Trim();
-                    // 类型 CfgS<TestConfig> 不支持从文本解析
+                    // CfgS 类型不支持从文本解析（应该从 id 属性读取）: CfgS<TestConfig>
                     continue;
                 }
             }
@@ -577,7 +579,7 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
             return null;
         }
 
-        var helper = global::XM.Contracts.IConfigDataCenter.I?.GetClassHelper(typeof(NestedConfig));
+        var helper = global::XM.Contracts.IConfigManager.I?.GetClassHelper(typeof(NestedConfig));
         if (helper != null == false)
         {
             global::XM.Contracts.Config.ConfigParseHelper.LogParseError(context, "TestNested", "无法获取嵌套配置 Helper");
@@ -823,21 +825,6 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
             data.TestIndex3 = TestIndex3CfgI.As<TestConfigUnmanaged>();
         }
     }
-    /// <summary>
-    /// 建立 Link 双向引用（链接阶段调用）
-    /// </summary>
-    /// <param name="config">托管配置对象</param>
-    /// <param name="data">非托管数据结构（ref 传递）</param>
-    /// <param name="configHolderData">配置数据持有者</param>
-    public virtual void EstablishLinks(
-        TestConfig config,
-        ref TestConfigUnmanaged data,
-        XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-    {
-        // TODO: 实现 Link 双向引用
-        // 父→子: 通过 CfgI 查找子配置，填充 XBlobPtr
-        // 子→父: 通过 CfgI 查找父配置，填充引用
-    }
     #region 容器分配和嵌套配置填充方法
 
     /// <summary>
@@ -853,7 +840,8 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
         var array = configHolderData.Data.BlobContainer.AllocArray<int>(config.TestSample.Count);
         for (int i = 0; i < config.TestSample.Count; i++)
         {
-            array[configHolderData.Data.BlobContainer, i] = config.TestSample[i];
+            var elemiDirect = config.TestSample[i];
+            array[configHolderData.Data.BlobContainer, i] = elemiDirect;
         }
 
         data.TestSample = array;
@@ -891,9 +879,10 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
         var array = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnmanaged>>(config.TestKeyList.Count);
         for (int i = 0; i < config.TestKeyList.Count; i++)
         {
-            if (TryGetCfgI(config.TestKeyList[i], out var cfgI))
+            if (TryGetCfgI(config.TestKeyList[i], out var elemiCfgI))
             {
-                array[configHolderData.Data.BlobContainer, i] = cfgI.As<TestConfigUnmanaged>();
+                var elemiConverted = elemiCfgI.As<TestConfigUnmanaged>();
+                array[configHolderData.Data.BlobContainer, i] = elemiConverted;
             }
         }
 
@@ -927,9 +916,10 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
                         var innerArr_2 = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnmanaged>>(inner1.Count);
                         for (int n2 = 0; n2 < inner1.Count; n2++)
                         {
-                            if (TryGetCfgI(inner1[n2], out var cfgI))
+                            if (TryGetCfgI(inner1[n2], out var elemn2CfgI))
                             {
-                                innerArr_2[configHolderData.Data.BlobContainer, n2] = cfgI.As<TestConfigUnmanaged>();
+                                var elemn2Converted = elemn2CfgI.As<TestConfigUnmanaged>();
+                                innerArr_2[configHolderData.Data.BlobContainer, n2] = elemn2Converted;
                             }
                         }
                         temp_1 = innerArr_2;
@@ -973,9 +963,10 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
                             var innerArr_2 = configHolderData.Data.BlobContainer.AllocArray<CfgI<TestConfigUnmanaged>>(inner1.Count);
                             for (int n2 = 0; n2 < inner1.Count; n2++)
                             {
-                                if (TryGetCfgI(inner1[n2], out var cfgI))
+                                if (TryGetCfgI(inner1[n2], out var elemn2CfgI))
                                 {
-                                    innerArr_2[configHolderData.Data.BlobContainer, n2] = cfgI.As<TestConfigUnmanaged>();
+                                    var elemn2Converted = elemn2CfgI.As<TestConfigUnmanaged>();
+                                    innerArr_2[configHolderData.Data.BlobContainer, n2] = elemn2Converted;
                                 }
                             }
                             temp_1 = innerArr_2;
@@ -1003,7 +994,8 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
         var set = configHolderData.Data.BlobContainer.AllocSet<int>(config.TestKeyHashSet.Count);
         foreach (var item in config.TestKeyHashSet)
         {
-            set.Add(configHolderData.Data.BlobContainer, item);
+            var itemDirect = item;
+            set.Add(configHolderData.Data.BlobContainer, itemDirect);
         }
 
         data.TestKeyHashSet = set;
@@ -1047,9 +1039,10 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
         var set = configHolderData.Data.BlobContainer.AllocSet<CfgI<TestConfigUnmanaged>>(config.TestSetKey.Count);
         foreach (var item in config.TestSetKey)
         {
-            if (TryGetCfgI(item, out var cfgI))
+            if (TryGetCfgI(item, out var itemCfgI))
             {
-                set.Add(configHolderData.Data.BlobContainer, cfgI.As<TestConfigUnmanaged>());
+                var itemConverted = itemCfgI.As<TestConfigUnmanaged>();
+                set.Add(configHolderData.Data.BlobContainer, itemConverted);
             }
         }
 
@@ -1068,7 +1061,8 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
         var set = configHolderData.Data.BlobContainer.AllocSet<int>(config.TestSetSample.Count);
         foreach (var item in config.TestSetSample)
         {
-            set.Add(configHolderData.Data.BlobContainer, item);
+            var itemDirect = item;
+            set.Add(configHolderData.Data.BlobContainer, itemDirect);
         }
 
         data.TestSetSample = set;
@@ -1102,16 +1096,16 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
         }
 
         var array = configHolderData.Data.BlobContainer.AllocArray<NestedConfigUnManaged>(config.TestNestedConfig.Count);
-        var helper = NestedConfigClassHelper.Instance;
-        if (helper != null)
+        for (int i = 0; i < config.TestNestedConfig.Count; i++)
         {
-            for (int i = 0; i < config.TestNestedConfig.Count; i++)
+            if (config.TestNestedConfig[i] != null)
             {
-                if (config.TestNestedConfig[i] != null)
+                var helper_i = NestedConfigClassHelper.Instance;
+                if (helper_i != null)
                 {
-                    var itemData = new NestedConfigUnManaged();
-                    helper.AllocContainerWithFillImpl(config.TestNestedConfig[i], default(TblI), cfgi, ref itemData, configHolderData);
-                    array[configHolderData.Data.BlobContainer, i] = itemData;
+                    var itemData_i = new NestedConfigUnManaged();
+                    helper_i.AllocContainerWithFillImpl(config.TestNestedConfig[i], default(TblI), cfgi, ref itemData_i, configHolderData);
+                    array[configHolderData.Data.BlobContainer, i] = itemData_i;
                 }
             }
         }
@@ -1149,12 +1143,12 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
                         {
                             if (innerVal1[n2] != null)
                             {
-                                var leafHelper_n2 = NestedConfigClassHelper.Instance;
-                                if (leafHelper_n2 != null)
+                                var helper_n2 = NestedConfigClassHelper.Instance;
+                                if (helper_n2 != null)
                                 {
-                                    var leafItemData_n2 = new NestedConfigUnManaged();
-                                    leafHelper_n2.AllocContainerWithFillImpl(innerVal1[n2], default(TblI), cfgi, ref leafItemData_n2, configHolderData);
-                                    innerArr_2[configHolderData.Data.BlobContainer, n2] = leafItemData_n2;
+                                    var itemData_n2 = new NestedConfigUnManaged();
+                                    helper_n2.AllocContainerWithFillImpl(innerVal1[n2], default(TblI), cfgi, ref itemData_n2, configHolderData);
+                                    innerArr_2[configHolderData.Data.BlobContainer, n2] = itemData_n2;
                                 }
                             }
                         }
@@ -1168,6 +1162,52 @@ public class TestConfigClassHelper : ConfigClassHelper<TestConfig, TestConfigUnm
         }
 
         data.ConfigDict = map;
+    }
+
+    #endregion
+
+    #region 索引初始化和查询方法
+
+    /// <summary>
+    /// 初始化索引并填充数据
+    /// </summary>
+    /// <param name="configData">配置数据容器</param>
+    /// <param name="tableMap">表的主数据 Map (CfgI -> TUnmanaged)</param>
+    public void InitializeIndexes(
+        ref XM.ConfigData configData,
+        XBlobMap<CfgI, TestConfigUnmanaged> tableMap)
+    {
+        // 获取配置数量
+        int configCount = tableMap.GetLength(configData.BlobContainer);
+
+        // 初始化索引: Index1
+        // 申请 Map 容器，容量为配置数量
+        var indexIndex1Map = configData.AllocIndex<TestConfigUnmanaged.Index1Index, TestConfigUnmanaged>(TestConfigUnmanaged.Index1Index.IndexType, configCount);
+
+        // 初始化索引: Index2
+        // 索引字段 TestIndex3 为 CfgS 类型，自动作为索引
+        // 申请 MultiMap 容器，容量为配置数量
+        var indexIndex2Map = configData.AllocMultiIndex<TestConfigUnmanaged.Index2Index, TestConfigUnmanaged>(TestConfigUnmanaged.Index2Index.IndexType, configCount);
+
+        // 遍历所有配置，填充索引
+        for (int i = 0; i < configCount; i++)
+        {
+            var cfgId = tableMap.GetKey(configData.BlobContainer, i);
+            ref var data = ref tableMap.GetRef(configData.BlobContainer, cfgId, out bool exists);
+            if (!exists) continue;
+
+            // 填充索引: Index1
+            var indexKeyIndex1 = new TestConfigUnmanaged.Index1Index(data.TestIndex1, data.TestIndex2);
+            if (!indexIndex1Map.AddOrUpdate(configData.BlobContainer, indexKeyIndex1, cfgId))
+            {
+                UnityEngine.Debug.LogWarning($"索引 Index1 存在重复键: {indexKeyIndex1}");
+            }
+
+            // 填充索引: Index2
+            var indexKeyIndex2 = new TestConfigUnmanaged.Index2Index(data.TestIndex3);
+            indexIndex2Map.Add(configData.BlobContainer, indexKeyIndex2, cfgId);
+
+        }
     }
 
     #endregion

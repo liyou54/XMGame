@@ -56,7 +56,7 @@ ConfigTestManager 验证配置数据
 GameMain
   ├─ ModManager (IModManager)
   │    ↓
-  ├─ ConfigDataCenter (IConfigDataCenter)
+  ├─ ConfigDataCenter (IConfigManager)
   │    ↓
   └─ ConfigTestManager (IConfigTestManager) [priority: 1000]
 ```
@@ -195,7 +195,7 @@ XLog.CurrentLogLevel = LogLevel.PerformanceTest;
 ```csharp
 TestConfig("basic_001 - 完整验证", () =>
 {
-    var config = IConfigDataCenter.I.GetConfig<MyItemConfig>("MyMod::basic_001");
+    var config = IConfigManager.I.GetConfig<MyItemConfig>("MyMod::basic_001");
     Assert(config.Name == "普通武器", "名称验证");
     Assert(config.Level == 1, "等级验证");
     Assert(config.Tags.Count == 3, "标签数量验证");
@@ -213,7 +213,7 @@ private async UniTask TestPerformance()
     // 批量查询测试
     for (int i = 1; i <= 10; i++)
     {
-        var config = IConfigDataCenter.I.GetConfig<MyItemConfig>($"MyMod::basic_{i:D3}");
+        var config = IConfigManager.I.GetConfig<MyItemConfig>($"MyMod::basic_{i:D3}");
     }
     
     sw.Stop();
@@ -227,11 +227,11 @@ private async UniTask TestPerformance()
 private async UniTask TestReferenceIntegrity()
 {
     // 验证外键引用
-    var config = IConfigDataCenter.I.GetConfig<TestConfig>("MyMod::test_002");
+    var config = IConfigManager.I.GetConfig<TestConfig>("MyMod::test_002");
     Assert(config.Foreign.Valid, "外键引用应有效");
     
     // 验证XMLLink链接
-    var linkConfig = IConfigDataCenter.I.GetConfig<TestInhert>("MyMod::link_001");
+    var linkConfig = IConfigManager.I.GetConfig<TestInhert>("MyMod::link_001");
     Assert(linkConfig.Link.Valid, "XMLLink应有效");
 }
 ```

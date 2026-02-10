@@ -11,6 +11,28 @@ public partial struct TestConfigUnmanaged
     /// </summary>
     public struct Index1Index : IConfigIndexGroup<TestConfigUnmanaged>, IEquatable<Index1Index>
     {
+        private static IndexType? indexType;
+
+        /// <summary>
+        /// 索引类型标识（实现 IConfigIndexGroup 接口要求）
+        /// </summary>
+        public static IndexType IndexType
+        {
+            get
+            {
+                if (indexType == null)
+                {
+                    indexType = new IndexType
+                    {
+                        Tbl = TestConfigClassHelper.TblI,
+                        Index = 0
+                    };
+                }
+
+                return indexType.Value;
+            }
+        }
+
         // 索引字段
         /// <summary>索引字段: TestIndex1</summary>
         public int TestIndex1;
@@ -39,7 +61,7 @@ public partial struct TestConfigUnmanaged
         /// <summary>
         /// 获取哈希码
         /// </summary>
-        public int GetHashCode()
+        public override int GetHashCode()
         {
             unchecked
             {
@@ -59,13 +81,26 @@ public partial struct TestConfigUnmanaged
 public static class TestConfigUnmanaged_Index1IndexExtensions
 {
     /// <summary>
-    /// 获取索引对应的配置数据(唯一索引)
+    /// 获取索引对应的配置引用(唯一索引)
     /// </summary>
     /// <param name="index">索引值</param>
-    /// <param name="returns">配置数据</param>
-    public static TestConfigUnmanaged GetVal(this TestConfigUnmanaged.Index1Index index)
+    /// <param name="data">配置数据容器</param>
+    /// <param name="returns">配置引用 CfgI</param>
+    public static CfgI<TestConfigUnmanaged> GetVal(this TestConfigUnmanaged.Index1Index index, in XM.ConfigData data)
     {
-        // TODO: 实现索引查询逻辑
-        return default(TestConfigUnmanaged);
+        // 从 ConfigData 获取索引容器
+        var indexMap = data.GetIndex<TestConfigUnmanaged.Index1Index, TestConfigUnmanaged>(TestConfigUnmanaged.Index1Index.IndexType);
+        if (!indexMap.Valid)
+        {
+            return default(CfgI<TestConfigUnmanaged>);
+        }
+
+        // 查询索引获取 CfgI 并转换为泛型类型
+        if (!indexMap.TryGetValue(data.BlobContainer, index, out var cfgI))
+        {
+            return default(CfgI<TestConfigUnmanaged>);
+        }
+
+        return cfgI.As<TestConfigUnmanaged>();
     }
 }

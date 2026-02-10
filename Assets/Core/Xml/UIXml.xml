@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UIConfig 测试配置：覆盖 UILayer、UIType、IsFullScreen、AssetPath 等字段 -->
+<Root>
+  <ConfigItem cls="UIConfig" id="ui_main">
+    <Id>Core::ui_main</Id>
+    <UILayer>Normal</UILayer>
+    <UIType>Stack</UIType>
+    <IsFullScreen>true</IsFullScreen>
+    <AssetPath>Core::UI/Prefabs/MainPanel</AssetPath>
+    <type>Core::XM.TestUIConfig</type>
+  </ConfigItem>
+</Root>

@@ -13,6 +13,7 @@ using XM.Contracts.Config;
 
 
 [XmlDefined()]
+[XmlNested]
 public class NestedConfig : IXConfig<NestedConfig, NestedConfigUnManaged>
 {
     /// <summary>必要字段：XML 缺失时打告警，仍使用默认值 0。</summary>
@@ -54,6 +55,7 @@ public class TestConfig : IXConfig<TestConfig, TestConfigUnmanaged>
 {
     public CfgI Data { get; set; }
 
+    [XmlKey]
     public CfgS<TestConfig> Id;
     public int TestInt;
     public List<int> TestSample;

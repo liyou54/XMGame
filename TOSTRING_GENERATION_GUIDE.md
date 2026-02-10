@@ -60,7 +60,7 @@ TestConfigUnManaged {Id=CfgI(1), Id_Ref=Ptr->Id, TestInt=100, TestSample=..., Fo
 
 - XBlobPtr 指针字段需要 XBlobContainer 才能解引用，ToString 只显示关联关系
 - 对于复杂容器类型（如 XBlobArray、XBlobMap），直接使用默认的 ToString 输出
-- CfgI 的详细配置名需要通过 IConfigDataCenter 查询
+- CfgI 的详细配置名需要通过 IConfigManager 查询
 
 ## 相关文件
 

@@ -10,11 +10,59 @@
     "BuildPipeline": "EditorSimulateBuildPipeline",
     "PackageName": "Core",
     "PackageVersion": "Simulate",
-    "PackageNote": "2026/2/6 2:54:46",
+    "PackageNote": "2026/2/9 23:34:26",
     "AssetList": [
         {
             "Address": "",
-            "AssetPath": "Assets/Core/AA/New Material.mat",
+            "AssetPath": "Assets/Core/Asset/UITemplate/Basic/btn_img_.prefab",
+            "AssetGUID": "",
+            "AssetTags": [],
+            "BundleID": 0,
+            "DependBundleIDs": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/Core/Asset/UITemplate/Basic/img_.prefab",
+            "AssetGUID": "",
+            "AssetTags": [],
+            "BundleID": 0,
+            "DependBundleIDs": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/Core/Asset/UITemplate/Basic/New Prefab.prefab",
+            "AssetGUID": "",
+            "AssetTags": [],
+            "BundleID": 0,
+            "DependBundleIDs": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/Core/Asset/UITemplate/Basic/raw_.prefab",
+            "AssetGUID": "",
+            "AssetTags": [],
+            "BundleID": 0,
+            "DependBundleIDs": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/Core/Asset/UITemplate/Basic/sli_.prefab",
+            "AssetGUID": "",
+            "AssetTags": [],
+            "BundleID": 0,
+            "DependBundleIDs": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/Core/Asset/UITemplate/Basic/text_.prefab",
+            "AssetGUID": "",
+            "AssetTags": [],
+            "BundleID": 0,
+            "DependBundleIDs": []
+        },
+        {
+            "Address": "",
+            "AssetPath": "Assets/Core/Asset/UITemplate/Basic/tgl_.prefab",
             "AssetGUID": "",
             "AssetTags": [],
             "BundleID": 0,
@@ -23,11 +71,11 @@
     ],
     "BundleList": [
         {
-            "BundleName": "assets_core_aa.bundle",
+            "BundleName": "assets_core_asset_uitemplate_basic.bundle",
             "UnityCRC": 0,
-            "FileHash": "511eb9289b5ebfd5f1d766fc0f3b90e9",
+            "FileHash": "3332a776205c488c6c50436136f8adea",
             "FileCRC": 0,
-            "FileSize": 3827,
+            "FileSize": 44483,
             "Encrypted": false,
             "Tags": [],
             "DependBundleIDs": []

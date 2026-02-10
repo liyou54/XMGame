@@ -27,10 +27,9 @@ namespace XMod.Editor
         private const string XmlFolderName = "Xml";
         private const string AssetFolderName = "Asset";
         private const string ScriptAssembliesFolder = "Library/ScriptAssemblies";
-        /// <summary>与主项目 XModManager.ModsFolder 一致，运行时从 BaseDirectory/Mods 加载。</summary>
         private const string MainProjectModsFolderName = "Mods";
 
-        private string[] _modNames = new string[0];
+        private string[] _modNames = Array.Empty<string>();
         private int _selectedIndex;
         private Vector2 _scrollPos;
         private string _lastError;
@@ -804,22 +803,41 @@ namespace XMod.Editor
 
         /// <summary>
         /// 获取该 Mod 的 YooAsset 构建输出目录（最新一次构建的版本目录）。路径为 BuildOutputRoot/BuildTarget/PackageName/PackageVersion。
+        /// 注意：必须排除 OutputCache 目录（构建缓存），仅使用 yyyyMMddHHmmss 格式的版本目录（含 manifest）。
+        /// 若有多个可能位置（当前项目 Bundles、XModTest Bundles），从所有位置收集版本目录并取最新的。
         /// </summary>
         private static string GetModBuildOutputDirectory(string packageName)
         {
-            string buildOutputRoot = AssetBundleBuilderHelper.GetDefaultBuildOutputRoot();
             BuildTarget buildTarget = EditorUserBuildSettings.activeBuildTarget;
-            string packageRoot = Path.Combine(buildOutputRoot, buildTarget.ToString(), packageName);
-            if (!Directory.Exists(packageRoot))
+            var candidatePackageRoots = new List<string>();
+
+            // 主构建输出
+            string buildOutputRoot = AssetBundleBuilderHelper.GetDefaultBuildOutputRoot();
+            string mainPackageRoot = Path.Combine(buildOutputRoot, buildTarget.ToString(), packageName);
+            if (Directory.Exists(mainPackageRoot))
+                candidatePackageRoots.Add(mainPackageRoot);
+
+            // 当主项目为 XMGame 时，XModTest 中可能也有构建输出
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            string xmodTestBundles = Path.Combine(projectRoot, "XModTest", "Bundles");
+            string xmodTestPackageRoot = Path.Combine(xmodTestBundles, buildTarget.ToString(), packageName);
+            if (Directory.Exists(xmodTestPackageRoot) && !candidatePackageRoots.Contains(xmodTestPackageRoot))
+                candidatePackageRoots.Add(xmodTestPackageRoot);
+
+            if (candidatePackageRoots.Count == 0)
                 return null;
+
             try
             {
-                var versionDirs = Directory.GetDirectories(packageRoot);
-                if (versionDirs.Length == 0)
+                var allVersionDirs = candidatePackageRoots
+                    .SelectMany(root => Directory.GetDirectories(root))
+                    .Where(d => !string.Equals(Path.GetFileName(d), "OutputCache", StringComparison.OrdinalIgnoreCase))
+                    .Where(d => System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(d), @"^\d{14}$"))
+                    .ToList();
+                if (allVersionDirs.Count == 0)
                     return null;
                 // 版本目录名为 yyyyMMddHHmmss，取名称最大即最新
-                string latest = versionDirs.OrderByDescending(Path.GetFileName).FirstOrDefault();
-                return latest;
+                return allVersionDirs.OrderByDescending(Path.GetFileName).FirstOrDefault();
             }
             catch
             {

@@ -1,38 +1,22 @@
-using System;
-using UnityEngine;
+﻿using System;
 using XM.Contracts;
 using XM.Contracts.Config;
-using XM.Utils;
 using XM.Utils.Attribute;
 
 namespace XM
 {
-    public class UIConfigClass : IXConfig<UIConfigClass, UIConfigUnManaged>
+    public class UIConfig : IXConfig<UIConfig, UIConfigUnManaged>
     {
-        public CfgS<UIConfigClass> Id;
+        [XmlKey] public CfgS<UIConfig> Id;
+        public EUILayer UILayer;
+        public EUIType UIType;
+        public bool IsFullScreen;
         public XAssetPath AssetPath;
-        [XmlIndex("WindowType", false, 0)] public Type ConfigType;
-        public CfgI Data { get; set; }
+        public Type type;
     }
 
-    public struct UIConfigUnManaged : IConfigUnManaged<UIConfigUnManaged>
+    public partial struct UIConfigUnManaged : IConfigUnManaged<UIConfigUnManaged>
     {
-        public struct PrefabAssetIndex : IConfigIndexGroup<UIConfigUnManaged>
-        {
-            public AssetI PrefabAsset;
-
-            public PrefabAssetIndex(AssetI prefabAsset)
-            {
-                PrefabAsset = prefabAsset;
-            }
-        }
-
-        public CfgI<UIConfigUnManaged> Id;
-        public CfgI UIHandle;
-        public AssetI Prefab;
-        public string ToString(object dataContainer)
-        {
-            throw new NotImplementedException();
-        }
+        
     }
 }

@@ -171,7 +171,7 @@ public static string PrintYourConfig()
 
     try
     {
-        var dataCenter = IConfigDataCenter.I;
+        var dataCenter = IConfigManager.I;
         var configData = GetConfigData(dataCenter);
         
         // 1. 获取 ClassHelper

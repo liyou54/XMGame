@@ -75,7 +75,7 @@ AppendCfgI(sb, Id);
 private static void AppendCfgI<T>(global::System.Text.StringBuilder sb, global::CfgI<T> cfgi)
     where T : unmanaged, global::XM.IConfigUnManaged<T>
 {
-    var dataCenter = global::XM.Contracts.IConfigDataCenter.I;
+    var dataCenter = global::XM.Contracts.IConfigManager.I;
     if (dataCenter != null && dataCenter.TryGetCfgS(cfgi.AsNonGeneric(), out var cfgs))
     {
         sb.Append(cfgs.ToString()); // "模块::配置名"
@@ -207,7 +207,7 @@ TestKeyHashSet={1, 2, 3, 4, 5}
 
 ### 2. CfgI 显示为 CfgI(Id) 而不是配置名
 
-**原因**：`IConfigDataCenter.TryGetCfgS` 方法未正确实现或配置未注册。
+**原因**：`IConfigManager.TryGetCfgS` 方法未正确实现或配置未注册。
 
 **解决**：
 - 验证 `ConfigDataCenter.TryGetCfgS` 方法已正确实现

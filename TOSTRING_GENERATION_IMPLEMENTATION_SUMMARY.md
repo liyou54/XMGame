@@ -12,7 +12,7 @@
 ### 1. CfgI 转 CfgS 显示
 
 - **功能**：将 `CfgI<T>` 类型的配置 ID 转换为人类可读的配置名（格式：`模块::配置名`）
-- **实现**：通过 `IConfigDataCenter.TryGetCfgS()` 方法反查配置名
+- **实现**：通过 `IConfigManager.TryGetCfgS()` 方法反查配置名
 - **示例输出**：`Id=MyMod::TestConfig1` 而不是 `Id=CfgI(1)`
 
 ### 2. 容器内容打印
@@ -90,7 +90,7 @@ public bool ValueTypeIsCfgI { get; set; }
 - 添加 8 个新的字段到 ScriptObject
 
 ### 5. 配置数据中心接口
-**文件**: `Assets/XMFrame/Interfaces/ConfigMananger/IConfigDataCenter.cs`
+**文件**: `Assets/XMFrame/Interfaces/ConfigMananger/IConfigManager.cs`
 
 新增方法：
 ```csharp
@@ -147,7 +147,7 @@ if (unmanagedType.StartsWith("XBlobSet<") && unmanagedType.EndsWith(">"))
 
 ```mermaid
 graph LR
-    A[CfgI] --> B[IConfigDataCenter.TryGetCfgS]
+    A[CfgI] --> B[IConfigManager.TryGetCfgS]
     B --> C{查询成功?}
     C -->|是| D[显示 CfgS.ToString]
     C -->|否| E[显示 CfgI.ToString]

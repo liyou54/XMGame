@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- RequiredId 故意缺失，用于测试 [XmlNotNull] 告警；OptionalWithDefault 有值 -->
-<Item>
-  <OptionalWithDefault>explicit_value</OptionalWithDefault>
-  <Test>42</Test>
-</Item>

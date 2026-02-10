@@ -18,6 +18,28 @@ namespace XM.Utils.Attribute
         }
     }
 
+    /// <summary>
+    /// 标记字段为配置主键（从 XML 的 id 属性读取）
+    /// - 非嵌套容器必须至少有一个 XmlKey 字段
+    /// - XmlKey 字段从 configName 参数读取（该参数已包含 id 属性值）
+    /// - 支持的类型：int, long, float, double, bool, string, enum, StrI, LabelI
+    /// </summary>
+    public class XmlKeyAttribute : System.Attribute
+    {
+        
+    }
+    
+    /// <summary>
+    /// 标记配置类为嵌套容器（在类级别使用）
+    /// - 嵌套容器作为其他配置的子对象，不需要独立的 id 属性
+    /// - 嵌套容器可以没有 XmlKey 字段
+    /// - 示例：[XmlNested] public class NestedConfig { ... }
+    /// </summary>
+    public class XmlNestedAttribute : System.Attribute
+    {
+        
+    }
+    
     public class XmlDefinedAttribute : System.Attribute
     {
         public string XmlName;
@@ -28,13 +50,19 @@ namespace XM.Utils.Attribute
         }
     }
 
+    /// <summary>
+    /// 标记字段为 XMLLink（配置组合模式，用组合代替继承）
+    /// - 子Link存储父节点的CfgI，父节点通过索引查询子Link
+    /// - IsUnique=true: 一个父节点只能有一个该类型的子Link（使用唯一索引）
+    /// - IsUnique=false（默认）: 一个父节点可以有多个该类型的子Link（使用多值索引）
+    /// </summary>
     public class XMLLinkAttribute : System.Attribute
     {
-        public bool Multilink;
+        public bool IsUnique;
 
-        public XMLLinkAttribute(bool multilink = false)
+        public XMLLinkAttribute(bool isUnique = false)
         {
-            Multilink = multilink;
+            IsUnique = isUnique;
         }
     }
 

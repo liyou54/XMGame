@@ -15,74 +15,75 @@ namespace XM.Contracts
         }
     }
 
-        /// <summary>
-        /// 资源ID，用于标识资源（只是一个key，不能直接获取对象）
-        /// </summary>
-        public readonly struct AssetI : IEquatable<AssetI>, IAssetId
+    /// <summary>
+    /// 资源ID，用于标识资源（只是一个key，不能直接获取对象）
+    /// </summary>
+    public readonly struct AssetI : IEquatable<AssetI>, IAssetId
+    {
+        public ModI Mod { get; }
+        public int Id { get; }
+
+        public bool Valid => Mod.Valid && Id > 0;
+
+        public AssetI(ModI mod, int id)
         {
-            public ModI Mod { get; }
-            public int Id { get; }
-            
-            public bool Valid => Mod.Valid && Id > 0;
+            Mod = mod;
+            Id = id;
+        }
 
-            public AssetI(ModI mod, int id)
+        ModI IAssetId.Mod
+        {
+            get => Mod;
+            set => throw new NotSupportedException("AssetI is immutable");
+        }
+
+        int IAssetId.Id
+        {
+            get => Id;
+            set => throw new NotSupportedException("AssetI is immutable");
+        }
+
+        public bool Equals(AssetI other)
+        {
+            return Mod.Equals(other.Mod) && Id == other.Id;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is AssetI other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
             {
-                Mod = mod;
-                Id = id;
-            }
-
-            ModI IAssetId.Mod 
-            { 
-                get => Mod; 
-                set => throw new NotSupportedException("AssetI is immutable"); 
-            }
-
-            int IAssetId.Id 
-            { 
-                get => Id; 
-                set => throw new NotSupportedException("AssetI is immutable"); 
-            }
-
-            public bool Equals(AssetI other)
-            {
-                return Mod.Equals(other.Mod) && Id == other.Id;
-            }
-
-            public override bool Equals(object obj)
-            {
-                return obj is AssetI other && Equals(other);
-            }
-
-            public override int GetHashCode()
-            {
-                unchecked
-                {
-                    return (Mod.GetHashCode() * 397) ^ Id;
-                }
-            }
-
-            public static bool operator ==(AssetI left, AssetI right)
-            {
-                return left.Equals(right);
-            }
-
-            public static bool operator !=(AssetI left, AssetI right)
-            {
-                return !left.Equals(right);
-            }
-
-            /// <summary>
-            /// 创建资源句柄（通过AssetManager，异步，如果资源未加载会自动加载）
-            /// </summary>
-            public async UniTask<XAssetHandle> CreateHandleAsync()
-            {
-                if (IAssetManager.I == null)
-                {
-                    return null;
-                }
-                return await IAssetManager.I.CreateAssetHandleAsync(this);
+                return (Mod.GetHashCode() * 397) ^ Id;
             }
         }
+
+        public static bool operator ==(AssetI left, AssetI right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(AssetI left, AssetI right)
+        {
+            return !left.Equals(right);
+        }
+
+        /// <summary>
+        /// 创建资源句柄（通过AssetManager，异步，如果资源未加载会自动加载）
+        /// </summary>
+        public async UniTask<XAssetHandle> CreateHandleAsync()
+        {
+            if (IAssetManager.I == null)
+            {
+                return null;
+            }
+
+            return await IAssetManager.I.CreateAssetHandleAsync(this);
+        }
+    }
 
     public interface IAssetAddress
     {
@@ -101,21 +102,22 @@ namespace XM.Contracts
             AddressId = addressId;
         }
 
-        int IAssetAddress.AddressId 
-        { 
-            get => AddressId; 
-            set => throw new NotSupportedException("AssetAddress is immutable"); 
+        int IAssetAddress.AddressId
+        {
+            get => AddressId;
+            set => throw new NotSupportedException("AssetAddress is immutable");
         }
 
         /// <summary>
         /// 获取资源ID
         /// </summary>
-        public AssetI? GetAssetId()
+        public AssetI GetAssetId()
         {
-            if (IAssetManager.I == null )
+            if (IAssetManager.I == null)
             {
-                return null;
+                return default;
             }
+
             return IAssetManager.I.GetAssetByAddress<AssetI, AssetAddress>(this);
         }
 
@@ -125,16 +127,15 @@ namespace XM.Contracts
         public async UniTask ReleaseAsync()
         {
             var assetId = GetAssetId();
-            if (assetId.HasValue)
+            if (assetId.Valid)
             {
-                var handle = await assetId.Value.CreateHandleAsync();
+                var handle = await assetId.CreateHandleAsync();
                 if (handle != null)
                 {
                     handle.Release();
                 }
             }
         }
-
     }
 
     /// <summary>
@@ -145,14 +146,14 @@ namespace XM.Contracts
     {
         private static IPool<XAssetHandle> _pool;
         private const string PoolName = "XAssetHandlePool";
-        
+
         public AssetI Id { get; set; }
         public EAssetStatus Status;
 
         private XAssetHandle()
         {
         }
-        
+
         /// <summary>
         /// 初始化对象池（由 AssetManager 在 OnCreate 时调用）
         /// </summary>
@@ -163,13 +164,13 @@ namespace XM.Contracts
                 XLog.Warning("XAssetHandle 对象池已经初始化");
                 return;
             }
-            
+
             if (IPoolManager.I == null)
             {
                 XLog.Error("IPoolManager.I 为 null，无法初始化 XAssetHandle 对象池");
                 return;
             }
-            
+
             var poolConfig = new PoolConfig<XAssetHandle>
             {
                 OnCreate = () => new XAssetHandle(),
@@ -189,14 +190,14 @@ namespace XM.Contracts
                 {
                     // 销毁时无需额外操作
                 },
-                InitialCapacity = 100,  // 初始容量
-                MaxCapacity = -1      // 最大容量
+                InitialCapacity = 100, // 初始容量
+                MaxCapacity = -1 // 最大容量
             };
-            
+
             _pool = IPoolManager.I.GetOrCreatePool(PoolName, poolConfig);
             XLog.Info("XAssetHandle 对象池初始化完成");
         }
-        
+
         /// <summary>
         /// 从对象池获取 XAssetHandle（内部使用）
         /// </summary>
@@ -207,9 +208,10 @@ namespace XM.Contracts
                 XLog.Error("XAssetHandle 对象池未初始化");
                 return new XAssetHandle();
             }
+
             return _pool.Get();
         }
-        
+
         /// <summary>
         /// 将 XAssetHandle 归还到对象池（内部使用）
         /// </summary>
@@ -220,9 +222,10 @@ namespace XM.Contracts
                 XLog.Warning("XAssetHandle 对象池未初始化，无法归还");
                 return;
             }
+
             _pool.Release(handle);
         }
-        
+
         /// <summary>
         /// 清理对象池（由 AssetManager 在 OnDestroy 时调用）
         /// </summary>
@@ -233,12 +236,12 @@ namespace XM.Contracts
                 _pool.Dispose();
                 _pool = null;
             }
-            
+
             if (IPoolManager.I != null)
             {
                 IPoolManager.I.DestroyPool<XAssetHandle>(PoolName);
             }
-            
+
             XLog.Info("XAssetHandle 对象池已清理");
         }
 
@@ -252,10 +255,12 @@ namespace XM.Contracts
                 XLog.Warning($"尝试从已释放的句柄获取资源，HandleId: {Id}");
                 return null;
             }
+
             if (IAssetManager.I == null)
             {
                 return null;
             }
+
             return IAssetManager.I.GetAssetObject<T>(Id);
         }
 
@@ -265,11 +270,12 @@ namespace XM.Contracts
         public void Release()
         {
             if (Status != EAssetStatus.Success || Status != EAssetStatus.Loading) return;
-            
+
             if (IAssetManager.I != null)
             {
                 IAssetManager.I.ReleaseAssetHandle(this);
             }
+
             Status = EAssetStatus.Released;
         }
 
@@ -313,7 +319,7 @@ namespace XM.Contracts
         /// </summary>
         public UniTask<XAssetHandle> CreateAssetHandleAsync(AssetI xAssetId);
 
-        public TAsset GetAssetByAddress<TAsset, TAddress>( TAddress address)
+        public TAsset GetAssetByAddress<TAsset, TAddress>(TAddress address)
             where TAddress : IAssetAddress where TAsset : IAssetId;
 
         public TTAddress UpdateAssetAddress<TAsset, TTAddress>(TTAddress address, TAsset asset)
@@ -323,7 +329,7 @@ namespace XM.Contracts
         /// 释放资源句柄（引用计数-1，当引用计数为0时加入待回收队列）
         /// </summary>
         public void ReleaseAssetHandle(XAssetHandle handle);
-        
+
         /// <summary>
         /// 通过AssetId获取资源对象（内部使用，外部应通过XAssetHandle获取）
         /// </summary>
@@ -331,5 +337,4 @@ namespace XM.Contracts
 
         AssetI GetAsstIdByModIdAndPath(ModI modId, string path);
     }
-
 }

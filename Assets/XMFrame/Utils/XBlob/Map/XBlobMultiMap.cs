@@ -46,6 +46,7 @@ internal ref struct XBlobMultiMapView<TKey, TValue>
     internal Span<TKey> Keys;
     internal Span<TValue> Values;
 
+    
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal int FindFirstEntry(in TKey key, int hashCode)
     {
@@ -73,6 +74,8 @@ public readonly struct XBlobMultiMap<TKey, TValue>
     private const int BucketCountOffset = sizeof(int);
     private const int BucketsOffset = sizeof(int) * 2; // 布局: [Count][BucketCount][Buckets][Entries][Keys][Values]
 
+    public bool Valid => Offset > 0;
+    
     [BurstCompile]
     private unsafe XBlobMultiMapView<TKey, TValue> GetView(in XBlobContainer container)
     {

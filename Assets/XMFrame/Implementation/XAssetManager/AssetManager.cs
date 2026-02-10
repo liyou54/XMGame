@@ -280,7 +280,7 @@ namespace XM
                 return existingAssetId;
             }
 
-            return default;
+            return CreateAssetId<AssetI>(modId, path);
         }
 
         #endregion
@@ -306,7 +306,6 @@ namespace XM
                 {
                     return default(Address);
                 }
-
                 // 检查资源包是否存在
                 if (!_resPackages.TryGetValue(modId, out var resPackageInfo))
                 {
@@ -634,6 +633,7 @@ namespace XM
                     if (assetHandle.IsValid && assetHandle.AssetObject != null)
                     {
                         asset = assetHandle.AssetObject;
+                        
                     }
                     else
                     {
@@ -658,14 +658,13 @@ namespace XM
                     RefCount = 0
                 };
                 _loadedAssets[xAssetId] = loadedAssetInfo;
-
                 XLog.InfoFormat("延迟加载资源成功，ModId: {0}, Path: {1}, AssetId: {2}", modId.ModId, path, xAssetId.Id);
             }
 
             // 从对象池获取句柄
             var handle = GetHandleFromPool();
             handle.Id = xAssetId;
-
+            handle.Status = EAssetStatus.Success;
             // 引用计数+1
             loadedAssetInfo.RefCount++;
 
@@ -886,6 +885,7 @@ namespace XM
                 await initOperation.ToUniTask();
                 var operation = resPackageInfo.ResourcePackage.RequestPackageVersionAsync();
                 await operation.ToUniTask();
+                await resPackageInfo.ResourcePackage.UpdatePackageManifestAsync(operation.PackageVersion);
                 if (initOperation.Status == EOperationStatus.Succeed)
                 {
                     resPackageInfo.IsInitialized = true;
@@ -969,10 +969,11 @@ namespace XM
         private OfflinePlayModeParameters CreateInitParameters(ResPackageInfo resPackageInfo)
         {
             var initParameters = new OfflinePlayModeParameters();
-            
-            initParameters.BuildinFileSystemParameters = FileSystemParameters.
-                CreateDefaultBuildinFileSystemParameters(packageRoot:resPackageInfo.Path);
-            initParameters.BuildinFileSystemParameters.AddParameter(FileSystemParametersDefine.DISABLE_CATALOG_FILE, true);
+
+            initParameters.BuildinFileSystemParameters =
+                FileSystemParameters.CreateDefaultBuildinFileSystemParameters(packageRoot: resPackageInfo.Path);
+            initParameters.BuildinFileSystemParameters.AddParameter(FileSystemParametersDefine.DISABLE_CATALOG_FILE,
+                true);
             return initParameters;
         }
 
@@ -1140,20 +1141,32 @@ namespace XM
 
         private async UniTask InitYooAsset()
         {
-            // 必须先初始化 YooAssets，否则 CreatePackage 会报 "YooAssets not initialize !"
             if (!YooAssets.Initialized)
                 YooAssets.Initialize();
             if (Application.isEditor)
             {
                 var package = YooAssets.CreatePackage("Core");
-                var buildResult = EditorSimulateModeHelper.SimulateBuild("Core");    
+                var buildResult = EditorSimulateModeHelper.SimulateBuild("Core");
                 var packageRoot = buildResult.PackageRootDirectory;
                 var fileSystemParams = FileSystemParameters.CreateDefaultEditorFileSystemParameters(packageRoot);
                 var createParameters = new EditorSimulateModeParameters();
                 createParameters.EditorFileSystemParameters = fileSystemParams;
                 var initOperation = package.InitializeAsync(createParameters);
                 await initOperation.ToUniTask();
+                var op = package.RequestPackageVersionAsync();
+                await op.ToUniTask();
+                await package.UpdatePackageManifestAsync(op.PackageVersion);
+                var pack = new ResPackageInfo
+                {
+                    IsInitialized = true,
+                    ModId = new ModI((short)1),
+                    PackageName = "Core",
+                    ResourcePackage = package
+                };
+                _resPackages.Add(new ModI((short)1), pack);
             }
+
+
             await UniTask.CompletedTask;
         }
 
@@ -1163,7 +1176,7 @@ namespace XM
             var modsRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Mods"));
             foreach (var mod in allMod)
             {
-                var assetName = string.IsNullOrEmpty(mod.ModConfig.AssetName) ? "Asset" : mod.ModConfig.AssetName ;
+                var assetName = string.IsNullOrEmpty(mod.ModConfig.AssetName) ? "Asset" : mod.ModConfig.AssetName;
                 var modPath = Path.Combine(modsRoot, mod.ModConfig.ModName, assetName);
                 if (!Directory.Exists(modPath))
                     continue;
@@ -1171,6 +1184,7 @@ namespace XM
                 await CreateResPackage(modId, mod.ModConfig.PackageName, modPath);
             }
         }
+
 
         public override async UniTask OnDestroy()
         {

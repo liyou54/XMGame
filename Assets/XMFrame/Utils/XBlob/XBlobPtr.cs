@@ -58,6 +58,12 @@ public readonly struct XBlobPtr
         return new XBlobMap<T,TV>(Offset);
     }
     
+    [BurstCompile]
+    public XBlobMultiMap<T,TV> AsMultiMap<T,TV>() where T : unmanaged, IEquatable<T> where TV : unmanaged
+    {
+        return new XBlobMultiMap<T,TV>(Offset);
+    }
+    
     /// <summary>
     /// 将当前指针转换为 XBlobMapKey 外观，用于只操作键的映射（外观模式）
     /// 适用于只需要检查键是否存在，而不需要访问值的场景，性能更优
@@ -69,6 +75,15 @@ public readonly struct XBlobPtr
     where TKey : unmanaged, IEquatable<TKey>
     {
         return new XBlobMapKey<TKey>(Offset);
+    }
+    
+    /// <summary>泛型分配 MultiMap 并返回指针</summary>
+    public static XBlobPtr AllocMultiMapFrom<TKey, TValue>(in XBlobContainer container, int capacity)
+        where TKey : unmanaged, IEquatable<TKey>
+        where TValue : unmanaged
+    {
+        var multiMap = container.AllocMultiMap<TKey, TValue>(capacity);
+        return FromOffset(multiMap.Offset);
     }
 }
 

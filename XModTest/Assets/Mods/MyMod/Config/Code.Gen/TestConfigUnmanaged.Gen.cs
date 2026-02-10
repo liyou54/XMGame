@@ -1,7 +1,6 @@
 using System;
 using Unity.Collections;
 using XM;
-using XM.ConfigNew.CodeGen;
 using XM.Contracts.Config;
 
 /// <summary>

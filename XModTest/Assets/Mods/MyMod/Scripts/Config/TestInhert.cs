@@ -10,6 +10,7 @@ namespace XM.Editor.Gen
     [XmlDefined]
     public class TestInhert : IXConfig<TestInhert, TestInhertUnmanaged>
     {
+        [XmlKey]
         [XMLLink] public CfgS<TestConfig> Link;
         public int xxxx; 
         public CfgI Data { get; set; }

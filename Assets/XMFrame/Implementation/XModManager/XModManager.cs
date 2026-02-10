@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -121,7 +122,7 @@ namespace XM
         /// <summary>
         /// 读取Mod定义XML文件
         /// </summary>
-        private ModConfig ReadModDefineXml(string xmlFilePath, string modFolder)
+        private ModConfig? ReadModDefineXml(string xmlFilePath, string modFolder)
         {
             try
             {
@@ -141,8 +142,11 @@ namespace XM
                 var modAuthor = GetXmlElementValue(root, "Author");
                 var modDescription = GetXmlElementValue(root, "Description");
                 var modDllPath = GetXmlElementValue(root, "DllPath");
+                var modDlls = string.IsNullOrEmpty(modDllPath) ? Array.Empty<string>() : modDllPath.Split(',').Select(s => s.Trim()).ToArray();
                 var modPackageName = GetXmlElementValue(root, "PackageName");
                 var modAssetName = GetXmlElementValue(root, "AssetName");
+                if (string.IsNullOrEmpty(modAssetName))
+                    modAssetName = GetXmlElementValue(root, "AssetPath"); // 兼容旧版 ModDefine 使用 AssetPath
                 var modIconPath = GetXmlElementValue(root, "IconPath");
                 var modHomePageLink = GetXmlElementValue(root, "HomePageLink");
                 var modImagePath = GetXmlElementValue(root, "ImagePath");
@@ -160,9 +164,12 @@ namespace XM
                     modAssetName = "Asset";
 
                 // 如果DllPath是相对路径，则相对于modFolder解析
-                if (!string.IsNullOrEmpty(modDllPath) && !Path.IsPathRooted(modDllPath))
+                if (modDlls.Length > 0)
                 {
-                    modDllPath = Path.Combine(modFolder, modDllPath);
+                    modDlls = modDlls
+                        .Where(dll => !string.IsNullOrEmpty(dll))
+                        .Select(dll => !Path.IsPathRooted(dll) ? Path.Combine(modFolder, dll) : dll)
+                        .ToArray();
                 }
 
                 // 如果IconPath是相对路径，则相对于modFolder解析
@@ -181,7 +188,7 @@ namespace XM
                     modVersion ?? "1.0.0",
                     modAuthor ?? "",
                     modDescription ?? "",
-                    modDllPath ?? "",
+                    modDlls,
                     modPackageName,
                     configFiles,
                     modAssetName ?? "Asset",
@@ -226,37 +233,61 @@ namespace XM
             }
 
             // 加载DLL
-            if (string.IsNullOrEmpty(modConfig.DllPath))
+            var dllPaths = modConfig.DllPaths?.Where(s => !string.IsNullOrEmpty(s)).ToArray() ?? Array.Empty<string>();
+            if (dllPaths.Length == 0)
             {
                 XLog.WarningFormat("Mod未指定DLL路径: {0}", modName);
                 return false;
             }
-
-            string dllPath = modConfig.DllPath;
-            if (!File.Exists(dllPath) && !dllPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            // 取第一个为主DLL，用于查找入口点
+            string mainDllPath = dllPaths[0];
+            if (!File.Exists(mainDllPath) && !mainDllPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
             {
-                string pathWithDll = dllPath + ".dll";
+                string pathWithDll = mainDllPath + ".dll";
                 if (File.Exists(pathWithDll))
-                    dllPath = pathWithDll;
+                    mainDllPath = pathWithDll;
             }
 
-            if (!File.Exists(dllPath))
+            if (!File.Exists(mainDllPath))
             {
-                XLog.ErrorFormat("Mod DLL文件不存在: {0}", modConfig.DllPath);
+                XLog.ErrorFormat("Mod主DLL文件不存在: {0}", mainDllPath);
                 return false;
             }
 
             try
             {
-                // 加载程序集
-                var assembly = Assembly.LoadFrom(dllPath);
+                // 加载所有程序集（主DLL优先，依赖DLL随后）
+                var assemblies = new List<Assembly>();
+                foreach (var dll in dllPaths)
+                {
+                    string path = dll;
+                    if (!File.Exists(path) && !path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string pathWithDll = path + ".dll";
+                        if (File.Exists(pathWithDll))
+                            path = pathWithDll;
+                    }
+                    if (File.Exists(path))
+                        assemblies.Add(Assembly.LoadFrom(path));
+                    else
+                        XLog.WarningFormat("Mod依赖DLL不存在，跳过: {0}", dll);
+                }
 
-                // 查找并实例化ModBase
-                ModBase modEntry = null;
+                if (assemblies.Count == 0)
+                {
+                    XLog.ErrorFormat("无法加载任何Mod DLL: {0}", string.Join(",", dllPaths));
+                    return false;
+                }
+
+                // 主DLL程序集（第一个），用于查找入口点
+                var mainAssembly = assemblies[0];
+
+                // 查找并实例化ModBase（仅在主DLL中查找）
+                ModBase? modEntry = null;
                 try
                 {
                     // 查找所有继承自ModBase的类型
-                    var modBaseTypes = assembly.GetTypes()
+                    var modBaseTypes = mainAssembly.GetTypes()
                         .Where(t => typeof(ModBase).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface)
                         .ToList();
 
@@ -288,14 +319,14 @@ namespace XM
                 catch (Exception ex)
                 {
                     XLog.ErrorFormat("创建Mod入口点失败: {0}, 错误: {1}", modName,
-                        XM.Utils.ExceptionUtil.GetMessageWithInner(ex));
+                        XM.Utils.ExceptionUtil.GetFullDiagnostic(ex));
                 }
 
                 // 创建ModS
                 modKey = new ModS(modName);
 
                 // 创建ModRuntime
-                var modRuntime = new ModRuntime(modKey, modConfig, assembly, modEntry);
+                var modRuntime = new ModRuntime(modKey, modConfig, assemblies.ToArray(), modEntry);
 
                 // 存储到字典
                 _modRuntimeDict[modKey] = modRuntime;
@@ -309,7 +340,7 @@ namespace XM
             }
             catch (Exception ex)
             {
-                XLog.ErrorFormat("加载Mod DLL失败: {0}, 错误: {1}", dllPath, XM.Utils.ExceptionUtil.GetMessageWithInner(ex));
+                XLog.ErrorFormat("加载Mod DLL失败: {0}, 错误: {1}", mainDllPath, XM.Utils.ExceptionUtil.GetFullDiagnostic(ex));
                 return false;
             }
         }
@@ -318,11 +349,12 @@ namespace XM
         {
             foreach (var modRuntime in _modRuntimeDict.Values)
             {
-                if (modRuntime.Assembly == null) continue;
-                var assembly = modRuntime.Assembly;
-                var configDefineTypes = assembly.GetTypes()
-                    .Where(t => typeof(IXConfig).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface);
-                modRuntime.AddConfigDefine(configDefineTypes);
+                foreach (var assembly in modRuntime.Assemblies)
+                {
+                    var configDefineTypes = assembly.GetTypes()
+                        .Where(t => typeof(IXConfig).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface);
+                    modRuntime.AddConfigDefine(configDefineTypes);
+                }
             }
 
             foreach (var modRuntime in _modRuntimeDict.Values)
@@ -364,7 +396,7 @@ namespace XM
         /// <summary>
         /// 重置Mod配置并重启游戏（运行时修改会触发游戏重启）
         /// </summary>
-        public void ResetModConfigsRestartGame(List<ModConfig> modConfigs)
+        public void ResetModConfigsRestartGame(List<ModConfig>? modConfigs)
         {
             if (modConfigs == null)
             {
@@ -374,6 +406,9 @@ namespace XM
 
             // 将 ModConfig 列表转换为 SortedModConfig 列表
             var sortedConfigs = new List<SortedModConfig>();
+            
+            
+            
             foreach (var modConfig in modConfigs)
             {
                 if (modConfig == null)
@@ -434,7 +469,7 @@ namespace XM
             _sortedModConfigs.Clear();
 
             // 从存档读取已保存的Mod配置
-            List<SavedModInfo> savedModInfos = null;
+            List<SavedModInfo>? savedModInfos = null;
             if (ISaveManager.I != null)
             {
                 try
@@ -488,13 +523,95 @@ namespace XM
         /// </summary>
         private void EnableModsFromSortedConfig()
         {
+            // 先在第一个位置强行注入 "Core" Mod (id = 1)，包含 XM.Contracts、XM.Utils、XM.Runtime 三个程序集
+            // Core 不通过 EnableMod 加载，直接注入
+            InjectCoreMod();
+
+            _nextStaticModId = 2;
             foreach (var sortedConfig in _sortedModConfigs)
             {
+                if (sortedConfig.ModConfig.ModName == "Core")
+                    continue; // Core 已注入，跳过
                 if (sortedConfig.IsEnabled)
                 {
                     EnableMod(sortedConfig.ModConfig.ModName);
                 }
             }
+        }
+
+        /// <summary>
+        /// 注入 Core Mod（id=1），包含实现、接口、工具三个程序集
+        /// 优先从 Mods/Core/ModDefine.xml 读取配置，若不存在则使用默认值
+        /// </summary>
+        private void InjectCoreMod()
+        {
+            const string coreModName = "Core";
+            var coreModKey = new ModS(coreModName);
+
+            // 获取 XM.Contracts、XM.Utils、XM.Runtime 三个程序集（接口、工具、实现）
+            var coreAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a =>
+                {
+                    var name = a.GetName().Name;
+                    return name == "XM.Contracts" || name == "XM.Utils" || name == "XM.Runtime";
+                })
+                .OrderBy(a =>
+                {
+                    var name = a.GetName().Name;
+                    if (name == "XM.Contracts") return 0;
+                    if (name == "XM.Utils") return 1;
+                    if (name == "XM.Runtime") return 2;
+                    return 3;
+                })
+                .ToArray();
+
+            // 优先使用 ModConfigDict 中已读取的 Core 配置（来自 ReadAllModConfigs）
+            // 若不存在则尝试从 Mods/Core/ModDefine.xml 读取，最后回退到默认值
+            ModConfig coreConfig;
+            if (ModConfigDict.TryGetValue(coreModName, out var existingCore))
+            {
+                coreConfig = existingCore;
+            }
+            else
+            {
+                var modsFolderPath = Path.Combine(Application.dataPath, ModsFolder);
+                var coreFolderPath = Path.Combine(modsFolderPath, coreModName);
+                var coreModDefinePath = Path.Combine(coreFolderPath, ModDefineXmlName);
+
+                if (File.Exists(coreModDefinePath))
+                {
+                    var configFromFile = ReadModDefineXml(coreModDefinePath, coreFolderPath);
+                    coreConfig = configFromFile ?? CreateDefaultCoreConfig(coreModName);
+                    ModConfigDict.TryAdd(coreModName, coreConfig);
+                }
+                else
+                {
+                    coreConfig = CreateDefaultCoreConfig(coreModName);
+                }
+            }
+
+            // 移除 _sortedModConfigs 中可能已存在的 Core（来自 InitializeSortedModConfigs），避免重复
+            _sortedModConfigs.RemoveAll(sc => sc.ModConfig.ModName == coreModName);
+            var coreRuntime = new ModRuntime(coreModKey, coreConfig, coreAssemblies, modEntry: null);
+
+            _modRuntimeDict[coreModKey] = coreRuntime;
+            _modNameToKeyDict[coreModName] = coreModKey;
+            ModStaticToRuntimeDict.AddOrUpdate(1, coreModKey);
+
+            var coreSortedConfig = new SortedModConfig(coreConfig, isEnabled: true);
+            _sortedModConfigs.Insert(0, coreSortedConfig);
+
+            _nextStaticModId = 2;
+            XLog.InfoFormat("已注入 Core Mod (id=1)，包含 {0} 个程序集", coreAssemblies.Length);
+        }
+
+        /// <summary>
+        /// 创建 Core Mod 的默认配置（当 ModDefine.xml 不存在时使用）
+        /// </summary>
+        private static ModConfig CreateDefaultCoreConfig(string coreModName)
+        {
+            return new ModConfig(coreModName, "1.0.0", "", "", Array.Empty<string>(),
+                "Core", new List<string>(), "Asset");
         }
 
         /// <summary>
@@ -584,9 +701,23 @@ namespace XM
         }
 
         /// <summary>
+        /// 通过Mod名称获取Mod运行时信息
+        /// </summary>
+        public ModRuntime? GetModRuntimeByName(string modName)
+        {
+            if (_modNameToKeyDict.TryGetValue(modName, out var modKey) &&
+                _modRuntimeDict.TryGetValue(modKey, out var modRuntime))
+            {
+                return modRuntime;
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// 获取Mod运行时信息
         /// </summary>
-        public ModRuntime GetModRuntime(string modName)
+        public ModRuntime? GetModRuntime(string modName)
         {
             if (_modNameToKeyDict.TryGetValue(modName, out var modKey))
             {
@@ -600,7 +731,7 @@ namespace XM
         /// <summary>
         /// 获取Mod运行时信息（通过ModS）
         /// </summary>
-        public ModRuntime GetModRuntime(ModS modKey)
+        public ModRuntime? GetModRuntime(ModS modKey)
         {
             _modRuntimeDict.TryGetValue(modKey, out var modRuntime);
             return modRuntime;
@@ -650,6 +781,23 @@ namespace XM
             return new ModI((short)staticId);
         }
 
+        /// <summary>
+        /// 通过ModI获取Mod名称
+        /// </summary>
+        public string GetModName(ModI modId)
+        {
+            if (!modId.Valid)
+            {
+                return string.Empty;
+            }
+
+            if (!ModStaticToRuntimeDict.TryGetValueByKey(modId.ModId, out var modKey))
+            {
+                return string.Empty;
+            }
+
+            return modKey.Name ?? string.Empty;
+        }
 
         /// <summary>
         /// 通过ModI获取Mod的XML文件路径列表

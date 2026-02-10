@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using XM;
 using XM.Contracts;
 using XM.Contracts.Config;
+
+
 
 /// <summary>
 /// 配置加载辅助类泛型基接口
@@ -21,7 +24,7 @@ public abstract class ConfigClassHelper<T, TUnmanaged> :
     /// <summary>字段级自定义转换器</summary>
     protected Dictionary<string, Func<string, object>> _fieldConverters;
 
-    /// <summary>由生成的 *ClassHelper 调用，传入 IConfigDataCenter</summary>
+    /// <summary>由生成的 *ClassHelper 调用，传入 IConfigManager</summary>
     protected ConfigClassHelper()
     {
     }
@@ -71,14 +74,14 @@ public abstract class ConfigClassHelper<T, TUnmanaged> :
         }
 
         var map = configHolderData.Data.AllocTableMap<TUnmanaged>(tbli, kvValue.Count);
-        if (!map.Vaild)
+        if (!map.Valid)
         {
             return;
         }
 
         foreach (var kv in kvValue)
         {
-            var cfgI = IConfigDataCenter.I.AllocCfgIndex(kv.Key, tbli);
+            var cfgI = IConfigManager.I.AllocCfgIndex(kv.Key, tbli);
             map[configHolderData.Data.BlobContainer, cfgI] = new TUnmanaged();
         }
     }
@@ -98,11 +101,11 @@ public abstract class ConfigClassHelper<T, TUnmanaged> :
 
         foreach (var kv in kvValue)
         {
-            if (IConfigDataCenter.I.TryGetCfgI(kv.Key, out var cfgI))
+            if (IConfigManager.I.TryGetCfgI(kv.Key, out var cfgI))
             {
                 var val = new TUnmanaged();
                 var map = configHolderData.Data.GetMap<CfgI, TUnmanaged>(tbli);
-                if (map.Vaild)
+                if (map.Valid)
                 {
                     AllocContainerWithFillImpl(
                         kv.Value,
@@ -145,62 +148,55 @@ public abstract class ConfigClassHelper<T, TUnmanaged> :
     /// <returns>是否转换成功</returns>
     protected static bool TryGetStrI(string value, out StrI strI)
     {
-        // TODO: 实现字符串到 StrI 的转换逻辑
-        // 需要将字符串注册到全局字符串池，获取对应的索引
         strI = default;
-        return false;
+        if (IStringManager.I == null)
+            return false;
+        return IStringManager.I.TryGetStrI(value, out strI);
     }
 
     /// <summary>
-    /// 尝试将字符串转换为 LabelI（标签索引）
+    /// 尝试将字符串（Mod::Label 格式）转换为 LabelI
     /// </summary>
-    /// <param name="value">字符串值</param>
-    /// <param name="labelI">输出的标签索引</param>
-    /// <returns>是否转换成功</returns>
     protected static bool TryGetLabelI(string value, out LabelI labelI)
     {
-        // TODO: 实现字符串到 LabelI 的转换逻辑
-        // 需要将标签字符串注册到全局标签池，获取对应的索引
         labelI = default;
-        return false;
+        if (IStringManager.I == null || !ConfigParseHelper.TryParseLabelSString(value, "", out var modName, out var labelName))
+            return false;
+        return IStringManager.I.TryGetLabelI(new LabelS { ModName = modName, LabelName = labelName }, out labelI);
     }
 
     /// <summary>
-    /// 尝试将字符串转换为 LabelI（标签索引）
+    /// 尝试将 LabelS 转换为 LabelI
     /// </summary>
-    /// <param name="value">字符串值</param>
-    /// <param name="labelI">输出的标签索引</param>
-    /// <returns>是否转换成功</returns>
     protected static bool TryGetLabelI(LabelS value, out LabelI labelI)
     {
-        // TODO: 实现字符串到 LabelI 的转换逻辑
-        // 需要将标签字符串注册到全局标签池，获取对应的索引
         labelI = default;
-        return false;
+        if (IStringManager.I == null)
+            return false;
+        return IStringManager.I.TryGetLabelI(value, out labelI);
     }
     
     /// <summary>
     /// 尝试将 CfgS 转换为 CfgI（配置实例索引）
     /// </summary>
-    /// <typeparam name="T">配置类型</typeparam>
+    /// <typeparam name="TCfg">配置类型</typeparam>
     /// <param name="cfgS">配置静态引用</param>
     /// <param name="cfgI">输出的配置实例索引</param>
     /// <returns>是否转换成功</returns>
-    protected static bool TryGetCfgI<T>(CfgS<T> cfgS, out CfgI cfgI) where T : IXConfig
+    protected static bool TryGetCfgI<TCfg>(CfgS<TCfg> cfgS, out CfgI cfgI) where TCfg : IXConfig
     {
-        // TODO: 链接阶段实现 CfgS 到 CfgI 的解析
-        // 需要从配置数据中心查找对应的配置实例
         cfgI = default;
-        return false;
+        if (IConfigManager.I == null || !cfgS.Valid)
+            return false;
+        return IConfigManager.I.TryGetCfgI(cfgS.AsNonGeneric(), out cfgI);
     }
 
     protected static StrI ConvertToStrI(string value)
     {
         if (string.IsNullOrEmpty(value))
             return default;
-
-        // TODO: 实现字符串到 StrI 的转换逻辑
-        // 需要将字符串注册到全局字符串池，获取对应的索引
+        if (IStringManager.I != null && IStringManager.I.TryGetStrI(value, out var strI))
+            return strI;
         return default;
     }
 
@@ -219,9 +215,51 @@ public abstract class ConfigClassHelper<T, TUnmanaged> :
         return string.IsNullOrEmpty(value) ? default : new Unity.Collections.FixedString128Bytes(value);
     }
 
+    /// <summary>
+    /// 安全转换为 FixedString32Bytes：替换换行符、按 UTF-8 字节截断，避免 "Truncation while copying" 异常。
+    /// </summary>
+    protected static Unity.Collections.FixedString32Bytes SafeConvertToFixedString32(string value)
+    {
+        return SafeConvertToFixedString(value, 29, s => new Unity.Collections.FixedString32Bytes(s));
+    }
+
+    /// <summary>
+    /// 安全转换为 FixedString64Bytes：替换换行符、按 UTF-8 字节截断。
+    /// </summary>
+    protected static Unity.Collections.FixedString64Bytes SafeConvertToFixedString64(string value)
+    {
+        return SafeConvertToFixedString(value, 61, s => new Unity.Collections.FixedString64Bytes(s));
+    }
+
+    /// <summary>
+    /// 安全转换为 FixedString128Bytes：替换换行符、按 UTF-8 字节截断。
+    /// </summary>
+    protected static Unity.Collections.FixedString128Bytes SafeConvertToFixedString128(string value)
+    {
+        return SafeConvertToFixedString(value, 125, s => new Unity.Collections.FixedString128Bytes(s));
+    }
+
+    private static TStr SafeConvertToFixedString<TStr>(string value, int maxUtf8Bytes, Func<string, TStr> create)
+    {
+        if (string.IsNullOrEmpty(value))
+            return create("");
+        var sanitized = value.Replace("\r\n", " ").Replace("\n", " ").Replace("\r", " ");
+        var utf8 = Encoding.UTF8;
+        if (utf8.GetByteCount(sanitized) <= maxUtf8Bytes)
+            return create(sanitized);
+        for (int len = sanitized.Length; len > 0; len--)
+        {
+            var sub = sanitized.Substring(0, len);
+            if (utf8.GetByteCount(sub) <= maxUtf8Bytes)
+                return create(sub);
+        }
+        return create("");
+    }
+
     protected static LabelI ConvertToLabelI(LabelS labelS)
     {
-        // TODO: 实现 LabelS 到 LabelI 的转换逻辑
+        if (IStringManager.I != null && IStringManager.I.TryGetLabelI(labelS, out var labelI))
+            return labelI;
         return default;
     }
 
@@ -230,12 +268,10 @@ public abstract class ConfigClassHelper<T, TUnmanaged> :
         if (string.IsNullOrEmpty(value))
             return default;
 
-        // 解析字符串格式：ModName::LabelName
         if (ConfigParseHelper.TryParseLabelSString(value, "", out var modName, out var labelName))
         {
-            // TODO: 实现从 modName 和 labelName 到 LabelI 的转换逻辑
-            // 这需要查找模块ID和标签ID
-            return default;
+            var labelS = new LabelS { ModName = modName, LabelName = labelName };
+            return ConvertToLabelI(labelS);
         }
 
         return default;

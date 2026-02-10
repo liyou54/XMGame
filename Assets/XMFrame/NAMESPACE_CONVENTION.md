@@ -18,7 +18,7 @@
 
 ## 3. 子命名空间（精炼、PascalCase）
 
-- **XM.Contracts.Config**：配置契约（原 `ConfigMananger` 文件夹，拼写保留；命名空间用 Config）。含 `IClassHelper`、`IConfigDataCenter`、`CfgId`（ModS/TblS/CfgS/CfgI）、`XmlConvertBase` 等。
+- **XM.Contracts.Config**：配置契约（原 `ConfigMananger` 文件夹，拼写保留；命名空间用 Config）。含 `IClassHelper`、`IConfigManager`、`CfgId`（ModS/TblS/CfgS/CfgI）、`XmlConvertBase` 等。
 - **XM.Editor.Gen**：编辑器生成的配置/Unmanaged 代码（原 `Config.Code.Gen`）。
 - **XM.Utils.Tests**：Utils 下单元测试（如 XBlob.Tests）。
 

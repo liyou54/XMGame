@@ -20,7 +20,15 @@ namespace XM
         /// 每个表实际上存储的是 XBlobMap&lt;CfgI, ConfigType&gt; 的外观
         /// </summary>
         private NativeHashMap<TblI, XBlobPtr> TypeBlobMap;
+        
+        /// <summary>
+        /// 索引类型到 XBlobMap/XBlobMultiMap 指针的映射
+        /// 存储索引容器的指针
+        /// </summary>
+        private NativeHashMap<IndexType, XBlobPtr> TypeIndexBlobMap;
 
+
+        
         /// <summary>
         /// 创建配置数据容器
         /// </summary>
@@ -31,7 +39,9 @@ namespace XM
             BlobContainer = new XBlobContainer();
             BlobContainer.Create(allocator, capacity);
             TypeBlobMap = new NativeHashMap<TblI, XBlobPtr>(512, allocator);
+            TypeIndexBlobMap = new NativeHashMap<IndexType, XBlobPtr>(512, allocator);
         }
+
 
         /// <summary>
         /// 为指定表在 unmanaged 中分配 CfgI->TUnmanaged 的 Map（泛型、无反射）。
@@ -88,6 +98,7 @@ namespace XM
         {
             BlobContainer.Dispose();
             TypeBlobMap.Dispose();
+            TypeIndexBlobMap.Dispose();
         }
 
         /// <summary>
@@ -126,6 +137,108 @@ namespace XM
                 return default;
             // 取得 Map 外观并插入/更新该键，值为 default
             return blobPtr.AsMap<T, TUnmanaged>();
+        }
+
+        /// <summary>
+        /// 为指定索引分配 XBlobMap（唯一索引）
+        /// </summary>
+        /// <typeparam name="TK">索引键类型（索引结构体）</typeparam>
+        /// <typeparam name="TV">配置数据类型</typeparam>
+        /// <param name="indexType">索引类型标识</param>
+        /// <param name="capacity">容量</param>
+        /// <returns>索引 Map</returns>
+        public XBlobMap<TK, CfgI> AllocIndex<TK, TV>(IndexType indexType, int capacity) 
+            where TK : unmanaged, IConfigIndexGroup<TV>, IEquatable<TK>
+            where TV : unmanaged, IConfigUnManaged<TV>
+        {
+            if (capacity <= 0)
+            {
+                UnityEngine.Debug.LogError($"[ConfigData.AllocIndex] 容量必须大于0: {capacity}");
+                return default;
+            }
+
+            if (TypeIndexBlobMap.ContainsKey(indexType))
+            {
+                UnityEngine.Debug.LogError($"[ConfigData.AllocIndex] 索引已存在: Table={indexType.Tbl}, Index={indexType.Index}");
+                return default;
+            }
+
+            // 分配 Map 并存储指针
+            var data = XBlobPtr.AllocMapFrom<TK, CfgI>(BlobContainer, capacity);
+            TypeIndexBlobMap[indexType] = data;
+            return data.AsMap<TK, CfgI>();
+        }
+        
+        /// <summary>
+        /// 为指定索引分配 XBlobMultiMap（多值索引）
+        /// </summary>
+        /// <typeparam name="TK">索引键类型（索引结构体）</typeparam>
+        /// <typeparam name="TV">配置数据类型</typeparam>
+        /// <param name="indexType">索引类型标识</param>
+        /// <param name="capacity">容量</param>
+        /// <returns>索引 MultiMap</returns>
+        public XBlobMultiMap<TK, CfgI> AllocMultiIndex<TK, TV>(IndexType indexType, int capacity) 
+            where TK : unmanaged, IConfigIndexGroup<TV>, IEquatable<TK>
+            where TV : unmanaged, IConfigUnManaged<TV>
+        {
+            if (capacity <= 0)
+            {
+                UnityEngine.Debug.LogError($"[ConfigData.AllocMultiIndex] 容量必须大于0: {capacity}");
+                return default;
+            }
+
+            if (TypeIndexBlobMap.ContainsKey(indexType))
+            {
+                UnityEngine.Debug.LogError($"[ConfigData.AllocMultiIndex] 索引已存在: Table={indexType.Tbl}, Index={indexType.Index}");
+                return default;
+            }
+
+            // 分配 MultiMap 并存储指针
+            var data = XBlobPtr.AllocMultiMapFrom<TK, CfgI>(BlobContainer, capacity);
+            TypeIndexBlobMap[indexType] = data;
+            return data.AsMultiMap<TK, CfgI>();
+        }
+        
+        /// <summary>
+        /// 获取指定索引的 Map（唯一索引）
+        /// </summary>
+        /// <typeparam name="TK">索引键类型</typeparam>
+        /// <typeparam name="TV">配置数据类型</typeparam>
+        /// <param name="indexType">索引类型标识</param>
+        /// <returns>索引 Map，如果不存在返回 default</returns>
+        public XBlobMap<TK, CfgI> GetIndex<TK, TV>(IndexType indexType) 
+            where TK : unmanaged, IConfigIndexGroup<TV>, IEquatable<TK>
+            where TV : unmanaged, IConfigUnManaged<TV>
+        {
+            if (!TypeIndexBlobMap.TryGetValue(indexType, out var blobPtr) || !blobPtr.Valid)
+                return default;
+            return blobPtr.AsMap<TK, CfgI>();
+        }
+        
+        /// <summary>
+        /// 获取指定索引的 MultiMap（多值索引）
+        /// </summary>
+        /// <typeparam name="TK">索引键类型</typeparam>
+        /// <typeparam name="TV">配置数据类型</typeparam>
+        /// <param name="indexType">索引类型标识</param>
+        /// <returns>索引 MultiMap，如果不存在返回 default</returns>
+        public XBlobMultiMap<TK, CfgI> GetMultiIndex<TK, TV>(IndexType indexType) 
+            where TK : unmanaged, IConfigIndexGroup<TV>, IEquatable<TK>
+            where TV : unmanaged, IConfigUnManaged<TV>
+        {
+            if (!TypeIndexBlobMap.TryGetValue(indexType, out var blobPtr) || !blobPtr.Valid)
+                return default;
+            return blobPtr.AsMultiMap<TK, CfgI>();
+        }
+        
+        /// <summary>
+        /// 检查指定索引是否存在
+        /// </summary>
+        /// <param name="indexType">索引类型标识</param>
+        /// <returns>如果索引存在且有效返回 true，否则返回 false</returns>
+        public bool IsIndexExist(IndexType indexType)
+        {
+            return TypeIndexBlobMap.TryGetValue(indexType, out var blobPtr) && blobPtr.Valid;
         }
 
     }

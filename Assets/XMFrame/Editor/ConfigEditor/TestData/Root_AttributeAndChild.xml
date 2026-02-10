@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 同时存在属性 Test 与子元素 Test：GetXmlFieldValue 应优先返回子元素 InnerText -->
-<Root Test="attribute_value">
-  <Test>child_value</Test>
-</Root>

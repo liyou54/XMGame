@@ -17,6 +17,7 @@ namespace MyMod
         public static MyItemConfigClassHelper Instance { get; private set; }
         public static TblI TblI { get; private set; }
         public static TblS TblS { get; private set; }
+        private static readonly string __modName;
 
         /// <summary>
         /// 静态构造函数
@@ -24,7 +25,7 @@ namespace MyMod
         static MyItemConfigClassHelper()
         {
             const string __tableName = "MyItemConfig";
-            const string __modName = "MyMod";
+            __modName = "MyMod";
             CfgS<global::MyMod.MyItemConfigUnManaged>.Table = new TblS(new ModS(__modName), __tableName);
             TblS = new TblS(new ModS(__modName), __tableName);
             Instance = new MyItemConfigClassHelper();
@@ -68,11 +69,6 @@ namespace MyMod
             config.Level = ParseLevel(configItem, mod, configName, context);
             config.Tags = ParseTags(configItem, mod, configName, context);
         }
-        /// <summary>获取 Link Helper 类型</summary>
-        public override Type GetLinkHelperType()
-        {
-            return null;
-        }
         #region 字段解析方法 (ParseXXX)
 
         /// <summary>
@@ -84,15 +80,21 @@ namespace MyMod
             string configName,
             in global::XM.Contracts.Config.ConfigParseContext context)
         {
-            var xmlValue = global::XM.Contracts.Config.ConfigParseHelper.GetXmlFieldValue(configItem, "Id");
-
-            if (string.IsNullOrEmpty(xmlValue))
+            // XmlKey 字段: 从 configName 参数读取
+            // CfgS 类型：从 configName 参数读取并解析
+            if (string.IsNullOrEmpty(configName))
             {
                 return default;
             }
 
-            // 未知类型: XM.Contracts.Config.CfgS`1[[TestConfig, MyMod, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]
-            return default;
+            // 尝试解析 CfgS 格式（ModName::ConfigName）
+            if (global::XM.Contracts.Config.ConfigParseHelper.TryParseCfgSString(configName, "Id", out var modName, out var cfgName))
+            {
+                return new global::XM.Contracts.Config.CfgS<TestConfig>(new global::XM.Contracts.Config.ModS(modName), cfgName);
+            }
+
+            // 如果 configName 不包含 :: 分隔符，使用当前 mod.Name 补充
+            return new global::XM.Contracts.Config.CfgS<TestConfig>(mod, configName);
         }
 
         /// <summary>
@@ -231,23 +233,8 @@ namespace MyMod
             {
                 data.Id = IdCfgI.As<TestConfigUnmanaged>();
             }
-            data.Name = new global::Unity.Collections.FixedString32Bytes(config.Name ?? string.Empty);
+            data.Name = SafeConvertToFixedString32(config.Name ?? string.Empty);
             data.Level = config.Level;
-        }
-        /// <summary>
-        /// 建立 Link 双向引用（链接阶段调用）
-        /// </summary>
-        /// <param name="config">托管配置对象</param>
-        /// <param name="data">非托管数据结构（ref 传递）</param>
-        /// <param name="configHolderData">配置数据持有者</param>
-        public virtual void EstablishLinks(
-            global::MyMod.MyItemConfig config,
-            ref global::MyMod.MyItemConfigUnManaged data,
-            XM.ConfigDataCenter.ConfigDataHolder configHolderData)
-        {
-            // TODO: 实现 Link 双向引用
-            // 父→子: 通过 CfgI 查找子配置，填充 XBlobPtr
-            // 子→父: 通过 CfgI 查找父配置，填充引用
         }
         #region 容器分配和嵌套配置填充方法
 
@@ -264,7 +251,8 @@ namespace MyMod
             var array = configHolderData.Data.BlobContainer.AllocArray<int>(config.Tags.Count);
             for (int i = 0; i < config.Tags.Count; i++)
             {
-                array[configHolderData.Data.BlobContainer, i] = config.Tags[i];
+                var elemiDirect = config.Tags[i];
+                array[configHolderData.Data.BlobContainer, i] = elemiDirect;
             }
 
             data.Tags = array;

@@ -1,7 +1,6 @@
 using System;
 using Unity.Collections;
 using XM;
-using XM.ConfigNew.CodeGen;
 using XM.Contracts.Config;
 
 namespace XM.Editor.Gen
@@ -15,10 +14,6 @@ namespace XM.Editor.Gen
 
         /// <summary>Link</summary>
         public CfgI<TestConfigUnmanaged> Link;
-        /// <summary>Link父节点指针 (指向TestConfig)</summary>
-        public global::XBlobPtr<TestConfigUnmanaged> Link_ParentPtr;
-        /// <summary>Link父节点索引 (指向TestConfig)</summary>
-        public CfgI<TestConfigUnmanaged> Link_ParentIndex;
         public int xxxx;
 
         /// <summary>
